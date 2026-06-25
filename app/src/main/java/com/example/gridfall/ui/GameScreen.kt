@@ -13,6 +13,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -27,6 +28,12 @@ import com.example.gridfall.game.GameEngine
 @Composable
 fun GameScreen(modifier: Modifier = Modifier) {
     var gameState by remember { mutableStateOf(GameEngine.createInitialState()) }
+    var selectedPieceIndex by remember { mutableStateOf<Int?>(null) }
+
+    fun restartGame() {
+        gameState = GameEngine.createInitialState()
+        selectedPieceIndex = null
+    }
 
     Column(
         modifier = modifier
@@ -48,7 +55,21 @@ fun GameScreen(modifier: Modifier = Modifier) {
 
         BoardCanvas(
             board = gameState.board,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            onCellTapped = { row, col ->
+                val pieceIndex = selectedPieceIndex ?: return@BoardCanvas
+                val nextState = GameEngine.placePiece(
+                    state = gameState,
+                    pieceIndex = pieceIndex,
+                    startRow = row,
+                    startCol = col
+                )
+
+                if (nextState != gameState) {
+                    gameState = nextState
+                    selectedPieceIndex = null
+                }
+            }
         )
 
         Spacer(modifier = Modifier.height(28.dp))
@@ -56,21 +77,30 @@ fun GameScreen(modifier: Modifier = Modifier) {
         PieceTray(
             pieces = gameState.currentPieces,
             usedPieceIndices = gameState.usedPieceIndices,
+            selectedPieceIndex = selectedPieceIndex,
+            onPieceSelected = { pieceIndex ->
+                selectedPieceIndex = if (selectedPieceIndex == pieceIndex) null else pieceIndex
+            },
             modifier = Modifier.fillMaxWidth()
         )
 
         Spacer(modifier = Modifier.height(28.dp))
 
         Button(
-            onClick = {
-                gameState = GameEngine.createInitialState()
-            },
+            onClick = ::restartGame,
             colors = ButtonDefaults.buttonColors(
                 containerColor = Color(0xFF38BDF8),
                 contentColor = Color(0xFF082F49)
             )
         ) {
-            androidx.compose.material3.Text(text = "Restart")
+            Text(text = "Restart")
         }
+    }
+
+    if (gameState.isGameOver) {
+        GameOverDialog(
+            finalScore = gameState.score,
+            onRestart = ::restartGame
+        )
     }
 }

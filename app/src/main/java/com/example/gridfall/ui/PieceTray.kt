@@ -2,6 +2,8 @@ package com.example.gridfall.ui
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -26,6 +28,8 @@ import kotlin.math.min
 fun PieceTray(
     pieces: List<Piece>,
     usedPieceIndices: Set<Int>,
+    selectedPieceIndex: Int?,
+    onPieceSelected: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -35,15 +39,31 @@ fun PieceTray(
     ) {
         repeat(3) { index ->
             val piece = pieces.getOrNull(index)
+            val isUsed = index in usedPieceIndices
+            val isSelectable = piece != null && !isUsed
+            val isSelected = selectedPieceIndex == index && isSelectable
+            val slotShape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
+
             Box(
                 modifier = Modifier
                     .weight(1f)
                     .aspectRatio(1f)
-                    .background(Color(0xFF1F2937), shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
+                    .background(
+                        color = if (isSelected) Color(0xFF0F3A4C) else Color(0xFF1F2937),
+                        shape = slotShape
+                    )
+                    .border(
+                        width = if (isSelected) 3.dp else 1.dp,
+                        color = if (isSelected) Color(0xFF38BDF8) else Color(0xFF263241),
+                        shape = slotShape
+                    )
+                    .clickable(enabled = isSelectable) {
+                        onPieceSelected(index)
+                    }
                     .padding(12.dp),
                 contentAlignment = Alignment.Center
             ) {
-                if (piece != null && index !in usedPieceIndices) {
+                if (piece != null && !isUsed) {
                     PiecePreview(
                         piece = piece,
                         modifier = Modifier.fillMaxSize()
