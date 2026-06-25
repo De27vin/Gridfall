@@ -8,7 +8,40 @@ object GameEngine {
             usedPieceIndices = emptySet(),
             score = 0,
             combo = 0,
-            isGameOver = false
+            isGameOver = false,
+            contractState = ContractState(
+                offeredContract = ContractGenerator.generate()
+            )
+        )
+    }
+
+    fun acceptContract(state: GameState): GameState {
+        if (state.isGameOver) return state
+        if (state.usedPieceIndices.isNotEmpty()) return state
+        val contract = state.contractState.offeredContract ?: return state
+
+        return state.copy(
+            contractState = ContractState(
+                activeContract = contract,
+                isAccepted = true
+            )
+        )
+    }
+
+    fun skipContract(state: GameState): GameState {
+        if (state.isGameOver) return state
+        if (state.contractState.offeredContract == null) return state
+
+        return state.copy(
+            contractState = state.contractState.copy(
+                offeredContract = null,
+                activeContract = null,
+                resolvedContract = null,
+                isAccepted = false,
+                isCompleted = false,
+                isFailed = false,
+                rewardClaimed = false
+            )
         )
     }
 
@@ -107,18 +140,33 @@ object GameEngine {
             clearedLineCount = clearResult.clearedLineCount,
             previousCombo = state.combo
         )
+        val updatedContractState = updateContractProgress(
+            contractState = state.contractState,
+            piece = piece,
+            startRow = startRow,
+            startCol = startCol,
+            clearedLineCount = clearResult.clearedLineCount,
+            scoreGained = scoreGained
+        )
         val nextCombo = if (clearResult.clearedLineCount > 0) state.combo + 1 else 0
         val nextUsedPieceIndices = state.usedPieceIndices + pieceIndex
         val allPiecesUsed = state.currentPieces.indices.all { it in nextUsedPieceIndices }
 
         val nextPieces: List<Piece>
         val finalUsedPieceIndices: Set<Int>
+        val finalContractState: ContractState
+        val rewardPoints: Int
         if (allPiecesUsed) {
             nextPieces = PieceGenerator.generateBatch()
             finalUsedPieceIndices = emptySet()
+            val evaluation = finishContractBatch(updatedContractState)
+            finalContractState = evaluation.contractState
+            rewardPoints = evaluation.rewardPoints
         } else {
             nextPieces = state.currentPieces
             finalUsedPieceIndices = nextUsedPieceIndices
+            finalContractState = updatedContractState
+            rewardPoints = 0
         }
 
         val availablePieces = nextPieces.filterIndexed { index, _ ->
@@ -130,10 +178,96 @@ object GameEngine {
             board = clearResult.board,
             currentPieces = nextPieces,
             usedPieceIndices = finalUsedPieceIndices,
-            score = state.score + scoreGained,
+            score = state.score + scoreGained + rewardPoints,
             combo = nextCombo,
-            isGameOver = isGameOver
+            isGameOver = isGameOver,
+            contractState = finalContractState
         )
+    }
+
+    private fun updateContractProgress(
+        contractState: ContractState,
+        piece: Piece,
+        startRow: Int,
+        startCol: Int,
+        clearedLineCount: Int,
+        scoreGained: Int
+    ): ContractState {
+        if (!contractState.isAccepted || contractState.activeContract == null) {
+            return contractState.copy(
+                offeredContract = null,
+                resolvedContract = null,
+                isCompleted = false,
+                isFailed = false,
+                rewardClaimed = false
+            )
+        }
+
+        val placedCells = absoluteCells(piece, startRow, startCol)
+
+        return contractState.copy(
+            batchPlacedPieces = contractState.batchPlacedPieces + 1,
+            batchClearedLines = contractState.batchClearedLines + clearedLineCount,
+            batchScoreGained = contractState.batchScoreGained + scoreGained,
+            usedEdge = contractState.usedEdge || placedCells.any { cell ->
+                cell.row == 0 ||
+                    cell.row == Board.SIZE - 1 ||
+                    cell.col == 0 ||
+                    cell.col == Board.SIZE - 1
+            },
+            usedCenter = contractState.usedCenter || placedCells.any { cell ->
+                cell.row in 2..5 && cell.col in 2..5
+            },
+            resolvedContract = null,
+            isCompleted = false,
+            isFailed = false,
+            rewardClaimed = false
+        )
+    }
+
+    private fun finishContractBatch(contractState: ContractState): ContractEvaluation {
+        val activeContract = contractState.activeContract
+        if (!contractState.isAccepted || activeContract == null) {
+            return ContractEvaluation(
+                contractState = ContractState(
+                    offeredContract = ContractGenerator.generate()
+                ),
+                rewardPoints = 0
+            )
+        }
+
+        val completed = when (activeContract.type) {
+            ContractType.ClearAtLeastOneLine -> contractState.batchClearedLines >= 1
+            ContractType.ClearExactlyTwoLines -> contractState.batchClearedLines == 2
+            ContractType.NoEdgePlacement -> !contractState.usedEdge
+            ContractType.AvoidCenterArea -> !contractState.usedCenter
+            ContractType.ScoreAtLeastTwenty -> contractState.batchScoreGained >= 20
+        }
+        val rewardPoints = if (completed) activeContract.rewardPoints else 0
+
+        return ContractEvaluation(
+            contractState = ContractState(
+                offeredContract = ContractGenerator.generate(),
+                resolvedContract = activeContract,
+                isCompleted = completed,
+                isFailed = !completed,
+                rewardClaimed = completed
+            ),
+            rewardPoints = rewardPoints
+        )
+    }
+
+    private fun absoluteCells(
+        piece: Piece,
+        startRow: Int,
+        startCol: Int
+    ): List<Cell> {
+        return piece.cells.map { cell ->
+            Cell(
+                row = startRow + cell.row,
+                col = startCol + cell.col
+            )
+        }
     }
 
     private fun placeCellsOnBoard(
@@ -152,4 +286,9 @@ object GameEngine {
 
         return updatedBoard
     }
+
+    private data class ContractEvaluation(
+        val contractState: ContractState,
+        val rewardPoints: Int
+    )
 }

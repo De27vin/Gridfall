@@ -78,6 +78,22 @@ fun GameScreen(modifier: Modifier = Modifier) {
         }
     }
 
+    var showContractResult by remember { mutableStateOf(false) }
+    LaunchedEffect(
+        gameState.contractState.resolvedContract,
+        gameState.contractState.isCompleted,
+        gameState.contractState.isFailed
+    ) {
+        if (
+            gameState.contractState.resolvedContract != null &&
+            (gameState.contractState.isCompleted || gameState.contractState.isFailed)
+        ) {
+            showContractResult = true
+            delay(1200)
+            showContractResult = false
+        }
+    }
+
     fun restartGame() {
         gameState = GameEngine.createInitialState()
         dragState = DragState()
@@ -160,7 +176,21 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(28.dp))
+            Spacer(modifier = Modifier.height(16.dp))
+
+            ContractCard(
+                contractState = gameState.contractState,
+                showResolvedResult = showContractResult,
+                onAccept = {
+                    gameState = GameEngine.acceptContract(gameState)
+                },
+                onSkip = {
+                    gameState = GameEngine.skipContract(gameState)
+                },
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
 
             BoardCanvas(
                 board = gameState.board,
