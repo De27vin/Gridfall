@@ -1,3 +1,6 @@
 package com.example.gridfall.game
 
-class Piece
+data class Piece(
+    val id: String,
+    val cells: List<Cell>
+)

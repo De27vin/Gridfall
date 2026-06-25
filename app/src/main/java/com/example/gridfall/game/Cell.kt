@@ -1,3 +1,6 @@
 package com.example.gridfall.game
 
-class Cell
+data class Cell(
+    val row: Int,
+    val col: Int
+)
