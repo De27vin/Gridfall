@@ -58,11 +58,17 @@ fun GameScreen(modifier: Modifier = Modifier) {
     var isNewBestThisGame by remember { mutableStateOf(false) }
     var lineClearFeedback by remember { mutableStateOf<LineClearFeedback?>(null) }
     var lineClearFeedbackToken by remember { mutableStateOf(0) }
+    val fallbackDragOffset = with(LocalDensity.current) { -72.dp.toPx() }
+    val dragVisualOffset = boardLayoutInfo?.let { layoutInfo ->
+        val offset = -layoutInfo.cellSizePx * 1.5f
+        Offset(offset, offset)
+    } ?: Offset(fallbackDragOffset, fallbackDragOffset)
 
     val placementPreview = createPlacementPreview(
         dragState = dragState,
         boardLayoutInfo = boardLayoutInfo,
-        board = gameState.board
+        board = gameState.board,
+        dragVisualOffset = dragVisualOffset
     )
 
     LaunchedEffect(lineClearFeedback?.token) {
@@ -83,7 +89,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
         val pieceIndex = dragState.pieceIndex
         val piece = dragState.piece
         val origin = mapPositionToBoardOrigin(
-            position = dragState.dragPosition,
+            position = dragState.dragPosition + dragVisualOffset,
             boardLayoutInfo = boardLayoutInfo
         )
 
@@ -209,14 +215,15 @@ fun GameScreen(modifier: Modifier = Modifier) {
         val draggedPiece = dragState.piece
         val currentBoardLayoutInfo = boardLayoutInfo
         if (dragState.isDragging && draggedPiece != null && currentBoardLayoutInfo != null) {
+            val draggedPiecePosition = dragState.dragPosition + dragVisualOffset
             DraggedPiece(
                 piece = draggedPiece,
                 cellSizePx = currentBoardLayoutInfo.cellSizePx,
                 spacingPx = currentBoardLayoutInfo.spacingPx,
                 modifier = Modifier.offset {
                     IntOffset(
-                        x = dragState.dragPosition.x.roundToInt(),
-                        y = dragState.dragPosition.y.roundToInt()
+                        x = draggedPiecePosition.x.roundToInt(),
+                        y = draggedPiecePosition.y.roundToInt()
                     )
                 }
             )
@@ -278,11 +285,12 @@ private fun DraggedPiece(
 private fun createPlacementPreview(
     dragState: DragState,
     boardLayoutInfo: BoardLayoutInfo?,
-    board: Board
+    board: Board,
+    dragVisualOffset: Offset
 ): PlacementPreview? {
     val piece = dragState.piece ?: return null
     if (!dragState.isDragging) return null
-    val origin = mapPositionToBoardOrigin(dragState.dragPosition, boardLayoutInfo) ?: return null
+    val origin = mapPositionToBoardOrigin(dragState.dragPosition + dragVisualOffset, boardLayoutInfo) ?: return null
 
     return PlacementPreview(
         piece = piece,
