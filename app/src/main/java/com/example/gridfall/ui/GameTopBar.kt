@@ -14,33 +14,43 @@ import androidx.compose.ui.graphics.Color
 @Composable
 fun GameTopBar(
     score: Int,
+    highScore: Int,
     combo: Int,
     modifier: Modifier = Modifier
 ) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = "Gridfall",
-            color = Color.White,
-            style = MaterialTheme.typography.headlineMedium
-        )
-
-        Column(horizontalAlignment = Alignment.End) {
+    Column(modifier = modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Text(
-                text = "Score $score",
-                color = Color(0xFFE5E7EB),
-                style = MaterialTheme.typography.titleMedium
+                text = "Gridfall",
+                color = Color.White,
+                style = MaterialTheme.typography.headlineMedium
             )
-            if (combo > 0) {
+
+            Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    text = "Combo x$combo",
-                    color = Color(0xFF38BDF8),
+                    text = "Score $score",
+                    color = Color(0xFFE5E7EB),
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Text(
+                    text = "Best $highScore",
+                    color = Color(0xFF9CA3AF),
                     style = MaterialTheme.typography.labelLarge
                 )
             }
+        }
+
+        if (combo > 0) {
+            Text(
+                text = "Combo x$combo",
+                color = Color(0xFF38BDF8),
+                style = MaterialTheme.typography.labelLarge,
+                modifier = Modifier.align(Alignment.End)
+            )
         }
     }
 }

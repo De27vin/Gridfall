@@ -1,5 +1,6 @@
 package com.example.gridfall.ui
 
+import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -21,6 +22,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -31,21 +33,31 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.example.gridfall.game.Board
+import com.example.gridfall.game.ClearResult
 import com.example.gridfall.game.GameEngine
 import com.example.gridfall.game.Piece
+import kotlinx.coroutines.delay
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
 
 @Composable
 fun GameScreen(modifier: Modifier = Modifier) {
+    val context = LocalContext.current.applicationContext
+    val view = LocalView.current
     var gameState by remember { mutableStateOf(GameEngine.createInitialState()) }
     var dragState by remember { mutableStateOf(DragState()) }
     var boardLayoutInfo by remember { mutableStateOf<BoardLayoutInfo?>(null) }
+    var highScore by remember { mutableStateOf(HighScoreStore.load(context)) }
+    var isNewBestThisGame by remember { mutableStateOf(false) }
+    var lineClearFeedback by remember { mutableStateOf<LineClearFeedback?>(null) }
+    var lineClearFeedbackToken by remember { mutableStateOf(0) }
 
     val placementPreview = createPlacementPreview(
         dragState = dragState,
@@ -53,19 +65,35 @@ fun GameScreen(modifier: Modifier = Modifier) {
         board = gameState.board
     )
 
+    LaunchedEffect(lineClearFeedback?.token) {
+        if (lineClearFeedback != null) {
+            delay(650)
+            lineClearFeedback = null
+        }
+    }
+
     fun restartGame() {
         gameState = GameEngine.createInitialState()
         dragState = DragState()
+        lineClearFeedback = null
+        isNewBestThisGame = false
     }
 
     fun finishDrag() {
         val pieceIndex = dragState.pieceIndex
+        val piece = dragState.piece
         val origin = mapPositionToBoardOrigin(
             position = dragState.dragPosition,
             boardLayoutInfo = boardLayoutInfo
         )
 
-        if (pieceIndex != null && origin != null) {
+        if (pieceIndex != null && piece != null && origin != null) {
+            val clearResult = previewClearResult(
+                board = gameState.board,
+                piece = piece,
+                startRow = origin.first,
+                startCol = origin.second
+            )
             val nextState = GameEngine.placePiece(
                 state = gameState,
                 pieceIndex = pieceIndex,
@@ -74,8 +102,32 @@ fun GameScreen(modifier: Modifier = Modifier) {
             )
 
             if (nextState != gameState) {
+                view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
                 gameState = nextState
+
+                if (nextState.score > highScore) {
+                    highScore = nextState.score
+                    HighScoreStore.save(context, nextState.score)
+                    isNewBestThisGame = true
+                }
+
+                if (clearResult != null && clearResult.clearedLineCount > 0) {
+                    lineClearFeedbackToken += 1
+                    lineClearFeedback = LineClearFeedback(
+                        clearedRows = clearResult.clearedRows,
+                        clearedColumns = clearResult.clearedColumns,
+                        token = lineClearFeedbackToken
+                    )
+                }
+
+                if (nextState.isGameOver) {
+                    view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                }
+            } else {
+                view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
             }
+        } else if (pieceIndex != null) {
+            view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
         }
 
         dragState = DragState()
@@ -97,6 +149,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
         ) {
             GameTopBar(
                 score = gameState.score,
+                highScore = highScore,
                 combo = gameState.combo,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -106,6 +159,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
             BoardCanvas(
                 board = gameState.board,
                 placementPreview = placementPreview,
+                lineClearFeedback = lineClearFeedback,
                 onBoardLayoutChanged = { layoutInfo ->
                     boardLayoutInfo = layoutInfo
                 },
@@ -172,6 +226,8 @@ fun GameScreen(modifier: Modifier = Modifier) {
     if (gameState.isGameOver) {
         GameOverDialog(
             finalScore = gameState.score,
+            highScore = highScore,
+            isNewBest = isNewBestThisGame,
             onRestart = ::restartGame
         )
     }
@@ -239,6 +295,24 @@ private fun createPlacementPreview(
             startCol = origin.second
         )
     )
+}
+
+private fun previewClearResult(
+    board: Board,
+    piece: Piece,
+    startRow: Int,
+    startCol: Int
+): ClearResult? {
+    if (!GameEngine.canPlace(board, piece, startRow, startCol)) return null
+
+    val placedBoard = piece.cells.fold(board) { currentBoard, cell ->
+        currentBoard.fill(
+            row = startRow + cell.row,
+            col = startCol + cell.col
+        )
+    }
+
+    return GameEngine.clearLines(placedBoard)
 }
 
 private fun mapPositionToBoardOrigin(

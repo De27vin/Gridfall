@@ -17,6 +17,7 @@ fun BoardCanvas(
     board: Board,
     modifier: Modifier = Modifier,
     placementPreview: PlacementPreview? = null,
+    lineClearFeedback: LineClearFeedback? = null,
     onBoardLayoutChanged: (BoardLayoutInfo) -> Unit = {}
 ) {
     Canvas(
@@ -82,6 +83,32 @@ fun BoardCanvas(
                         color = previewColor,
                         topLeft = topLeft,
                         size = Size(cellSize, cellSize),
+                        cornerRadius = cornerRadius
+                    )
+                }
+            }
+        }
+
+        lineClearFeedback?.let { feedback ->
+            val feedbackColor = Color(0xAAFACC15)
+
+            feedback.clearedRows.forEach { row ->
+                if (row in 0 until Board.SIZE) {
+                    drawRoundRect(
+                        color = feedbackColor,
+                        topLeft = Offset(spacing, spacing + row * (cellSize + spacing)),
+                        size = Size(size.width - spacing * 2, cellSize),
+                        cornerRadius = cornerRadius
+                    )
+                }
+            }
+
+            feedback.clearedColumns.forEach { col ->
+                if (col in 0 until Board.SIZE) {
+                    drawRoundRect(
+                        color = feedbackColor,
+                        topLeft = Offset(spacing + col * (cellSize + spacing), spacing),
+                        size = Size(cellSize, size.height - spacing * 2),
                         cornerRadius = cornerRadius
                     )
                 }
