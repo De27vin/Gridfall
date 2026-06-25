@@ -3,7 +3,7 @@ package com.example.gridfall.ui
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -11,7 +11,11 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -19,6 +23,9 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.unit.dp
 import com.example.gridfall.game.Piece
 import kotlin.math.max
@@ -28,8 +35,11 @@ import kotlin.math.min
 fun PieceTray(
     pieces: List<Piece>,
     usedPieceIndices: Set<Int>,
-    selectedPieceIndex: Int?,
-    onPieceSelected: (Int) -> Unit,
+    draggingPieceIndex: Int?,
+    onPieceDragStarted: (pieceIndex: Int, piece: Piece, position: Offset, startOffset: Offset) -> Unit,
+    onPieceDragged: (Offset) -> Unit,
+    onPieceDragEnded: () -> Unit,
+    onPieceDragCancelled: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -41,24 +51,46 @@ fun PieceTray(
             val piece = pieces.getOrNull(index)
             val isUsed = index in usedPieceIndices
             val isSelectable = piece != null && !isUsed
-            val isSelected = selectedPieceIndex == index && isSelectable
+            val isDragging = draggingPieceIndex == index && isSelectable
             val slotShape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
+            var slotTopLeft by remember { mutableStateOf(Offset.Zero) }
 
             Box(
                 modifier = Modifier
                     .weight(1f)
                     .aspectRatio(1f)
                     .background(
-                        color = if (isSelected) Color(0xFF0F3A4C) else Color(0xFF1F2937),
+                        color = if (isDragging) Color(0xFF0F3A4C) else Color(0xFF1F2937),
                         shape = slotShape
                     )
                     .border(
-                        width = if (isSelected) 3.dp else 1.dp,
-                        color = if (isSelected) Color(0xFF38BDF8) else Color(0xFF263241),
+                        width = if (isDragging) 3.dp else 1.dp,
+                        color = if (isDragging) Color(0xFF38BDF8) else Color(0xFF263241),
                         shape = slotShape
                     )
-                    .clickable(enabled = isSelectable) {
-                        onPieceSelected(index)
+                    .onGloballyPositioned { coordinates ->
+                        slotTopLeft = coordinates.positionInRoot()
+                    }
+                    .pointerInput(isSelectable, piece) {
+                        if (!isSelectable) return@pointerInput
+                        val draggablePiece = piece ?: return@pointerInput
+
+                        detectDragGestures(
+                            onDragStart = { offset ->
+                                onPieceDragStarted(
+                                    index,
+                                    draggablePiece,
+                                    slotTopLeft + offset,
+                                    offset
+                                )
+                            },
+                            onDragCancel = onPieceDragCancelled,
+                            onDragEnd = onPieceDragEnded,
+                            onDrag = { change, dragAmount ->
+                                change.consume()
+                                onPieceDragged(dragAmount)
+                            }
+                        )
                     }
                     .padding(12.dp),
                 contentAlignment = Alignment.Center
@@ -66,7 +98,9 @@ fun PieceTray(
                 if (piece != null && !isUsed) {
                     PiecePreview(
                         piece = piece,
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .alpha(if (isDragging) 0.35f else 1f)
                     )
                 } else {
                     Box(

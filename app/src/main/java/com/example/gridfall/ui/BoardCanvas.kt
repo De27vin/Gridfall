@@ -1,66 +1,40 @@
 package com.example.gridfall.ui
 
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import com.example.gridfall.game.Board
 
 @Composable
 fun BoardCanvas(
     board: Board,
     modifier: Modifier = Modifier,
-    onCellTapped: (row: Int, col: Int) -> Unit
+    placementPreview: PlacementPreview? = null,
+    onBoardLayoutChanged: (BoardLayoutInfo) -> Unit = {}
 ) {
-    var boardPixelSize by remember { mutableStateOf(0) }
-
     Canvas(
         modifier = modifier
-            .padding(horizontal = 4.dp)
             .aspectRatio(1f)
-            .onSizeChanged { size ->
-                boardPixelSize = minOf(size.width, size.height)
-            }
-            .pointerInput(boardPixelSize) {
-                detectTapGestures { offset ->
-                    if (boardPixelSize <= 0) return@detectTapGestures
+            .onGloballyPositioned { coordinates ->
+                val sizePx = minOf(coordinates.size.width, coordinates.size.height).toFloat()
+                val spacing = sizePx * 0.018f
+                val cellSize = (sizePx - spacing * (Board.SIZE + 1)) / Board.SIZE
 
-                    val boardSize = boardPixelSize.toFloat()
-                    if (offset.x < 0f || offset.y < 0f || offset.x > boardSize || offset.y > boardSize) {
-                        return@detectTapGestures
-                    }
-
-                    val spacing = boardSize * 0.018f
-                    val cellSize = (boardSize - spacing * (Board.SIZE + 1)) / Board.SIZE
-                    val col = ((offset.x - spacing) / (cellSize + spacing)).toInt()
-                    val row = ((offset.y - spacing) / (cellSize + spacing)).toInt()
-
-                    if (row !in 0 until Board.SIZE || col !in 0 until Board.SIZE) {
-                        return@detectTapGestures
-                    }
-
-                    val cellLeft = spacing + col * (cellSize + spacing)
-                    val cellTop = spacing + row * (cellSize + spacing)
-                    val insideCell = offset.x in cellLeft..(cellLeft + cellSize) &&
-                        offset.y in cellTop..(cellTop + cellSize)
-
-                    if (insideCell) {
-                        onCellTapped(row, col)
-                    }
-                }
+                onBoardLayoutChanged(
+                    BoardLayoutInfo(
+                        topLeft = coordinates.positionInRoot(),
+                        sizePx = sizePx,
+                        cellSizePx = cellSize,
+                        spacingPx = spacing
+                    )
+                )
             }
     ) {
         val spacing = size.width * 0.018f
@@ -88,6 +62,29 @@ fun BoardCanvas(
                     size = Size(cellSize, cellSize),
                     cornerRadius = cornerRadius
                 )
+            }
+        }
+
+        placementPreview?.let { preview ->
+            val previewColor = if (preview.isValid) Color(0x8834D399) else Color(0x88F87171)
+
+            preview.piece.cells.forEach { cell ->
+                val row = preview.originRow + cell.row
+                val col = preview.originCol + cell.col
+
+                if (row in 0 until Board.SIZE && col in 0 until Board.SIZE) {
+                    val topLeft = Offset(
+                        x = spacing + col * (cellSize + spacing),
+                        y = spacing + row * (cellSize + spacing)
+                    )
+
+                    drawRoundRect(
+                        color = previewColor,
+                        topLeft = topLeft,
+                        size = Size(cellSize, cellSize),
+                        cornerRadius = cornerRadius
+                    )
+                }
             }
         }
     }
