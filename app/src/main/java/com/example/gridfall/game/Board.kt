@@ -17,6 +17,14 @@ data class Board(
         return cells[row][col]
     }
 
+    fun isInside(row: Int, col: Int): Boolean {
+        return row in 0 until SIZE && col in 0 until SIZE
+    }
+
+    fun isEmpty(row: Int, col: Int): Boolean {
+        return isInside(row, col) && get(row, col) == 0
+    }
+
     fun set(row: Int, col: Int, value: Int): Board {
         val newCells = cells.mapIndexed { r, rowCells ->
             if (r == row) {
@@ -29,5 +37,9 @@ data class Board(
         }
 
         return copy(cells = newCells)
+    }
+
+    fun fill(row: Int, col: Int): Board {
+        return set(row, col, 1)
     }
 }
