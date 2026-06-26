@@ -184,20 +184,6 @@ fun GameScreen(modifier: Modifier = Modifier) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            ContractCard(
-                contractState = gameState.contractState,
-                showResolvedResult = showContractResult,
-                onAccept = {
-                    gameState = GameEngine.acceptContract(gameState)
-                },
-                onSkip = {
-                    gameState = GameEngine.skipContract(gameState)
-                },
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
             BoardCanvas(
                 board = gameState.board,
                 placementPreview = placementPreview,
@@ -263,6 +249,45 @@ fun GameScreen(modifier: Modifier = Modifier) {
                     )
                 }
             )
+        }
+
+        if (showContractResult && gameState.contractState.resolvedContract != null) {
+            ContractResultChip(
+                contractState = gameState.contractState,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .systemBarsPadding()
+                    .padding(top = 112.dp)
+            )
+        } else if (gameState.contractState.activeContract != null) {
+            ContractActiveChip(
+                contractState = gameState.contractState,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .systemBarsPadding()
+                    .padding(top = 112.dp, start = 20.dp, end = 20.dp)
+            )
+        }
+
+        val offeredContract = gameState.contractState.offeredContract
+        if (offeredContract != null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color(0x99000000))
+                    .padding(horizontal = 28.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                ContractOfferPopup(
+                    contract = offeredContract,
+                    onAccept = {
+                        gameState = GameEngine.acceptContract(gameState)
+                    },
+                    onSkip = {
+                        gameState = GameEngine.skipContract(gameState)
+                    }
+                )
+            }
         }
     }
 

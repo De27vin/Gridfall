@@ -5,6 +5,7 @@ data class Contract(
     val title: String,
     val description: String,
     val rewardPoints: Int,
+    val penaltyPoints: Int,
     val type: ContractType
 )
 

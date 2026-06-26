@@ -353,11 +353,12 @@ class GameEngineTest {
     }
 
     @Test
-    fun createInitialStateOffersContract() {
+    fun initialStateHasNoImmediateContractOffer() {
         val state = GameEngine.createInitialState()
 
-        assertNotNull(state.contractState.offeredContract)
+        assertNull(state.contractState.offeredContract)
         assertNull(state.contractState.activeContract)
+        assertTrue(state.contractState.batchesUntilNextOffer in 3..5)
     }
 
     @Test
@@ -388,6 +389,27 @@ class GameEngineTest {
         assertNull(nextState.contractState.offeredContract)
         assertNull(nextState.contractState.activeContract)
         assertFalse(nextState.contractState.isAccepted)
+        assertTrue(nextState.contractState.batchesUntilNextOffer in 12..18)
+    }
+
+    @Test
+    fun contractOfferAppearsOnlyAfterCooldownBatches() {
+        val piece = Piece("single", listOf(Cell(0, 0)))
+        val cooldownTwoState = testState(
+            currentPieces = listOf(piece, piece, piece),
+            contractState = ContractState(batchesUntilNextOffer = 2)
+        )
+        val cooldownOneState = testState(
+            currentPieces = listOf(piece, piece, piece),
+            contractState = ContractState(batchesUntilNextOffer = 1)
+        )
+
+        val afterCooldownTwoBatch = placeAllThreeSingles(cooldownTwoState)
+        val afterCooldownOneBatch = placeAllThreeSingles(cooldownOneState)
+
+        assertNull(afterCooldownTwoBatch.contractState.offeredContract)
+        assertEquals(1, afterCooldownTwoBatch.contractState.batchesUntilNextOffer)
+        assertNotNull(afterCooldownOneBatch.contractState.offeredContract)
     }
 
     @Test
@@ -537,7 +559,8 @@ class GameEngineTest {
 
         assertFalse(afterThird.contractState.isCompleted)
         assertTrue(afterThird.contractState.isFailed)
-        assertEquals(3, afterThird.score)
+        assertTrue(afterThird.contractState.penaltyApplied)
+        assertEquals(0, afterThird.score)
     }
 
     @Test
@@ -573,7 +596,8 @@ class GameEngineTest {
 
         assertFalse(afterThird.contractState.isCompleted)
         assertTrue(afterThird.contractState.isFailed)
-        assertEquals(3, afterThird.score)
+        assertTrue(afterThird.contractState.penaltyApplied)
+        assertEquals(0, afterThird.score)
     }
 
     @Test
@@ -602,7 +626,27 @@ class GameEngineTest {
     }
 
     @Test
-    fun failedContractDoesNotAddRewardPoints() {
+    fun failedContractSubtractsPenaltyPoints() {
+        val piece = Piece("single", listOf(Cell(0, 0)))
+        val contract = testContract(ContractType.ScoreAtLeastTwenty, rewardPoints = 25)
+        val state = acceptedContractState(
+            contract = contract,
+            score = 80,
+            currentPieces = listOf(piece, piece, piece)
+        )
+
+        val afterFirst = GameEngine.placePiece(state, pieceIndex = 0, startRow = 0, startCol = 0)
+        val afterSecond = GameEngine.placePiece(afterFirst, pieceIndex = 1, startRow = 0, startCol = 1)
+        val afterThird = GameEngine.placePiece(afterSecond, pieceIndex = 2, startRow = 0, startCol = 2)
+
+        assertTrue(afterThird.contractState.isFailed)
+        assertFalse(afterThird.contractState.rewardClaimed)
+        assertTrue(afterThird.contractState.penaltyApplied)
+        assertEquals(33, afterThird.score)
+    }
+
+    @Test
+    fun failedContractCannotReduceScoreBelowZero() {
         val piece = Piece("single", listOf(Cell(0, 0)))
         val contract = testContract(ContractType.ScoreAtLeastTwenty, rewardPoints = 25)
         val state = acceptedContractState(
@@ -615,8 +659,22 @@ class GameEngineTest {
         val afterThird = GameEngine.placePiece(afterSecond, pieceIndex = 2, startRow = 0, startCol = 2)
 
         assertTrue(afterThird.contractState.isFailed)
-        assertFalse(afterThird.contractState.rewardClaimed)
-        assertEquals(3, afterThird.score)
+        assertEquals(0, afterThird.score)
+    }
+
+    @Test
+    fun skippedContractDoesNotSubtractScore() {
+        val contract = testContract(ContractType.ScoreAtLeastTwenty, rewardPoints = 25)
+        val state = testState(
+            currentPieces = listOf(Piece("single", listOf(Cell(0, 0)))),
+            score = 40,
+            contractState = ContractState(offeredContract = contract)
+        )
+
+        val nextState = GameEngine.skipContract(state)
+
+        assertEquals(40, nextState.score)
+        assertNull(nextState.contractState.offeredContract)
     }
 
     @Test
@@ -639,7 +697,7 @@ class GameEngineTest {
     }
 
     @Test
-    fun newContractIsOfferedAfterBatchEnds() {
+    fun newContractIsNotOfferedImmediatelyAfterContractResolution() {
         val piece = Piece("single", listOf(Cell(0, 0)))
         val contract = testContract(ContractType.NoEdgePlacement)
         val state = acceptedContractState(
@@ -651,9 +709,10 @@ class GameEngineTest {
         val afterSecond = GameEngine.placePiece(afterFirst, pieceIndex = 1, startRow = 1, startCol = 2)
         val afterThird = GameEngine.placePiece(afterSecond, pieceIndex = 2, startRow = 1, startCol = 3)
 
-        assertNotNull(afterThird.contractState.offeredContract)
+        assertNull(afterThird.contractState.offeredContract)
         assertNull(afterThird.contractState.activeContract)
         assertEquals(0, afterThird.contractState.batchPlacedPieces)
+        assertTrue(afterThird.contractState.batchesUntilNextOffer in 12..18)
     }
 
     @Test
@@ -730,10 +789,12 @@ class GameEngineTest {
     private fun acceptedContractState(
         contract: Contract,
         board: Board = Board.empty(),
+        score: Int = 0,
         currentPieces: List<Piece>
     ): GameState {
         return testState(
             board = board,
+            score = score,
             currentPieces = currentPieces,
             contractState = ContractState(
                 activeContract = contract,
@@ -751,8 +812,15 @@ class GameEngineTest {
             title = type.name,
             description = type.name,
             rewardPoints = rewardPoints,
+            penaltyPoints = rewardPoints * 2,
             type = type
         )
+    }
+
+    private fun placeAllThreeSingles(state: GameState): GameState {
+        val afterFirst = GameEngine.placePiece(state, pieceIndex = 0, startRow = 0, startCol = 0)
+        val afterSecond = GameEngine.placePiece(afterFirst, pieceIndex = 1, startRow = 0, startCol = 1)
+        return GameEngine.placePiece(afterSecond, pieceIndex = 2, startRow = 0, startCol = 2)
     }
 
     private fun bombPiece(): Piece {

@@ -12,7 +12,7 @@ object GameEngine {
             combo = 0,
             isGameOver = false,
             contractState = ContractState(
-                offeredContract = ContractGenerator.generate(level = level)
+                batchesUntilNextOffer = ContractGenerator.initialOfferCooldown()
             )
         )
     }
@@ -23,9 +23,15 @@ object GameEngine {
         val contract = state.contractState.offeredContract ?: return state
 
         return state.copy(
-            contractState = ContractState(
+            contractState = state.contractState.copy(
+                offeredContract = null,
                 activeContract = contract,
-                isAccepted = true
+                resolvedContract = null,
+                isAccepted = true,
+                isCompleted = false,
+                isFailed = false,
+                rewardClaimed = false,
+                penaltyApplied = false
             )
         )
     }
@@ -42,7 +48,9 @@ object GameEngine {
                 isAccepted = false,
                 isCompleted = false,
                 isFailed = false,
-                rewardClaimed = false
+                rewardClaimed = false,
+                penaltyApplied = false,
+                batchesUntilNextOffer = ContractGenerator.nextOfferCooldown()
             )
         )
     }
@@ -168,12 +176,13 @@ object GameEngine {
         if (allPiecesUsed) {
             finalUsedPieceIndices = emptySet()
             val evaluation = evaluateContractBatch(updatedContractState)
-            rewardPoints = evaluation.rewardPoints
-            val finalScore = scoreAfterPlacement + rewardPoints
+            rewardPoints = evaluation.scoreDelta
+            val finalScore = (scoreAfterPlacement + rewardPoints).coerceAtLeast(0)
             val nextLevel = LevelSystem.levelForScore(finalScore)
             nextPieces = PieceGenerator.generateBatch(level = nextLevel)
-            finalContractState = evaluation.contractState.copy(
-                offeredContract = ContractGenerator.generate(level = nextLevel)
+            finalContractState = advanceContractBatch(
+                contractState = evaluation.contractState,
+                level = nextLevel
             )
         } else {
             nextPieces = state.currentPieces
@@ -191,7 +200,7 @@ object GameEngine {
             board = placementResult.board,
             currentPieces = nextPieces,
             usedPieceIndices = finalUsedPieceIndices,
-            score = scoreAfterPlacement + rewardPoints,
+            score = (scoreAfterPlacement + rewardPoints).coerceAtLeast(0),
             combo = placementResult.nextCombo,
             isGameOver = isGameOver,
             contractState = finalContractState
@@ -301,7 +310,8 @@ object GameEngine {
             resolvedContract = null,
             isCompleted = false,
             isFailed = false,
-            rewardClaimed = false
+            rewardClaimed = false,
+            penaltyApplied = false
         )
     }
 
@@ -309,8 +319,22 @@ object GameEngine {
         val activeContract = contractState.activeContract
         if (!contractState.isAccepted || activeContract == null) {
             return ContractEvaluation(
-                contractState = ContractState(),
-                rewardPoints = 0
+                contractState = contractState.copy(
+                    offeredContract = null,
+                    activeContract = null,
+                    resolvedContract = null,
+                    isAccepted = false,
+                    isCompleted = false,
+                    isFailed = false,
+                    batchPlacedPieces = 0,
+                    batchClearedLines = 0,
+                    batchScoreGained = 0,
+                    usedEdge = false,
+                    usedCenter = false,
+                    rewardClaimed = false,
+                    penaltyApplied = false
+                ),
+                scoreDelta = 0
             )
         }
 
@@ -321,17 +345,52 @@ object GameEngine {
             ContractType.AvoidCenterArea -> !contractState.usedCenter
             ContractType.ScoreAtLeastTwenty -> contractState.batchScoreGained >= 20
         }
-        val rewardPoints = if (completed) activeContract.rewardPoints else 0
+        val scoreDelta = if (completed) activeContract.rewardPoints else -activeContract.penaltyPoints
 
         return ContractEvaluation(
             contractState = ContractState(
                 resolvedContract = activeContract,
                 isCompleted = completed,
                 isFailed = !completed,
-                rewardClaimed = completed
+                rewardClaimed = completed,
+                penaltyApplied = !completed,
+                completedBatchCount = contractState.completedBatchCount
             ),
-            rewardPoints = rewardPoints
+            scoreDelta = scoreDelta
         )
+    }
+
+    private fun advanceContractBatch(
+        contractState: ContractState,
+        level: Int
+    ): ContractState {
+        val completedBatchCount = contractState.completedBatchCount + 1
+        val resolvedContract = contractState.resolvedContract
+
+        if (resolvedContract != null) {
+            return contractState.copy(
+                completedBatchCount = completedBatchCount,
+                batchesUntilNextOffer = ContractGenerator.nextOfferCooldown()
+            )
+        }
+
+        if (contractState.offeredContract != null || contractState.activeContract != null) {
+            return contractState.copy(completedBatchCount = completedBatchCount)
+        }
+
+        val batchesUntilNextOffer = (contractState.batchesUntilNextOffer - 1).coerceAtLeast(0)
+        return if (batchesUntilNextOffer == 0) {
+            contractState.copy(
+                offeredContract = ContractGenerator.generate(level = level),
+                batchesUntilNextOffer = 0,
+                completedBatchCount = completedBatchCount
+            )
+        } else {
+            contractState.copy(
+                batchesUntilNextOffer = batchesUntilNextOffer,
+                completedBatchCount = completedBatchCount
+            )
+        }
     }
 
     private fun absoluteCells(
@@ -366,7 +425,7 @@ object GameEngine {
 
     private data class ContractEvaluation(
         val contractState: ContractState,
-        val rewardPoints: Int
+        val scoreDelta: Int
     )
 
     private data class PlacementResult(

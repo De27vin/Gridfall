@@ -3,6 +3,11 @@ package com.example.gridfall.game
 import kotlin.random.Random
 
 object ContractGenerator {
+    private const val FIRST_OFFER_MIN_BATCHES = 3
+    private const val FIRST_OFFER_MAX_BATCHES = 5
+    private const val NEXT_OFFER_MIN_BATCHES = 12
+    private const val NEXT_OFFER_MAX_BATCHES = 18
+
     private val templates = listOf(
         ContractTemplate(
             id = "clear_at_least_one_line",
@@ -50,8 +55,17 @@ object ContractGenerator {
             title = template.title,
             description = template.description,
             rewardPoints = rewardPoints,
+            penaltyPoints = rewardPoints * 2,
             type = template.type
         )
+    }
+
+    fun initialOfferCooldown(): Int {
+        return Random.nextInt(FIRST_OFFER_MIN_BATCHES, FIRST_OFFER_MAX_BATCHES + 1)
+    }
+
+    fun nextOfferCooldown(): Int {
+        return Random.nextInt(NEXT_OFFER_MIN_BATCHES, NEXT_OFFER_MAX_BATCHES + 1)
     }
 
     private data class ContractTemplate(

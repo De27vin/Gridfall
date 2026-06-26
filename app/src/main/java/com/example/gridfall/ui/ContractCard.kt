@@ -1,11 +1,13 @@
 package com.example.gridfall.ui
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -19,174 +21,135 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.example.gridfall.game.Contract
 import com.example.gridfall.game.ContractState
 import com.example.gridfall.game.ContractType
 
 @Composable
-fun ContractCard(
-    contractState: ContractState,
-    showResolvedResult: Boolean,
+fun ContractOfferPopup(
+    contract: Contract,
     onAccept: () -> Unit,
     onSkip: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val resolvedContract = contractState.resolvedContract
-    val offeredContract = contractState.offeredContract
-    val activeContract = contractState.activeContract
-
-    when {
-        showResolvedResult && resolvedContract != null && contractState.isCompleted -> {
-            ContractSurface(modifier = modifier) {
-                Text(
-                    text = "Contract Complete +${resolvedContract.rewardPoints}",
-                    color = Color(0xFFBAE6FD),
-                    style = MaterialTheme.typography.titleMedium
-                )
-            }
-        }
-
-        showResolvedResult && resolvedContract != null && contractState.isFailed -> {
-            ContractSurface(modifier = modifier) {
-                Text(
-                    text = "Contract Failed",
-                    color = Color(0xFFFCA5A5),
-                    style = MaterialTheme.typography.titleMedium
-                )
-            }
-        }
-
-        offeredContract != null -> {
-            ContractSurface(modifier = modifier) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    ContractText(
-                        title = offeredContract.title,
-                        description = offeredContract.description,
-                        rewardPoints = offeredContract.rewardPoints
-                    )
-
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Button(
-                            onClick = onAccept,
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF38BDF8),
-                                contentColor = Color(0xFF082F49)
-                            )
-                        ) {
-                            Text(text = "Accept")
-                        }
-
-                        OutlinedButton(
-                            onClick = onSkip,
-                            border = BorderStroke(1.dp, Color(0xFF9CA3AF)),
-                            colors = ButtonDefaults.outlinedButtonColors(
-                                contentColor = Color(0xFFE5E7EB)
-                            )
-                        ) {
-                            Text(text = "Skip")
-                        }
-                    }
-                }
-            }
-        }
-
-        activeContract != null -> {
-            ContractSurface(modifier = modifier) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    ContractText(
-                        title = activeContract.title,
-                        description = activeContract.description,
-                        rewardPoints = activeContract.rewardPoints
-                    )
-                    Text(
-                        text = progressText(contractState),
-                        color = Color(0xFFBAE6FD),
-                        style = MaterialTheme.typography.labelLarge
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ContractSurface(
-    modifier: Modifier,
-    content: @Composable () -> Unit
-) {
     Card(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .widthIn(max = 360.dp)
+            .fillMaxWidth(),
         shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.cardColors(
             containerColor = Color(0xFF1F2937)
         )
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            content()
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
+            ) {
+                Text(
+                    text = contract.title,
+                    color = Color.White,
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Text(
+                    text = "+${contract.rewardPoints} / -${contract.penaltyPoints}",
+                    color = Color(0xFFBAE6FD),
+                    style = MaterialTheme.typography.labelLarge
+                )
+            }
+
+            Text(
+                text = contract.description,
+                color = Color(0xFFD1D5DB),
+                style = MaterialTheme.typography.bodySmall
+            )
+
+            Text(
+                text = "Reward +${contract.rewardPoints}   Penalty -${contract.penaltyPoints}",
+                color = Color(0xFFFCA5A5),
+                style = MaterialTheme.typography.labelLarge
+            )
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Button(
+                    onClick = onAccept,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF38BDF8),
+                        contentColor = Color(0xFF082F49)
+                    )
+                ) {
+                    Text(text = "Accept")
+                }
+
+                OutlinedButton(
+                    onClick = onSkip,
+                    border = BorderStroke(1.dp, Color(0xFF9CA3AF)),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = Color(0xFFE5E7EB)
+                    )
+                ) {
+                    Text(text = "Skip")
+                }
+            }
         }
     }
 }
 
 @Composable
-private fun ContractText(
-    title: String,
-    description: String,
-    rewardPoints: Int
+fun ContractActiveChip(
+    contractState: ContractState,
+    modifier: Modifier = Modifier
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Top
-        ) {
-            Text(
-                text = title,
-                color = Color.White,
-                style = MaterialTheme.typography.titleSmall
-            )
-            Text(
-                text = "+$rewardPoints",
-                color = Color(0xFF38BDF8),
-                style = MaterialTheme.typography.labelLarge
-            )
-        }
-        Text(
-            text = description,
-            color = Color(0xFFD1D5DB),
-            style = MaterialTheme.typography.bodySmall
-        )
-    }
+    val contract = contractState.activeContract ?: return
+
+    Text(
+        text = "${contract.title} - ${shortProgressText(contractState)} - +${contract.rewardPoints}/-${contract.penaltyPoints}",
+        color = Color(0xFFBAE6FD),
+        style = MaterialTheme.typography.labelLarge,
+        modifier = modifier
+            .background(Color(0xEE1F2937), RoundedCornerShape(50))
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+    )
 }
 
-private fun progressText(contractState: ContractState): String {
+@Composable
+fun ContractResultChip(
+    contractState: ContractState,
+    modifier: Modifier = Modifier
+) {
+    val contract = contractState.resolvedContract ?: return
+    val text = if (contractState.isCompleted) {
+        "Contract Complete +${contract.rewardPoints}"
+    } else {
+        "Contract Failed -${contract.penaltyPoints}"
+    }
+    val textColor = if (contractState.isCompleted) Color(0xFFBAE6FD) else Color(0xFFFCA5A5)
+
+    Text(
+        text = text,
+        color = textColor,
+        style = MaterialTheme.typography.titleSmall,
+        modifier = modifier
+            .background(Color(0xF01F2937), RoundedCornerShape(8.dp))
+            .padding(horizontal = 14.dp, vertical = 10.dp)
+    )
+}
+
+private fun shortProgressText(contractState: ContractState): String {
     val contract = contractState.activeContract ?: return ""
-    val piecesText = "Pieces placed: ${contractState.batchPlacedPieces}/3"
 
     return when (contract.type) {
-        ContractType.ClearAtLeastOneLine -> {
-            "Lines cleared: ${contractState.batchClearedLines}\n$piecesText"
-        }
-
-        ContractType.ClearExactlyTwoLines -> {
-            "Lines cleared: ${contractState.batchClearedLines}/2\n$piecesText"
-        }
-
-        ContractType.NoEdgePlacement -> {
-            val edgeText = if (contractState.usedEdge) "Edge touched: yes" else "Edge touched: no"
-            "$edgeText\n$piecesText"
-        }
-
-        ContractType.AvoidCenterArea -> {
-            val centerText = if (contractState.usedCenter) "Center used: yes" else "Center used: no"
-            "$centerText\n$piecesText"
-        }
-
-        ContractType.ScoreAtLeastTwenty -> {
-            "Score this batch: ${contractState.batchScoreGained}/20\n$piecesText"
-        }
+        ContractType.ClearAtLeastOneLine -> "Lines ${contractState.batchClearedLines}/1"
+        ContractType.ClearExactlyTwoLines -> "Lines ${contractState.batchClearedLines}/2"
+        ContractType.NoEdgePlacement -> "${contractState.batchPlacedPieces}/3 pieces"
+        ContractType.AvoidCenterArea -> "${contractState.batchPlacedPieces}/3 pieces"
+        ContractType.ScoreAtLeastTwenty -> "Score ${contractState.batchScoreGained}/20"
     }
 }

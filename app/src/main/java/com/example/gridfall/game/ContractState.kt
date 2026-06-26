@@ -12,5 +12,8 @@ data class ContractState(
     val batchScoreGained: Int = 0,
     val usedEdge: Boolean = false,
     val usedCenter: Boolean = false,
-    val rewardClaimed: Boolean = false
+    val rewardClaimed: Boolean = false,
+    val penaltyApplied: Boolean = false,
+    val batchesUntilNextOffer: Int = 0,
+    val completedBatchCount: Int = 0
 )
