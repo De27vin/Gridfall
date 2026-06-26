@@ -224,7 +224,10 @@ object GameEngine {
             return PlacementResult(
                 board = bombResult.board,
                 clearedLineCount = 0,
-                scoreGained = ScoreSystem.calculateBombScore(bombResult.clearedCellCount),
+                scoreGained = ScoreSystem.calculateBombScore(
+                    clearedCellCount = bombResult.clearedCellCount,
+                    isPerfectClear = bombResult.clearedCellCount > 0 && bombResult.board.isEmpty()
+                ),
                 nextCombo = 0
             )
         }
@@ -232,11 +235,13 @@ object GameEngine {
         val placedBoard = placeCellsOnBoard(state.board, piece, startRow, startCol)
         val clearResult = clearLines(placedBoard)
         val isCrossClear = clearResult.clearedRows.isNotEmpty() && clearResult.clearedColumns.isNotEmpty()
+        val isPerfectClear = clearResult.board.isEmpty()
         val scoreGained = ScoreSystem.calculateMoveScore(
             placedCellCount = piece.cells.size,
             clearedLineCount = clearResult.clearedLineCount,
             previousCombo = state.combo,
-            isCrossClear = isCrossClear
+            isCrossClear = isCrossClear,
+            isPerfectClear = isPerfectClear
         )
 
         return PlacementResult(

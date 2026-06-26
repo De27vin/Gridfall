@@ -24,6 +24,16 @@ class GameEngineTest {
     }
 
     @Test
+    fun emptyBoardReportsNoFilledCells() {
+        assertTrue(Board.empty().isEmpty())
+    }
+
+    @Test
+    fun boardWithOneFilledCellDoesNotReportEmpty() {
+        assertFalse(Board.empty().fill(3, 4).isEmpty())
+    }
+
+    @Test
     fun canPlaceAllowsValidPlacement() {
         val piece = Piece("test", listOf(Cell(0, 0), Cell(0, 1)))
 
@@ -242,11 +252,24 @@ class GameEngineTest {
     }
 
     @Test
+    fun calculateMoveScoreAddsPerfectClearBonus() {
+        val score = ScoreSystem.calculateMoveScore(
+            placedCellCount = 1,
+            clearedLineCount = 1,
+            previousCombo = 0,
+            isPerfectClear = true
+        )
+
+        assertEquals(211, score)
+    }
+
+    @Test
     fun rowOnlyClearDoesNotAddCrossClearBonus() {
         val piece = Piece("single", listOf(Cell(0, 0)))
-        val board = (0 until Board.SIZE - 1).fold(Board.empty()) { currentBoard, col ->
+        val rowReady = (0 until Board.SIZE - 1).fold(Board.empty()) { currentBoard, col ->
             currentBoard.fill(0, col)
         }
+        val board = rowReady.fill(2, 2)
         val state = testState(board = board, currentPieces = listOf(piece))
 
         val nextState = GameEngine.placePiece(state, pieceIndex = 0, startRow = 0, startCol = 7)
@@ -257,9 +280,10 @@ class GameEngineTest {
     @Test
     fun columnOnlyClearDoesNotAddCrossClearBonus() {
         val piece = Piece("single", listOf(Cell(0, 0)))
-        val board = (1 until Board.SIZE).fold(Board.empty()) { currentBoard, row ->
+        val columnReady = (1 until Board.SIZE).fold(Board.empty()) { currentBoard, row ->
             currentBoard.fill(row, 0)
         }
+        val board = columnReady.fill(2, 2)
         val state = testState(board = board, currentPieces = listOf(piece))
 
         val nextState = GameEngine.placePiece(state, pieceIndex = 0, startRow = 0, startCol = 0)
@@ -268,7 +292,7 @@ class GameEngineTest {
     }
 
     @Test
-    fun simultaneousRowAndColumnClearAddsCrossClearBonus() {
+    fun simultaneousRowAndColumnClearAddsCrossClearAndPerfectClearBonuses() {
         val piece = Piece("single", listOf(Cell(0, 0)))
         val rowReady = (1 until Board.SIZE).fold(Board.empty()) { currentBoard, col ->
             currentBoard.fill(0, col)
@@ -280,7 +304,8 @@ class GameEngineTest {
 
         val nextState = GameEngine.placePiece(state, pieceIndex = 0, startRow = 0, startCol = 0)
 
-        assertEquals(66, nextState.score)
+        assertTrue(nextState.board.isEmpty())
+        assertEquals(266, nextState.score)
     }
 
     @Test
@@ -299,7 +324,7 @@ class GameEngineTest {
 
         val nextState = GameEngine.placePiece(state, pieceIndex = 0, startRow = 0, startCol = 0)
 
-        assertEquals(77, nextState.score)
+        assertEquals(277, nextState.score)
     }
 
     @Test
@@ -318,7 +343,7 @@ class GameEngineTest {
 
         val nextState = GameEngine.placePiece(state, pieceIndex = 0, startRow = 0, startCol = 0)
 
-        assertEquals(77, nextState.score)
+        assertEquals(277, nextState.score)
     }
 
     @Test
@@ -335,6 +360,65 @@ class GameEngineTest {
         val nextState = GameEngine.placePiece(state, pieceIndex = 0, startRow = 0, startCol = 0)
 
         assertEquals(5, nextState.score)
+    }
+
+    @Test
+    fun normalMovePerfectClearAddsBonus() {
+        val piece = Piece("single", listOf(Cell(0, 0)))
+        val board = (0 until Board.SIZE - 1).fold(Board.empty()) { currentBoard, col ->
+            currentBoard.fill(0, col)
+        }
+        val state = testState(board = board, currentPieces = listOf(piece))
+
+        val nextState = GameEngine.placePiece(state, pieceIndex = 0, startRow = 0, startCol = 7)
+
+        assertTrue(nextState.board.isEmpty())
+        assertEquals(211, nextState.score)
+    }
+
+    @Test
+    fun lineClearThatLeavesCellsBehindDoesNotAddPerfectClearBonus() {
+        val piece = Piece("single", listOf(Cell(0, 0)))
+        val rowReady = (0 until Board.SIZE - 1).fold(Board.empty()) { currentBoard, col ->
+            currentBoard.fill(0, col)
+        }
+        val board = rowReady.fill(2, 2)
+        val state = testState(board = board, currentPieces = listOf(piece))
+
+        val nextState = GameEngine.placePiece(state, pieceIndex = 0, startRow = 0, startCol = 7)
+
+        assertFalse(nextState.board.isEmpty())
+        assertEquals(11, nextState.score)
+    }
+
+    @Test
+    fun bombPerfectClearAddsBonus() {
+        val bomb = bombPiece()
+        val state = testState(
+            board = Board.empty().fill(0, 1),
+            currentPieces = listOf(bomb)
+        )
+
+        val nextState = GameEngine.placePiece(state, pieceIndex = 0, startRow = 0, startCol = 0)
+
+        assertTrue(nextState.board.isEmpty())
+        assertEquals(203, nextState.score)
+    }
+
+    @Test
+    fun bombClearThatLeavesCellsBehindDoesNotAddPerfectClearBonus() {
+        val bomb = bombPiece()
+        val state = testState(
+            board = Board.empty()
+                .fill(0, 1)
+                .fill(7, 7),
+            currentPieces = listOf(bomb)
+        )
+
+        val nextState = GameEngine.placePiece(state, pieceIndex = 0, startRow = 0, startCol = 0)
+
+        assertFalse(nextState.board.isEmpty())
+        assertEquals(3, nextState.score)
     }
 
     @Test
@@ -372,9 +456,10 @@ class GameEngineTest {
 
     @Test
     fun placePieceUpdatesComboAfterLineClear() {
-        val board = (0 until Board.SIZE - 1).fold(Board.empty()) { currentBoard, col ->
+        val rowReady = (0 until Board.SIZE - 1).fold(Board.empty()) { currentBoard, col ->
             currentBoard.fill(0, col)
         }
+        val board = rowReady.fill(2, 2)
         val piece = Piece("test", listOf(Cell(0, 0)))
         val state = testState(
             board = board,
@@ -544,7 +629,8 @@ class GameEngineTest {
                 Cell(1, 1),
                 Cell(1, 2),
                 Cell(2, 1),
-                Cell(3, 3)
+                Cell(3, 3),
+                Cell(0, 0)
             )
         )
         val contract = testContract(ContractType.ScoreAtLeastTwenty)
@@ -589,9 +675,10 @@ class GameEngineTest {
     @Test
     fun clearAtLeastOneLineContractCompletesAtBatchEnd() {
         val piece = Piece("single", listOf(Cell(0, 0)))
-        val board = (0 until Board.SIZE - 1).fold(Board.empty()) { currentBoard, col ->
+        val rowReady = (0 until Board.SIZE - 1).fold(Board.empty()) { currentBoard, col ->
             currentBoard.fill(0, col)
         }
+        val board = rowReady.fill(2, 2)
         val contract = testContract(ContractType.ClearAtLeastOneLine, rewardPoints = 25)
         val state = acceptedContractState(
             contract = contract,
@@ -614,9 +701,10 @@ class GameEngineTest {
         val rowReady = (1 until Board.SIZE).fold(Board.empty()) { currentBoard, col ->
             currentBoard.fill(0, col)
         }
-        val board = (1 until Board.SIZE).fold(rowReady) { currentBoard, row ->
+        val crossReady = (1 until Board.SIZE).fold(rowReady) { currentBoard, row ->
             currentBoard.fill(row, 0)
         }
+        val board = crossReady.fill(2, 2)
         val contract = testContract(ContractType.ClearExactlyTwoLines, rewardPoints = 35)
         val state = acceptedContractState(
             contract = contract,
@@ -713,9 +801,10 @@ class GameEngineTest {
         val rowReady = (1 until Board.SIZE).fold(Board.empty()) { currentBoard, col ->
             currentBoard.fill(0, col)
         }
-        val board = (1 until Board.SIZE).fold(rowReady) { currentBoard, row ->
+        val crossReady = (1 until Board.SIZE).fold(rowReady) { currentBoard, row ->
             currentBoard.fill(row, 0)
         }
+        val board = crossReady.fill(2, 2)
         val contract = testContract(ContractType.ScoreAtLeastTwenty, rewardPoints = 25)
         val state = acceptedContractState(
             contract = contract,
@@ -730,6 +819,25 @@ class GameEngineTest {
         assertTrue(afterThird.contractState.isCompleted)
         assertEquals(93, afterThird.score)
         assertEquals(0, afterThird.contractState.batchScoreGained)
+    }
+
+    @Test
+    fun perfectClearBonusCountsTowardScoreAtLeastTwentyContractProgress() {
+        val piece = Piece("single", listOf(Cell(0, 0)))
+        val board = (0 until Board.SIZE - 1).fold(Board.empty()) { currentBoard, col ->
+            currentBoard.fill(0, col)
+        }
+        val contract = testContract(ContractType.ScoreAtLeastTwenty, rewardPoints = 25)
+        val state = acceptedContractState(
+            contract = contract,
+            board = board,
+            currentPieces = listOf(piece, piece, piece)
+        )
+
+        val afterFirst = GameEngine.placePiece(state, pieceIndex = 0, startRow = 0, startCol = 7)
+
+        assertEquals(211, afterFirst.score)
+        assertEquals(211, afterFirst.contractState.batchScoreGained)
     }
 
     @Test

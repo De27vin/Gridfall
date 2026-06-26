@@ -25,6 +25,10 @@ data class Board(
         return isInside(row, col) && get(row, col) == 0
     }
 
+    fun isEmpty(): Boolean {
+        return cells.all { row -> row.all { value -> value == 0 } }
+    }
+
     fun set(row: Int, col: Int, value: Int): Board {
         val newCells = cells.mapIndexed { r, rowCells ->
             if (r == row) {
