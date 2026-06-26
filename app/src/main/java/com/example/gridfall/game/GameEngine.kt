@@ -51,6 +51,14 @@ object GameEngine {
         startRow: Int,
         startCol: Int
     ): Boolean {
+        if (piece.effect == PieceEffect.Bomb) {
+            val cell = piece.cells.singleOrNull() ?: return false
+            return board.isEmpty(
+                row = startRow + cell.row,
+                col = startCol + cell.col
+            )
+        }
+
         return piece.cells.all { cell ->
             val row = startRow + cell.row
             val col = startCol + cell.col
@@ -133,22 +141,20 @@ object GameEngine {
         val piece = state.currentPieces[pieceIndex]
         if (!canPlace(state.board, piece, startRow, startCol)) return state
 
-        val placedBoard = placeCellsOnBoard(state.board, piece, startRow, startCol)
-        val clearResult = clearLines(placedBoard)
-        val scoreGained = ScoreSystem.calculateMoveScore(
-            placedCellCount = piece.cells.size,
-            clearedLineCount = clearResult.clearedLineCount,
-            previousCombo = state.combo
+        val placementResult = placePieceOnBoard(
+            state = state,
+            piece = piece,
+            startRow = startRow,
+            startCol = startCol
         )
         val updatedContractState = updateContractProgress(
             contractState = state.contractState,
             piece = piece,
             startRow = startRow,
             startCol = startCol,
-            clearedLineCount = clearResult.clearedLineCount,
-            scoreGained = scoreGained
+            clearedLineCount = placementResult.clearedLineCount,
+            scoreGained = placementResult.scoreGained
         )
-        val nextCombo = if (clearResult.clearedLineCount > 0) state.combo + 1 else 0
         val nextUsedPieceIndices = state.usedPieceIndices + pieceIndex
         val allPiecesUsed = state.currentPieces.indices.all { it in nextUsedPieceIndices }
 
@@ -172,16 +178,83 @@ object GameEngine {
         val availablePieces = nextPieces.filterIndexed { index, _ ->
             index !in finalUsedPieceIndices
         }
-        val isGameOver = !hasAnyValidMove(clearResult.board, availablePieces)
+        val isGameOver = !hasAnyValidMove(placementResult.board, availablePieces)
 
         return state.copy(
-            board = clearResult.board,
+            board = placementResult.board,
             currentPieces = nextPieces,
             usedPieceIndices = finalUsedPieceIndices,
-            score = state.score + scoreGained + rewardPoints,
-            combo = nextCombo,
+            score = state.score + placementResult.scoreGained + rewardPoints,
+            combo = placementResult.nextCombo,
             isGameOver = isGameOver,
             contractState = finalContractState
+        )
+    }
+
+    private fun placePieceOnBoard(
+        state: GameState,
+        piece: Piece,
+        startRow: Int,
+        startCol: Int
+    ): PlacementResult {
+        if (piece.effect == PieceEffect.Bomb) {
+            val bombResult = explodeBomb(
+                board = state.board,
+                piece = piece,
+                startRow = startRow,
+                startCol = startCol
+            )
+
+            return PlacementResult(
+                board = bombResult.board,
+                clearedLineCount = 0,
+                scoreGained = ScoreSystem.calculateBombScore(bombResult.clearedCellCount),
+                nextCombo = 0
+            )
+        }
+
+        val placedBoard = placeCellsOnBoard(state.board, piece, startRow, startCol)
+        val clearResult = clearLines(placedBoard)
+        val scoreGained = ScoreSystem.calculateMoveScore(
+            placedCellCount = piece.cells.size,
+            clearedLineCount = clearResult.clearedLineCount,
+            previousCombo = state.combo
+        )
+
+        return PlacementResult(
+            board = clearResult.board,
+            clearedLineCount = clearResult.clearedLineCount,
+            scoreGained = scoreGained,
+            nextCombo = if (clearResult.clearedLineCount > 0) state.combo + 1 else 0
+        )
+    }
+
+    private fun explodeBomb(
+        board: Board,
+        piece: Piece,
+        startRow: Int,
+        startCol: Int
+    ): BombResult {
+        val bombCell = piece.cells.single()
+        val centerRow = startRow + bombCell.row
+        val centerCol = startCol + bombCell.col
+        var updatedBoard = board
+        var clearedCellCount = 0
+
+        for (row in centerRow - 1..centerRow + 1) {
+            for (col in centerCol - 1..centerCol + 1) {
+                if (board.isInside(row, col) && board.get(row, col) == 1) {
+                    updatedBoard = updatedBoard.set(row, col, 0)
+                    clearedCellCount += 1
+                }
+            }
+        }
+
+        updatedBoard = updatedBoard.set(centerRow, centerCol, 0)
+
+        return BombResult(
+            board = updatedBoard,
+            clearedCellCount = clearedCellCount
         )
     }
 
@@ -290,5 +363,12 @@ object GameEngine {
     private data class ContractEvaluation(
         val contractState: ContractState,
         val rewardPoints: Int
+    )
+
+    private data class PlacementResult(
+        val board: Board,
+        val clearedLineCount: Int,
+        val scoreGained: Int,
+        val nextCombo: Int
     )
 }

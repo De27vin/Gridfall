@@ -7,6 +7,7 @@ import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import kotlin.random.Random
 
 class GameEngineTest {
     @Test
@@ -69,6 +70,104 @@ class GameEngineTest {
         )
 
         assertEquals(state, nextState)
+    }
+
+    @Test
+    fun bombCanPlaceOnEmptyCell() {
+        val bomb = bombPiece()
+        val state = testState(currentPieces = listOf(bomb))
+
+        val nextState = GameEngine.placePiece(state, pieceIndex = 0, startRow = 2, startCol = 3)
+
+        assertEquals(0, nextState.board.get(2, 3))
+        assertEquals(ScoreSystem.BOMB_PLACE_POINTS, nextState.score)
+    }
+
+    @Test
+    fun bombCannotPlaceOutsideBoard() {
+        val bomb = bombPiece()
+        val state = testState(currentPieces = listOf(bomb))
+
+        val nextState = GameEngine.placePiece(state, pieceIndex = 0, startRow = -1, startCol = 0)
+
+        assertEquals(state, nextState)
+    }
+
+    @Test
+    fun bombCannotPlaceOnOccupiedTargetCell() {
+        val bomb = bombPiece()
+        val state = testState(
+            board = Board.empty().fill(2, 2),
+            currentPieces = listOf(bomb)
+        )
+
+        val nextState = GameEngine.placePiece(state, pieceIndex = 0, startRow = 2, startCol = 2)
+
+        assertEquals(state, nextState)
+    }
+
+    @Test
+    fun bombClearsOccupiedCellsInThreeByThreeArea() {
+        val bomb = bombPiece()
+        val board = boardFromFilledCells(
+            listOf(
+                Cell(1, 1),
+                Cell(1, 2),
+                Cell(2, 1),
+                Cell(3, 3),
+                Cell(0, 0)
+            )
+        )
+        val state = testState(board = board, currentPieces = listOf(bomb))
+
+        val nextState = GameEngine.placePiece(state, pieceIndex = 0, startRow = 2, startCol = 2)
+
+        assertEquals(0, nextState.board.get(1, 1))
+        assertEquals(0, nextState.board.get(1, 2))
+        assertEquals(0, nextState.board.get(2, 1))
+        assertEquals(0, nextState.board.get(3, 3))
+        assertEquals(1, nextState.board.get(0, 0))
+        assertEquals(9, nextState.score)
+    }
+
+    @Test
+    fun bombAtCornerOnlyClearsInsideBoardCells() {
+        val bomb = bombPiece()
+        val board = boardFromFilledCells(
+            listOf(
+                Cell(0, 1),
+                Cell(1, 0),
+                Cell(1, 1),
+                Cell(2, 2)
+            )
+        )
+        val state = testState(board = board, currentPieces = listOf(bomb))
+
+        val nextState = GameEngine.placePiece(state, pieceIndex = 0, startRow = 0, startCol = 0)
+
+        assertEquals(0, nextState.board.get(0, 0))
+        assertEquals(0, nextState.board.get(0, 1))
+        assertEquals(0, nextState.board.get(1, 0))
+        assertEquals(0, nextState.board.get(1, 1))
+        assertEquals(1, nextState.board.get(2, 2))
+        assertEquals(7, nextState.score)
+    }
+
+    @Test
+    fun bombDoesNotRemainOnBoardAfterExploding() {
+        val bomb = bombPiece()
+        val state = testState(currentPieces = listOf(bomb))
+
+        val nextState = GameEngine.placePiece(state, pieceIndex = 0, startRow = 4, startCol = 4)
+
+        assertEquals(0, nextState.board.get(4, 4))
+    }
+
+    @Test
+    fun calculateBombScoreUsesPlacePointAndClearedCellPoints() {
+        val score = ScoreSystem.calculateBombScore(clearedCellCount = 4)
+
+        assertEquals(9, score)
     }
 
     @Test
@@ -180,6 +279,13 @@ class GameEngineTest {
     }
 
     @Test
+    fun hasAnyValidMoveAllowsBombWhenAnyEmptyCellExists() {
+        val board = boardWithZeroes(zeroes = setOf(Cell(3, 3)))
+
+        assertTrue(GameEngine.hasAnyValidMove(board, listOf(bombPiece())))
+    }
+
+    @Test
     fun placePieceDetectsGameOverForRemainingUnavailablePieces() {
         val board = boardWithZeroes(
             zeroes = setOf(
@@ -266,6 +372,56 @@ class GameEngineTest {
         assertEquals(1, nextState.contractState.batchScoreGained)
         assertFalse(nextState.contractState.usedEdge)
         assertFalse(nextState.contractState.usedCenter)
+    }
+
+    @Test
+    fun bombCountsAsOnePlacedPieceForContracts() {
+        val bomb = bombPiece()
+        val board = boardFromFilledCells(
+            listOf(
+                Cell(1, 1),
+                Cell(1, 2),
+                Cell(2, 1),
+                Cell(3, 3)
+            )
+        )
+        val contract = testContract(ContractType.ScoreAtLeastTwenty)
+        val state = acceptedContractState(
+            contract = contract,
+            board = board,
+            currentPieces = listOf(bomb, Piece("single", listOf(Cell(0, 0))))
+        )
+
+        val nextState = GameEngine.placePiece(state, pieceIndex = 0, startRow = 2, startCol = 2)
+
+        assertEquals(1, nextState.contractState.batchPlacedPieces)
+        assertEquals(9, nextState.contractState.batchScoreGained)
+        assertTrue(nextState.contractState.usedCenter)
+    }
+
+    @Test
+    fun bombClearingDoesNotCountAsLineClearContractProgress() {
+        val bomb = bombPiece()
+        val board = boardFromFilledCells(
+            listOf(
+                Cell(1, 1),
+                Cell(1, 2),
+                Cell(2, 1),
+                Cell(2, 3),
+                Cell(3, 3)
+            )
+        )
+        val contract = testContract(ContractType.ClearAtLeastOneLine)
+        val state = acceptedContractState(
+            contract = contract,
+            board = board,
+            currentPieces = listOf(bomb, Piece("single", listOf(Cell(0, 0))))
+        )
+
+        val nextState = GameEngine.placePiece(state, pieceIndex = 0, startRow = 2, startCol = 2)
+
+        assertEquals(0, nextState.contractState.batchClearedLines)
+        assertEquals(1, nextState.contractState.batchPlacedPieces)
     }
 
     @Test
@@ -467,6 +623,19 @@ class GameEngineTest {
         assertEquals(0, afterThird.contractState.batchPlacedPieces)
     }
 
+    @Test
+    fun generatedBatchContainsAtMostOneBomb() {
+        repeat(100) { seed ->
+            val batch = PieceGenerator.generateBatch(
+                availablePieces = PieceLibrary.starterPieces + PieceLibrary.bombPiece,
+                bombChance = 1f,
+                random = Random(seed)
+            )
+
+            assertEquals(1, batch.count { it.effect == PieceEffect.Bomb })
+        }
+    }
+
     private fun testState(
         board: Board = Board.empty(),
         currentPieces: List<Piece>,
@@ -512,6 +681,14 @@ class GameEngineTest {
             description = type.name,
             rewardPoints = rewardPoints,
             type = type
+        )
+    }
+
+    private fun bombPiece(): Piece {
+        return Piece(
+            id = "bomb_single",
+            cells = listOf(Cell(0, 0)),
+            effect = PieceEffect.Bomb
         )
     }
 

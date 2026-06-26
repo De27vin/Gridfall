@@ -11,6 +11,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import com.example.gridfall.game.Board
+import com.example.gridfall.game.PieceEffect
 
 @Composable
 fun BoardCanvas(
@@ -67,7 +68,31 @@ fun BoardCanvas(
         }
 
         placementPreview?.let { preview ->
-            val previewColor = if (preview.isValid) Color(0x8834D399) else Color(0x88F87171)
+            val previewColor = when {
+                !preview.isValid -> Color(0x88F87171)
+                preview.piece.effect == PieceEffect.Bomb -> Color(0x66F59E0B)
+                else -> Color(0x8834D399)
+            }
+
+            if (preview.piece.effect == PieceEffect.Bomb && preview.isValid) {
+                for (row in preview.originRow - 1..preview.originRow + 1) {
+                    for (col in preview.originCol - 1..preview.originCol + 1) {
+                        if (row in 0 until Board.SIZE && col in 0 until Board.SIZE) {
+                            val topLeft = Offset(
+                                x = spacing + col * (cellSize + spacing),
+                                y = spacing + row * (cellSize + spacing)
+                            )
+
+                            drawRoundRect(
+                                color = previewColor,
+                                topLeft = topLeft,
+                                size = Size(cellSize, cellSize),
+                                cornerRadius = cornerRadius
+                            )
+                        }
+                    }
+                }
+            }
 
             preview.piece.cells.forEach { cell ->
                 val row = preview.originRow + cell.row
@@ -80,7 +105,11 @@ fun BoardCanvas(
                     )
 
                     drawRoundRect(
-                        color = previewColor,
+                        color = if (preview.piece.effect == PieceEffect.Bomb && preview.isValid) {
+                            Color(0xAAF59E0B)
+                        } else {
+                            previewColor
+                        },
                         topLeft = topLeft,
                         size = Size(cellSize, cellSize),
                         cornerRadius = cornerRadius

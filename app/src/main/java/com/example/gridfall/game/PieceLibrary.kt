@@ -1,6 +1,12 @@
 package com.example.gridfall.game
 
 object PieceLibrary {
+    val bombPiece = Piece(
+        id = "bomb_single",
+        cells = listOf(Cell(0, 0)),
+        effect = PieceEffect.Bomb
+    )
+
     val starterPieces: List<Piece> = listOf(
         Piece(
             id = "single",

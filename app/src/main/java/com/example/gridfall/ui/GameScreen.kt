@@ -42,6 +42,7 @@ import com.example.gridfall.game.Board
 import com.example.gridfall.game.ClearResult
 import com.example.gridfall.game.GameEngine
 import com.example.gridfall.game.Piece
+import com.example.gridfall.game.PieceEffect
 import kotlinx.coroutines.delay
 import kotlin.math.max
 import kotlin.math.min
@@ -287,8 +288,12 @@ private fun DraggedPiece(
     Canvas(
         modifier = modifier
             .size(widthDp, heightDp)
-            .background(Color(0x3322D3EE), RoundedCornerShape(8.dp))
+            .background(
+                color = if (piece.effect == PieceEffect.Bomb) Color(0x33F59E0B) else Color(0x3322D3EE),
+                shape = RoundedCornerShape(8.dp)
+            )
     ) {
+        val isBomb = piece.effect == PieceEffect.Bomb
         val scale = min(size.width / widthPx, size.height / heightPx)
         val scaledCellSize = cellSizePx * scale
         val scaledSpacing = spacingPx * scale
@@ -303,11 +308,25 @@ private fun DraggedPiece(
             )
 
             drawRoundRect(
-                color = Color(0xEE38BDF8),
+                color = if (isBomb) Color(0xEEF59E0B) else Color(0xEE38BDF8),
                 topLeft = topLeft,
                 size = Size(scaledCellSize, scaledCellSize),
                 cornerRadius = cornerRadius
             )
+
+            if (isBomb) {
+                val center = topLeft + Offset(scaledCellSize / 2f, scaledCellSize / 2f)
+                drawCircle(
+                    color = Color(0xFF111827),
+                    radius = scaledCellSize * 0.24f,
+                    center = center
+                )
+                drawCircle(
+                    color = Color(0xFFFFF7ED),
+                    radius = scaledCellSize * 0.11f,
+                    center = center
+                )
+            }
         }
     }
 }
@@ -342,6 +361,7 @@ private fun previewClearResult(
     startCol: Int
 ): ClearResult? {
     if (!GameEngine.canPlace(board, piece, startRow, startCol)) return null
+    if (piece.effect == PieceEffect.Bomb) return null
 
     val placedBoard = piece.cells.fold(board) { currentBoard, cell ->
         currentBoard.fill(

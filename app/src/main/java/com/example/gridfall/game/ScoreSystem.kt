@@ -4,6 +4,8 @@ object ScoreSystem {
     const val POINTS_PER_CELL = 1
     const val POINTS_PER_LINE = 10
     const val MULTI_LINE_BONUS = 25
+    const val BOMB_PLACE_POINTS = 1
+    const val BOMB_CLEAR_POINTS_PER_CELL = 2
 
     fun calculateMoveScore(
         placedCellCount: Int,
@@ -16,5 +18,9 @@ object ScoreSystem {
         val comboBonus = if (clearedLineCount > 0) previousCombo * 5 else 0
 
         return placedCellPoints + clearedLinePoints + multiLineBonus + comboBonus
+    }
+
+    fun calculateBombScore(clearedCellCount: Int): Int {
+        return BOMB_PLACE_POINTS + clearedCellCount * BOMB_CLEAR_POINTS_PER_CELL
     }
 }

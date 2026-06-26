@@ -28,6 +28,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.unit.dp
 import com.example.gridfall.game.Piece
+import com.example.gridfall.game.PieceEffect
 import kotlin.math.max
 import kotlin.math.min
 
@@ -122,6 +123,7 @@ internal fun PiecePreview(
     Canvas(modifier = modifier) {
         if (piece.cells.isEmpty()) return@Canvas
 
+        val isBomb = piece.effect == PieceEffect.Bomb
         val minRow = piece.cells.minOf { it.row }
         val maxRow = piece.cells.maxOf { it.row }
         val minCol = piece.cells.minOf { it.col }
@@ -150,11 +152,25 @@ internal fun PiecePreview(
             )
 
             drawRoundRect(
-                color = Color(0xFF38BDF8),
+                color = if (isBomb) Color(0xFFF59E0B) else Color(0xFF38BDF8),
                 topLeft = topLeft,
                 size = Size(cellSize, cellSize),
                 cornerRadius = cornerRadius
             )
+
+            if (isBomb) {
+                val center = topLeft + Offset(cellSize / 2f, cellSize / 2f)
+                drawCircle(
+                    color = Color(0xFF111827),
+                    radius = cellSize * 0.24f,
+                    center = center
+                )
+                drawCircle(
+                    color = Color(0xFFFFF7ED),
+                    radius = cellSize * 0.11f,
+                    center = center
+                )
+            }
         }
     }
 }
