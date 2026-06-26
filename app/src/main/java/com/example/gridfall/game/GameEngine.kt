@@ -231,10 +231,12 @@ object GameEngine {
 
         val placedBoard = placeCellsOnBoard(state.board, piece, startRow, startCol)
         val clearResult = clearLines(placedBoard)
+        val isCrossClear = clearResult.clearedRows.isNotEmpty() && clearResult.clearedColumns.isNotEmpty()
         val scoreGained = ScoreSystem.calculateMoveScore(
             placedCellCount = piece.cells.size,
             clearedLineCount = clearResult.clearedLineCount,
-            previousCombo = state.combo
+            previousCombo = state.combo,
+            isCrossClear = isCrossClear
         )
 
         return PlacementResult(

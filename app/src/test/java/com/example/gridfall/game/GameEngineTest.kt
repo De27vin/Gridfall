@@ -231,6 +231,113 @@ class GameEngineTest {
     }
 
     @Test
+    fun calculateMoveScoreWithoutLineClearDoesNotAddCrossClearBonus() {
+        val score = ScoreSystem.calculateMoveScore(
+            placedCellCount = 3,
+            clearedLineCount = 0,
+            previousCombo = 2
+        )
+
+        assertEquals(3, score)
+    }
+
+    @Test
+    fun rowOnlyClearDoesNotAddCrossClearBonus() {
+        val piece = Piece("single", listOf(Cell(0, 0)))
+        val board = (0 until Board.SIZE - 1).fold(Board.empty()) { currentBoard, col ->
+            currentBoard.fill(0, col)
+        }
+        val state = testState(board = board, currentPieces = listOf(piece))
+
+        val nextState = GameEngine.placePiece(state, pieceIndex = 0, startRow = 0, startCol = 7)
+
+        assertEquals(11, nextState.score)
+    }
+
+    @Test
+    fun columnOnlyClearDoesNotAddCrossClearBonus() {
+        val piece = Piece("single", listOf(Cell(0, 0)))
+        val board = (1 until Board.SIZE).fold(Board.empty()) { currentBoard, row ->
+            currentBoard.fill(row, 0)
+        }
+        val state = testState(board = board, currentPieces = listOf(piece))
+
+        val nextState = GameEngine.placePiece(state, pieceIndex = 0, startRow = 0, startCol = 0)
+
+        assertEquals(11, nextState.score)
+    }
+
+    @Test
+    fun simultaneousRowAndColumnClearAddsCrossClearBonus() {
+        val piece = Piece("single", listOf(Cell(0, 0)))
+        val rowReady = (1 until Board.SIZE).fold(Board.empty()) { currentBoard, col ->
+            currentBoard.fill(0, col)
+        }
+        val board = (1 until Board.SIZE).fold(rowReady) { currentBoard, row ->
+            currentBoard.fill(row, 0)
+        }
+        val state = testState(board = board, currentPieces = listOf(piece))
+
+        val nextState = GameEngine.placePiece(state, pieceIndex = 0, startRow = 0, startCol = 0)
+
+        assertEquals(66, nextState.score)
+    }
+
+    @Test
+    fun multipleRowsAndOneColumnClearAddsOneCrossClearBonus() {
+        val piece = Piece("vertical_two", listOf(Cell(0, 0), Cell(1, 0)))
+        val rowZeroReady = (1 until Board.SIZE).fold(Board.empty()) { currentBoard, col ->
+            currentBoard.fill(0, col)
+        }
+        val rowsReady = (1 until Board.SIZE).fold(rowZeroReady) { currentBoard, col ->
+            currentBoard.fill(1, col)
+        }
+        val board = (2 until Board.SIZE).fold(rowsReady) { currentBoard, row ->
+            currentBoard.fill(row, 0)
+        }
+        val state = testState(board = board, currentPieces = listOf(piece))
+
+        val nextState = GameEngine.placePiece(state, pieceIndex = 0, startRow = 0, startCol = 0)
+
+        assertEquals(77, nextState.score)
+    }
+
+    @Test
+    fun oneRowAndMultipleColumnsClearAddsOneCrossClearBonus() {
+        val piece = Piece("horizontal_two", listOf(Cell(0, 0), Cell(0, 1)))
+        val rowReady = (2 until Board.SIZE).fold(Board.empty()) { currentBoard, col ->
+            currentBoard.fill(0, col)
+        }
+        val firstColumnReady = (1 until Board.SIZE).fold(rowReady) { currentBoard, row ->
+            currentBoard.fill(row, 0)
+        }
+        val board = (1 until Board.SIZE).fold(firstColumnReady) { currentBoard, row ->
+            currentBoard.fill(row, 1)
+        }
+        val state = testState(board = board, currentPieces = listOf(piece))
+
+        val nextState = GameEngine.placePiece(state, pieceIndex = 0, startRow = 0, startCol = 0)
+
+        assertEquals(77, nextState.score)
+    }
+
+    @Test
+    fun bombClearDoesNotAddCrossClearBonus() {
+        val bomb = bombPiece()
+        val rowReady = (1 until Board.SIZE).fold(Board.empty()) { currentBoard, col ->
+            currentBoard.fill(0, col)
+        }
+        val board = (1 until Board.SIZE).fold(rowReady) { currentBoard, row ->
+            currentBoard.fill(row, 0)
+        }
+        val state = testState(board = board, currentPieces = listOf(bomb))
+
+        val nextState = GameEngine.placePiece(state, pieceIndex = 0, startRow = 0, startCol = 0)
+
+        assertEquals(5, nextState.score)
+    }
+
+    @Test
     fun levelForScoreReturnsExpectedLevels() {
         assertEquals(1, LevelSystem.levelForScore(0))
         assertEquals(1, LevelSystem.levelForScore(59))
@@ -523,7 +630,7 @@ class GameEngineTest {
 
         assertTrue(afterThird.contractState.isCompleted)
         assertEquals(contract, afterThird.contractState.resolvedContract)
-        assertEquals(83, afterThird.score)
+        assertEquals(103, afterThird.score)
     }
 
     @Test
@@ -621,7 +728,7 @@ class GameEngineTest {
         val afterThird = GameEngine.placePiece(afterSecond, pieceIndex = 2, startRow = 1, startCol = 2)
 
         assertTrue(afterThird.contractState.isCompleted)
-        assertEquals(73, afterThird.score)
+        assertEquals(93, afterThird.score)
         assertEquals(0, afterThird.contractState.batchScoreGained)
     }
 
