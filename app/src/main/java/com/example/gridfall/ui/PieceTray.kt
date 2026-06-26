@@ -10,25 +10,30 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.runtime.getValue
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.unit.dp
 import com.example.gridfall.game.Piece
-import com.example.gridfall.game.PieceEffect
+import com.example.gridfall.ui.theme.*
 import kotlin.math.max
 import kotlin.math.min
 
@@ -44,7 +49,9 @@ fun PieceTray(
     modifier: Modifier = Modifier
 ) {
     Row(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .height(116.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -53,20 +60,18 @@ fun PieceTray(
             val isUsed = index in usedPieceIndices
             val isSelectable = piece != null && !isUsed
             val isDragging = draggingPieceIndex == index && isSelectable
-            val slotShape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
+            val slotShape = RoundedCornerShape(18.dp)
             var slotTopLeft by remember { mutableStateOf(Offset.Zero) }
 
             Box(
                 modifier = Modifier
                     .weight(1f)
                     .aspectRatio(1f)
-                    .background(
-                        color = if (isDragging) Color(0xFF0F3A4C) else Color(0xFF1F2937),
-                        shape = slotShape
-                    )
+                    .clip(slotShape)
+                    .background(if (isDragging) Color(0x99151D2A) else Color(0x66151D2A))
                     .border(
-                        width = if (isDragging) 3.dp else 1.dp,
-                        color = if (isDragging) Color(0xFF38BDF8) else Color(0xFF263241),
+                        width = 1.dp,
+                        color = if (isDragging) LevelCyan.copy(alpha = 0.5f) else Color(0x552B3A50),
                         shape = slotShape
                     )
                     .onGloballyPositioned { coordinates ->
@@ -93,7 +98,7 @@ fun PieceTray(
                             }
                         )
                     }
-                    .padding(12.dp),
+                    .padding(10.dp),
                 contentAlignment = Alignment.Center
             ) {
                 if (piece != null && !isUsed) {
@@ -102,12 +107,6 @@ fun PieceTray(
                         modifier = Modifier
                             .fillMaxSize()
                             .alpha(if (isDragging) 0.35f else 1f)
-                    )
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .alpha(0.35f)
                     )
                 }
             }
@@ -123,7 +122,6 @@ internal fun PiecePreview(
     Canvas(modifier = modifier) {
         if (piece.cells.isEmpty()) return@Canvas
 
-        val isBomb = piece.effect == PieceEffect.Bomb
         val minRow = piece.cells.minOf { it.row }
         val maxRow = piece.cells.maxOf { it.row }
         val minCol = piece.cells.minOf { it.col }
@@ -141,7 +139,6 @@ internal fun PiecePreview(
             x = (size.width - previewWidth) / 2f,
             y = (size.height - previewHeight) / 2f
         )
-        val cornerRadius = CornerRadius(cellSize * 0.16f, cellSize * 0.16f)
 
         piece.cells.forEach { cell ->
             val row = cell.row - minRow
@@ -151,26 +148,63 @@ internal fun PiecePreview(
                 y = origin.y + row * (cellSize + spacing)
             )
 
-            drawRoundRect(
-                color = if (isBomb) Color(0xFFF59E0B) else Color(0xFF38BDF8),
-                topLeft = topLeft,
-                size = Size(cellSize, cellSize),
-                cornerRadius = cornerRadius
-            )
-
-            if (isBomb) {
-                val center = topLeft + Offset(cellSize / 2f, cellSize / 2f)
-                drawCircle(
-                    color = Color(0xFF111827),
-                    radius = cellSize * 0.24f,
-                    center = center
-                )
-                drawCircle(
-                    color = Color(0xFFFFF7ED),
-                    radius = cellSize * 0.11f,
-                    center = center
-                )
-            }
+            drawTrayCell(topLeft, cellSize, piece.colorVariant)
         }
+    }
+}
+
+private fun DrawScope.drawTrayCell(topLeft: Offset, cellSize: Float, variant: Int) {
+    val cornerRadius = CornerRadius(cellSize * 0.16f, cellSize * 0.16f)
+    
+    val (topColor, midColor, bottomColor) = when (variant) {
+        1 -> Triple(ArcCyanTop, ArcCyan, ArcCyanBottom)
+        2 -> Triple(TacticalVioletTop, TacticalViolet, TacticalVioletBottom)
+        3 -> Triple(SignalAmberTop, SignalAmber, SignalAmberBottom)
+        4 -> Triple(RewardMintTop, RewardMint, RewardMintBottom)
+        else -> Triple(BombMagenta, BombMagenta, BombMagenta) // Bomb
+    }
+
+    // Main Gradient Fill
+    drawRoundRect(
+        brush = Brush.verticalGradient(
+            colors = listOf(topColor, midColor, bottomColor),
+            startY = topLeft.y,
+            endY = topLeft.y + cellSize
+        ),
+        topLeft = topLeft,
+        size = Size(cellSize, cellSize),
+        cornerRadius = cornerRadius
+    )
+
+    // Inner highlight (top edge)
+    drawRoundRect(
+        color = Color(0x33FFFFFF),
+        topLeft = topLeft + Offset(cellSize * 0.05f, cellSize * 0.05f),
+        size = Size(cellSize * 0.9f, cellSize * 0.3f),
+        cornerRadius = cornerRadius
+    )
+
+    // Outer border for depth
+    drawRoundRect(
+        color = Color(0x22FFFFFF),
+        topLeft = topLeft,
+        size = Size(cellSize, cellSize),
+        cornerRadius = cornerRadius,
+        style = androidx.compose.ui.graphics.drawscope.Stroke(width = (cellSize * 0.03f).coerceAtLeast(1f))
+    )
+
+    if (variant == 0) {
+        // Bomb detail
+        val center = topLeft + Offset(cellSize / 2f, cellSize / 2f)
+        drawCircle(
+            color = HotCore,
+            radius = cellSize * 0.24f,
+            center = center
+        )
+        drawCircle(
+            color = WarningOrange,
+            radius = cellSize * 0.12f,
+            center = center
+        )
     }
 }

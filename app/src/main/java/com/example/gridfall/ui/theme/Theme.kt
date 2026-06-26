@@ -12,32 +12,35 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 
 private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
+    primary = ArcCyan,
+    secondary = TacticalViolet,
+    tertiary = SignalAmber,
+    background = MidnightNavy,
+    surface = DeepGraphite,
+    onPrimary = NearBlackNavy,
+    onSecondary = IceWhite,
+    onTertiary = NearBlackNavy,
+    onBackground = IceWhite,
+    onSurface = SoftIce
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
-
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
+    primary = ArcCyan,
+    secondary = TacticalViolet,
+    tertiary = SignalAmber,
+    background = MidnightNavy,
+    surface = DeepGraphite,
+    onPrimary = NearBlackNavy,
+    onSecondary = IceWhite,
+    onTertiary = NearBlackNavy,
+    onBackground = IceWhite,
+    onSurface = SoftIce
 )
 
 @Composable
 fun GridfallTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
+    darkTheme: Boolean = true, // Force dark theme for the tactical look
+    dynamicColor: Boolean = false, // Disable dynamic color to maintain visual identity
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {

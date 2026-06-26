@@ -80,7 +80,7 @@ object GameEngine {
     fun findFullRows(board: Board): List<Int> {
         return (0 until Board.SIZE).filter { row ->
             (0 until Board.SIZE).all { col ->
-                board.get(row, col) == 1
+                board.get(row, col) != 0
             }
         }
     }
@@ -88,7 +88,7 @@ object GameEngine {
     fun findFullColumns(board: Board): List<Int> {
         return (0 until Board.SIZE).filter { col ->
             (0 until Board.SIZE).all { row ->
-                board.get(row, col) == 1
+                board.get(row, col) != 0
             }
         }
     }
@@ -266,7 +266,7 @@ object GameEngine {
 
         for (row in centerRow - 1..centerRow + 1) {
             for (col in centerCol - 1..centerCol + 1) {
-                if (board.isInside(row, col) && board.get(row, col) == 1) {
+                if (board.isInside(row, col) && board.get(row, col) != 0) {
                     updatedBoard = updatedBoard.set(row, col, 0)
                     clearedCellCount += 1
                 }
@@ -423,7 +423,8 @@ object GameEngine {
         piece.cells.forEach { cell ->
             updatedBoard = updatedBoard.fill(
                 row = startRow + cell.row,
-                col = startCol + cell.col
+                col = startCol + cell.col,
+                value = piece.colorVariant
             )
         }
 

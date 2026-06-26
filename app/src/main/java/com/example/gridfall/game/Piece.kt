@@ -4,7 +4,8 @@ data class Piece(
     val id: String,
     val cells: List<Cell>,
     val effect: PieceEffect = PieceEffect.Normal,
-    val rarity: PieceRarity = PieceRarity.Common
+    val rarity: PieceRarity = PieceRarity.Common,
+    val colorVariant: Int = 1 // 1: Cyan, 2: Violet, 3: Amber, 4: Mint
 ) {
     val width: Int
         get() = if (cells.isEmpty()) 0 else cells.maxOf { it.col } - cells.minOf { it.col } + 1

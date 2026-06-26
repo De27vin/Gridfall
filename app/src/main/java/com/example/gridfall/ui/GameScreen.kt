@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -15,11 +14,13 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -32,7 +33,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
@@ -44,8 +47,8 @@ import com.example.gridfall.game.GameEngine
 import com.example.gridfall.game.LevelSystem
 import com.example.gridfall.game.Piece
 import com.example.gridfall.game.PieceEffect
+import com.example.gridfall.ui.theme.*
 import kotlinx.coroutines.delay
-import kotlin.math.min
 import kotlin.math.roundToInt
 
 @Composable
@@ -61,15 +64,20 @@ fun GameScreen(modifier: Modifier = Modifier) {
     var lineClearFeedbackToken by remember { mutableStateOf(0) }
     val currentLevel = LevelSystem.levelForScore(gameState.score)
     val nextLevelScore = LevelSystem.nextLevelScore(currentLevel)
-    val fallbackDragOffset = with(LocalDensity.current) { -72.dp.toPx() }
+    val density = LocalDensity.current
+    
+    // Updated drag offset for better UX (above finger)
+    val verticalShiftPx = with(density) { -64.dp.toPx() }
     val dragVisualOffset = boardLayoutInfo?.let { layoutInfo ->
         dragState.piece?.let { piece ->
             calculateDragVisualOffset(
                 piece = piece,
                 boardLayoutInfo = layoutInfo
-            )
-        } ?: Offset(fallbackDragOffset, fallbackDragOffset)
-    } ?: Offset(fallbackDragOffset, fallbackDragOffset)
+            ).let { offset ->
+                Offset(offset.x, offset.y + verticalShiftPx)
+            }
+        } ?: Offset(0f, verticalShiftPx)
+    } ?: Offset(0f, verticalShiftPx)
 
     val placementPreview = createPlacementPreview(
         dragState = dragState,
@@ -161,14 +169,14 @@ fun GameScreen(modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFF111827))
+            .background(Brush.verticalGradient(listOf(MidnightNavy, DeepGraphite)))
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .systemBarsPadding()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 24.dp),
+                .padding(horizontal = 16.dp, vertical = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Top
         ) {
@@ -193,7 +201,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(28.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             PieceTray(
                 pieces = gameState.currentPieces,
@@ -204,7 +212,8 @@ fun GameScreen(modifier: Modifier = Modifier) {
                         piece = piece,
                         dragPosition = position,
                         boardLayoutInfo = boardLayoutInfo,
-                        board = gameState.board
+                        board = gameState.board,
+                        verticalShiftPx = verticalShiftPx
                     )
                     dragState = DragState(
                         pieceIndex = pieceIndex,
@@ -223,7 +232,8 @@ fun GameScreen(modifier: Modifier = Modifier) {
                             piece = piece,
                             dragPosition = nextPosition,
                             boardLayoutInfo = boardLayoutInfo,
-                            board = gameState.board
+                            board = gameState.board,
+                            verticalShiftPx = verticalShiftPx
                         )
                     } else {
                         null
@@ -241,16 +251,20 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(28.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             Button(
                 onClick = ::restartGame,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF38BDF8),
-                    contentColor = Color(0xFF082F49)
-                )
+                    containerColor = SlateButton,
+                    contentColor = IceWhite
+                ),
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier
+                    .height(44.dp)
+                    .widthIn(min = 132.dp)
             ) {
-                Text(text = "Restart")
+                Text(text = "Restart", style = MaterialTheme.typography.labelLarge)
             }
         }
 
@@ -294,7 +308,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color(0x99000000))
+                    .background(Color(0xCC02060B))
                     .padding(horizontal = 28.dp),
                 contentAlignment = Alignment.Center
             ) {
@@ -346,46 +360,81 @@ private fun DraggedPiece(
     Canvas(
         modifier = modifier
             .size(widthDp, heightDp)
-            .background(
-                color = if (piece.effect == PieceEffect.Bomb) Color(0x33F59E0B) else Color(0x3322D3EE),
-                shape = RoundedCornerShape(8.dp)
-            )
     ) {
-        val isBomb = piece.effect == PieceEffect.Bomb
-        val scale = min(size.width / widthPx, size.height / heightPx)
-        val scaledCellSize = cellSizePx * scale
-        val scaledSpacing = spacingPx * scale
-        val cornerRadius = CornerRadius(scaledCellSize * 0.16f, scaledCellSize * 0.16f)
-
         piece.cells.forEach { cell ->
             val row = cell.row - bounds.minRow
             val col = cell.col - bounds.minCol
             val topLeft = Offset(
-                x = col * (scaledCellSize + scaledSpacing),
-                y = row * (scaledCellSize + scaledSpacing)
+                x = col * (cellSizePx + spacingPx),
+                y = row * (cellSizePx + spacingPx)
             )
 
-            drawRoundRect(
-                color = if (isBomb) Color(0xEEF59E0B) else Color(0xEE38BDF8),
-                topLeft = topLeft,
-                size = Size(scaledCellSize, scaledCellSize),
-                cornerRadius = cornerRadius
-            )
-
-            if (isBomb) {
-                val center = topLeft + Offset(scaledCellSize / 2f, scaledCellSize / 2f)
-                drawCircle(
-                    color = Color(0xFF111827),
-                    radius = scaledCellSize * 0.24f,
-                    center = center
-                )
-                drawCircle(
-                    color = Color(0xFFFFF7ED),
-                    radius = scaledCellSize * 0.11f,
-                    center = center
-                )
-            }
+            drawDraggedCell(topLeft, cellSizePx, piece.colorVariant)
         }
+    }
+}
+
+private fun DrawScope.drawDraggedCell(topLeft: Offset, cellSize: Float, variant: Int) {
+    val cornerRadius = CornerRadius(8.dp.toPx(), 8.dp.toPx())
+    
+    val (topColor, midColor, bottomColor) = when (variant) {
+        1 -> Triple(ArcCyanTop, ArcCyan, ArcCyanBottom)
+        2 -> Triple(TacticalVioletTop, TacticalViolet, TacticalVioletBottom)
+        3 -> Triple(SignalAmberTop, SignalAmber, SignalAmberBottom)
+        4 -> Triple(RewardMintTop, RewardMint, RewardMintBottom)
+        else -> Triple(BombMagenta, BombMagenta, BombMagenta) // Bomb
+    }
+
+    // Main Gradient Fill
+    drawRoundRect(
+        brush = Brush.verticalGradient(
+            colors = listOf(topColor, midColor, bottomColor),
+            startY = topLeft.y,
+            endY = topLeft.y + cellSize
+        ),
+        topLeft = topLeft,
+        size = Size(cellSize, cellSize),
+        cornerRadius = cornerRadius
+    )
+
+    // Inner highlight (top edge)
+    drawRoundRect(
+        color = Color(0x33FFFFFF),
+        topLeft = topLeft + Offset(2.dp.toPx(), 2.dp.toPx()),
+        size = Size(cellSize - 4.dp.toPx(), cellSize / 3f),
+        cornerRadius = cornerRadius
+    )
+
+    // Outer border for depth
+    drawRoundRect(
+        color = Color(0x22FFFFFF),
+        topLeft = topLeft,
+        size = Size(cellSize, cellSize),
+        cornerRadius = cornerRadius,
+        style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.dp.toPx())
+    )
+    
+    // Bottom shade
+    drawRoundRect(
+        color = Color(0x24000000),
+        topLeft = topLeft + Offset(0f, cellSize * 0.7f),
+        size = Size(cellSize, cellSize * 0.3f),
+        cornerRadius = cornerRadius
+    )
+
+    if (variant == 0) {
+        // Bomb detail
+        val center = topLeft + Offset(cellSize / 2f, cellSize / 2f)
+        drawCircle(
+            color = HotCore,
+            radius = cellSize * 0.24f,
+            center = center
+        )
+        drawCircle(
+            color = WarningOrange,
+            radius = cellSize * 0.12f,
+            center = center
+        )
     }
 }
 
@@ -409,17 +458,19 @@ private fun calculateCurrentDragPlacementResolution(
     piece: Piece,
     dragPosition: Offset,
     boardLayoutInfo: BoardLayoutInfo?,
-    board: Board
+    board: Board,
+    verticalShiftPx: Float
 ): DragPlacementResolution? {
     val layoutInfo = boardLayoutInfo ?: return null
+    
     val currentDragVisualOffset = calculateDragVisualOffset(
         piece = piece,
         boardLayoutInfo = layoutInfo
     )
-
+    
     return calculateDragPlacementResolution(
         piece = piece,
-        visualPieceTopLeft = dragPosition + currentDragVisualOffset,
+        visualPieceTopLeft = dragPosition + currentDragVisualOffset + Offset(0f, verticalShiftPx), 
         boardLayoutInfo = layoutInfo,
         board = board
     )
@@ -437,7 +488,8 @@ private fun previewClearResult(
     val placedBoard = piece.cells.fold(board) { currentBoard, cell ->
         currentBoard.fill(
             row = startRow + cell.row,
-            col = startCol + cell.col
+            col = startCol + cell.col,
+            value = piece.colorVariant
         )
     }
 

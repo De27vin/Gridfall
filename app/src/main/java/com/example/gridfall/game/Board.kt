@@ -43,7 +43,7 @@ data class Board(
         return copy(cells = newCells)
     }
 
-    fun fill(row: Int, col: Int): Board {
-        return set(row, col, 1)
+    fun fill(row: Int, col: Int, value: Int = 1): Board {
+        return set(row, col, value)
     }
 }
