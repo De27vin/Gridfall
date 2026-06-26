@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import com.example.gridfall.game.Board
 import com.example.gridfall.game.ClearResult
 import com.example.gridfall.game.GameEngine
+import com.example.gridfall.game.LevelSystem
 import com.example.gridfall.game.Piece
 import com.example.gridfall.game.PieceEffect
 import kotlinx.coroutines.delay
@@ -59,6 +60,8 @@ fun GameScreen(modifier: Modifier = Modifier) {
     var isNewBestThisGame by remember { mutableStateOf(false) }
     var lineClearFeedback by remember { mutableStateOf<LineClearFeedback?>(null) }
     var lineClearFeedbackToken by remember { mutableStateOf(0) }
+    val currentLevel = LevelSystem.levelForScore(gameState.score)
+    val nextLevelScore = LevelSystem.nextLevelScore(currentLevel)
     val fallbackDragOffset = with(LocalDensity.current) { -72.dp.toPx() }
     val dragVisualOffset = boardLayoutInfo?.let { layoutInfo ->
         val offset = -layoutInfo.cellSizePx * 1.5f
@@ -173,6 +176,8 @@ fun GameScreen(modifier: Modifier = Modifier) {
             GameTopBar(
                 score = gameState.score,
                 highScore = highScore,
+                level = currentLevel,
+                nextLevelScore = nextLevelScore,
                 combo = gameState.combo,
                 modifier = Modifier.fillMaxWidth()
             )

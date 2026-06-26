@@ -3,45 +3,62 @@ package com.example.gridfall.game
 import kotlin.random.Random
 
 object ContractGenerator {
-    private val contracts = listOf(
-        Contract(
+    private val templates = listOf(
+        ContractTemplate(
             id = "clear_at_least_one_line",
             title = "Clear 1 line",
             description = "Clear at least 1 line this batch.",
-            rewardPoints = 25,
+            baseRewardPoints = 25,
             type = ContractType.ClearAtLeastOneLine
         ),
-        Contract(
+        ContractTemplate(
             id = "clear_exactly_two_lines",
             title = "Clear exactly 2",
             description = "Clear exactly 2 lines this batch.",
-            rewardPoints = 35,
+            baseRewardPoints = 35,
             type = ContractType.ClearExactlyTwoLines
         ),
-        Contract(
+        ContractTemplate(
             id = "no_edge_placement",
             title = "Stay off edges",
             description = "Place all 3 pieces without touching the board edge.",
-            rewardPoints = 25,
+            baseRewardPoints = 25,
             type = ContractType.NoEdgePlacement
         ),
-        Contract(
+        ContractTemplate(
             id = "avoid_center_area",
             title = "Avoid center",
             description = "Place all 3 pieces without using the center 4x4 area.",
-            rewardPoints = 25,
+            baseRewardPoints = 25,
             type = ContractType.AvoidCenterArea
         ),
-        Contract(
+        ContractTemplate(
             id = "score_at_least_twenty",
             title = "Score 20",
             description = "Score at least 20 points this batch.",
-            rewardPoints = 25,
+            baseRewardPoints = 25,
             type = ContractType.ScoreAtLeastTwenty
         )
     )
 
-    fun generate(): Contract {
-        return contracts[Random.nextInt(contracts.size)]
+    fun generate(level: Int = 1): Contract {
+        val template = templates[Random.nextInt(templates.size)]
+        val rewardPoints = template.baseRewardPoints + (level.coerceAtLeast(1) - 1) * 5
+
+        return Contract(
+            id = template.id,
+            title = template.title,
+            description = template.description,
+            rewardPoints = rewardPoints,
+            type = template.type
+        )
     }
+
+    private data class ContractTemplate(
+        val id: String,
+        val title: String,
+        val description: String,
+        val baseRewardPoints: Int,
+        val type: ContractType
+    )
 }

@@ -231,6 +231,39 @@ class GameEngineTest {
     }
 
     @Test
+    fun levelForScoreReturnsExpectedLevels() {
+        assertEquals(1, LevelSystem.levelForScore(0))
+        assertEquals(1, LevelSystem.levelForScore(59))
+        assertEquals(2, LevelSystem.levelForScore(60))
+        assertEquals(3, LevelSystem.levelForScore(150))
+        assertEquals(4, LevelSystem.levelForScore(300))
+        assertEquals(5, LevelSystem.levelForScore(550))
+        assertEquals(6, LevelSystem.levelForScore(900))
+        assertEquals(7, LevelSystem.levelForScore(1400))
+        assertEquals(8, LevelSystem.levelForScore(2000))
+    }
+
+    @Test
+    fun nextLevelScoreReturnsExpectedThresholds() {
+        assertEquals(60, LevelSystem.nextLevelScore(1))
+        assertEquals(150, LevelSystem.nextLevelScore(2))
+        assertEquals(300, LevelSystem.nextLevelScore(3))
+        assertEquals(550, LevelSystem.nextLevelScore(4))
+        assertEquals(900, LevelSystem.nextLevelScore(5))
+        assertEquals(1400, LevelSystem.nextLevelScore(6))
+        assertEquals(2000, LevelSystem.nextLevelScore(7))
+        assertNull(LevelSystem.nextLevelScore(8))
+    }
+
+    @Test
+    fun initialStateStartsAtLevelOneByDerivedScore() {
+        val state = GameEngine.createInitialState()
+
+        assertEquals(0, state.score)
+        assertEquals(1, LevelSystem.levelForScore(state.score))
+    }
+
+    @Test
     fun placePieceUpdatesComboAfterLineClear() {
         val board = (0 until Board.SIZE - 1).fold(Board.empty()) { currentBoard, col ->
             currentBoard.fill(0, col)
@@ -636,6 +669,44 @@ class GameEngineTest {
         }
     }
 
+    @Test
+    fun higherLevelGenerationMakesLargerPiecesMoreCommon() {
+        val smallPiece = Piece("small", listOf(Cell(0, 0)))
+        val largePiece = Piece(
+            id = "large",
+            cells = listOf(
+                Cell(0, 0), Cell(0, 1),
+                Cell(1, 0), Cell(1, 1)
+            )
+        )
+        val lowLevelLargeCount = generatedLargePieceCount(
+            level = 1,
+            pieces = listOf(smallPiece, largePiece)
+        )
+        val highLevelLargeCount = generatedLargePieceCount(
+            level = 6,
+            pieces = listOf(smallPiece, largePiece)
+        )
+
+        assertTrue(highLevelLargeCount > lowLevelLargeCount)
+    }
+
+    @Test
+    fun contractRewardScalesWithLevel() {
+        val lowLevelContract = ContractGenerator.generate(level = 1)
+        val highLevelContract = ContractGenerator.generate(level = 4)
+
+        assertTrue(lowLevelContract.rewardPoints in setOf(25, 35))
+        assertTrue(highLevelContract.rewardPoints in setOf(40, 50))
+    }
+
+    @Test
+    fun restartReturnsToLevelOneByDerivedScore() {
+        val restartedState = GameEngine.createInitialState()
+
+        assertEquals(1, LevelSystem.levelForScore(restartedState.score))
+    }
+
     private fun testState(
         board: Board = Board.empty(),
         currentPieces: List<Piece>,
@@ -690,6 +761,20 @@ class GameEngineTest {
             cells = listOf(Cell(0, 0)),
             effect = PieceEffect.Bomb
         )
+    }
+
+    private fun generatedLargePieceCount(
+        level: Int,
+        pieces: List<Piece>
+    ): Int {
+        return (0 until 300).sumOf { seed ->
+            PieceGenerator.generateBatch(
+                level = level,
+                availablePieces = pieces,
+                bombChance = 0f,
+                random = Random(seed)
+            ).count { piece -> piece.cells.size >= 4 }
+        }
     }
 
     private fun boardFromFilledCells(filledCells: List<Cell>): Board {

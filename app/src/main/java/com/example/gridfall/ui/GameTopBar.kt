@@ -15,6 +15,8 @@ import androidx.compose.ui.graphics.Color
 fun GameTopBar(
     score: Int,
     highScore: Int,
+    level: Int,
+    nextLevelScore: Int?,
     combo: Int,
     modifier: Modifier = Modifier
 ) {
@@ -42,6 +44,28 @@ fun GameTopBar(
                     style = MaterialTheme.typography.labelLarge
                 )
             }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Level $level",
+                color = Color(0xFFBAE6FD),
+                style = MaterialTheme.typography.labelLarge
+            )
+
+            Text(
+                text = if (nextLevelScore == null) {
+                    "Max Level"
+                } else {
+                    "Next level: $score / $nextLevelScore"
+                },
+                color = Color(0xFF9CA3AF),
+                style = MaterialTheme.typography.labelLarge
+            )
         }
 
         if (combo > 0) {

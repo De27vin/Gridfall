@@ -2,15 +2,17 @@ package com.example.gridfall.game
 
 object GameEngine {
     fun createInitialState(): GameState {
+        val level = LevelSystem.levelForScore(0)
+
         return GameState(
             board = Board.empty(),
-            currentPieces = PieceGenerator.generateBatch(),
+            currentPieces = PieceGenerator.generateBatch(level = level),
             usedPieceIndices = emptySet(),
             score = 0,
             combo = 0,
             isGameOver = false,
             contractState = ContractState(
-                offeredContract = ContractGenerator.generate()
+                offeredContract = ContractGenerator.generate(level = level)
             )
         )
     }
@@ -157,17 +159,22 @@ object GameEngine {
         )
         val nextUsedPieceIndices = state.usedPieceIndices + pieceIndex
         val allPiecesUsed = state.currentPieces.indices.all { it in nextUsedPieceIndices }
+        val scoreAfterPlacement = state.score + placementResult.scoreGained
 
         val nextPieces: List<Piece>
         val finalUsedPieceIndices: Set<Int>
         val finalContractState: ContractState
         val rewardPoints: Int
         if (allPiecesUsed) {
-            nextPieces = PieceGenerator.generateBatch()
             finalUsedPieceIndices = emptySet()
-            val evaluation = finishContractBatch(updatedContractState)
-            finalContractState = evaluation.contractState
+            val evaluation = evaluateContractBatch(updatedContractState)
             rewardPoints = evaluation.rewardPoints
+            val finalScore = scoreAfterPlacement + rewardPoints
+            val nextLevel = LevelSystem.levelForScore(finalScore)
+            nextPieces = PieceGenerator.generateBatch(level = nextLevel)
+            finalContractState = evaluation.contractState.copy(
+                offeredContract = ContractGenerator.generate(level = nextLevel)
+            )
         } else {
             nextPieces = state.currentPieces
             finalUsedPieceIndices = nextUsedPieceIndices
@@ -184,7 +191,7 @@ object GameEngine {
             board = placementResult.board,
             currentPieces = nextPieces,
             usedPieceIndices = finalUsedPieceIndices,
-            score = state.score + placementResult.scoreGained + rewardPoints,
+            score = scoreAfterPlacement + rewardPoints,
             combo = placementResult.nextCombo,
             isGameOver = isGameOver,
             contractState = finalContractState
@@ -298,13 +305,11 @@ object GameEngine {
         )
     }
 
-    private fun finishContractBatch(contractState: ContractState): ContractEvaluation {
+    private fun evaluateContractBatch(contractState: ContractState): ContractEvaluation {
         val activeContract = contractState.activeContract
         if (!contractState.isAccepted || activeContract == null) {
             return ContractEvaluation(
-                contractState = ContractState(
-                    offeredContract = ContractGenerator.generate()
-                ),
+                contractState = ContractState(),
                 rewardPoints = 0
             )
         }
@@ -320,7 +325,6 @@ object GameEngine {
 
         return ContractEvaluation(
             contractState = ContractState(
-                offeredContract = ContractGenerator.generate(),
                 resolvedContract = activeContract,
                 isCompleted = completed,
                 isFailed = !completed,
