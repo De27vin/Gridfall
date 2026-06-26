@@ -3,27 +3,22 @@ package com.example.gridfall.game
 import kotlin.random.Random
 
 object PieceGenerator {
-    private const val BOMB_CHANCE_PER_BATCH = 0.10f
-    private const val MAX_LEVEL_BOMB_CHANCE = 0.18f
+    private const val DEFAULT_BOMB_CHANCE_PER_BATCH = -1f
 
     fun generateBatch(
         count: Int = 3,
         level: Int = 1,
         availablePieces: List<Piece> = PieceLibrary.starterPieces,
         bombPiece: Piece = PieceLibrary.bombPiece,
-        bombChance: Float = BOMB_CHANCE_PER_BATCH,
+        bombChance: Float = DEFAULT_BOMB_CHANCE_PER_BATCH,
         random: Random = Random.Default
     ): List<Piece> {
         if (count <= 0) return emptyList()
         val normalPieces = availablePieces.filter { it.effect != PieceEffect.Bomb }
         if (normalPieces.isEmpty()) return emptyList()
 
-        val weightedPieces = weightedPiecesForLevel(
-            pieces = normalPieces,
-            level = level
-        )
         val batch = List(count) {
-            weightedPieces.random(random)
+            normalPieces.weightedRandom(level, random)
         }.toMutableList()
 
         if (random.nextFloat() < effectiveBombChance(level, bombChance)) {
@@ -34,38 +29,68 @@ object PieceGenerator {
         return batch
     }
 
-    private fun weightedPiecesForLevel(
-        pieces: List<Piece>,
+    private fun List<Piece>.weightedRandom(
+        level: Int,
+        random: Random
+    ): Piece {
+        val weightedPieces = map { piece ->
+            piece to rarityWeight(piece.rarity, level)
+        }.filter { (_, weight) ->
+            weight > 0
+        }
+
+        if (weightedPieces.isEmpty()) return this[random.nextInt(size)]
+
+        val totalWeight = weightedPieces.sumOf { (_, weight) -> weight }
+        var target = random.nextInt(totalWeight)
+        weightedPieces.forEach { (piece, weight) ->
+            if (target < weight) return piece
+            target -= weight
+        }
+
+        return weightedPieces.last().first
+    }
+
+    internal fun rarityWeight(
+        rarity: PieceRarity,
         level: Int
-    ): List<Piece> {
-        val smallPieces = pieces.filter { it.cells.size <= 2 }
-        val mediumPieces = pieces.filter { it.cells.size == 3 }
-        val largePieces = pieces.filter { it.cells.size >= 4 }
-
+    ): Int {
         return when {
-            level <= 2 -> pieces +
-                smallPieces +
-                smallPieces +
-                mediumPieces
+            level <= 2 -> when (rarity) {
+                PieceRarity.Common -> 75
+                PieceRarity.Uncommon -> 22
+                PieceRarity.Rare -> 3
+                PieceRarity.Epic -> 0
+            }
 
-            level <= 5 -> pieces
+            level <= 5 -> when (rarity) {
+                PieceRarity.Common -> 60
+                PieceRarity.Uncommon -> 28
+                PieceRarity.Rare -> 10
+                PieceRarity.Epic -> 2
+            }
 
-            else -> pieces +
-                mediumPieces +
-                largePieces +
-                largePieces
-        }.ifEmpty { pieces }
+            else -> when (rarity) {
+                PieceRarity.Common -> 48
+                PieceRarity.Uncommon -> 32
+                PieceRarity.Rare -> 15
+                PieceRarity.Epic -> 5
+            }
+        }
     }
 
     private fun effectiveBombChance(
         level: Int,
         bombChance: Float
     ): Float {
-        if (bombChance != BOMB_CHANCE_PER_BATCH) {
+        if (bombChance != DEFAULT_BOMB_CHANCE_PER_BATCH) {
             return bombChance.coerceIn(0f, 1f)
         }
 
-        return (bombChance + (level.coerceAtLeast(1) - 1) * 0.015f)
-            .coerceAtMost(MAX_LEVEL_BOMB_CHANCE)
+        return when {
+            level <= 2 -> 0.05f
+            level <= 5 -> 0.08f
+            else -> 0.10f
+        }
     }
 }

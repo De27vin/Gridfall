@@ -944,25 +944,126 @@ class GameEngineTest {
     }
 
     @Test
-    fun higherLevelGenerationMakesLargerPiecesMoreCommon() {
-        val smallPiece = Piece("small", listOf(Cell(0, 0)))
-        val largePiece = Piece(
-            id = "large",
-            cells = listOf(
-                Cell(0, 0), Cell(0, 1),
-                Cell(1, 0), Cell(1, 1)
-            )
-        )
-        val lowLevelLargeCount = generatedLargePieceCount(
-            level = 1,
-            pieces = listOf(smallPiece, largePiece)
-        )
-        val highLevelLargeCount = generatedLargePieceCount(
-            level = 6,
-            pieces = listOf(smallPiece, largePiece)
+    fun pieceRarityDefaultsToCommon() {
+        val piece = Piece("default", listOf(Cell(0, 0)))
+
+        assertEquals(PieceRarity.Common, piece.rarity)
+    }
+
+    @Test
+    fun pieceHelperPropertiesReportBoundsAndCellCount() {
+        val piece = Piece(
+            id = "helpers",
+            cells = listOf(Cell(0, 1), Cell(1, 1), Cell(2, 0), Cell(2, 1))
         )
 
-        assertTrue(highLevelLargeCount > lowLevelLargeCount)
+        assertEquals(2, piece.width)
+        assertEquals(3, piece.height)
+        assertEquals(4, piece.cellCount)
+    }
+
+    @Test
+    fun expandedPieceLibraryContainsNewShapes() {
+        val ids = PieceLibrary.starterPieces.map { it.id }.toSet()
+
+        assertTrue(ids.containsAll(
+            setOf(
+                "horizontal_5",
+                "vertical_5",
+                "plus_5",
+                "t_4",
+                "t_4_down",
+                "s_4",
+                "z_4",
+                "square_3x3"
+            )
+        ))
+    }
+
+    @Test
+    fun allLibraryPieceIdsAreUnique() {
+        val ids = (PieceLibrary.starterPieces + PieceLibrary.bombPiece).map { it.id }
+
+        assertEquals(ids.size, ids.toSet().size)
+    }
+
+    @Test
+    fun allLibraryPiecesHaveCells() {
+        (PieceLibrary.starterPieces + PieceLibrary.bombPiece).forEach { piece ->
+            assertTrue(piece.cells.isNotEmpty())
+        }
+    }
+
+    @Test
+    fun allLibraryPieceCellsAreNonNegative() {
+        (PieceLibrary.starterPieces + PieceLibrary.bombPiece).flatMap { it.cells }.forEach { cell ->
+            assertTrue(cell.row >= 0)
+            assertTrue(cell.col >= 0)
+        }
+    }
+
+    @Test
+    fun squareThreeByThreeIsEpic() {
+        val square = PieceLibrary.starterPieces.first { it.id == "square_3x3" }
+
+        assertEquals(PieceRarity.Epic, square.rarity)
+        assertEquals(3, square.width)
+        assertEquals(3, square.height)
+    }
+
+    @Test
+    fun bombIsRareAndKeepsBombEffect() {
+        assertEquals(PieceRarity.Rare, PieceLibrary.bombPiece.rarity)
+        assertEquals(PieceEffect.Bomb, PieceLibrary.bombPiece.effect)
+    }
+
+    @Test
+    fun levelOneGenerationDoesNotProduceEpicPieces() {
+        repeat(200) { seed ->
+            val batch = PieceGenerator.generateBatch(
+                level = 1,
+                bombChance = 0f,
+                random = Random(seed)
+            )
+
+            assertTrue(batch.none { it.rarity == PieceRarity.Epic })
+        }
+    }
+
+    @Test
+    fun highLevelGenerationCanProduceRareAndEpicPieces() {
+        val generated = (0 until 500).flatMap { seed ->
+            PieceGenerator.generateBatch(
+                level = 6,
+                bombChance = 0f,
+                random = Random(seed)
+            )
+        }
+
+        assertTrue(generated.any { it.rarity == PieceRarity.Rare })
+        assertTrue(generated.any { it.rarity == PieceRarity.Epic })
+    }
+
+    @Test
+    fun weightedGenerationFavorsCommonPieces() {
+        val generated = (0 until 600).flatMap { seed ->
+            PieceGenerator.generateBatch(
+                level = 4,
+                bombChance = 0f,
+                random = Random(seed)
+            )
+        }
+        val commonCount = generated.count { it.rarity == PieceRarity.Common }
+        val rareAndEpicCount = generated.count { it.rarity == PieceRarity.Rare || it.rarity == PieceRarity.Epic }
+
+        assertTrue(commonCount > rareAndEpicCount)
+    }
+
+    @Test
+    fun generateBatchReturnsThreePiecesByDefault() {
+        val batch = PieceGenerator.generateBatch(random = Random(7), bombChance = 0f)
+
+        assertEquals(3, batch.size)
     }
 
     @Test
