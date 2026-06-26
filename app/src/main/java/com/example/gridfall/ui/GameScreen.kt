@@ -45,7 +45,6 @@ import com.example.gridfall.game.LevelSystem
 import com.example.gridfall.game.Piece
 import com.example.gridfall.game.PieceEffect
 import kotlinx.coroutines.delay
-import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
 
@@ -64,15 +63,17 @@ fun GameScreen(modifier: Modifier = Modifier) {
     val nextLevelScore = LevelSystem.nextLevelScore(currentLevel)
     val fallbackDragOffset = with(LocalDensity.current) { -72.dp.toPx() }
     val dragVisualOffset = boardLayoutInfo?.let { layoutInfo ->
-        val offset = -layoutInfo.cellSizePx * 1.5f
-        Offset(offset, offset)
+        dragState.piece?.let { piece ->
+            calculateDragVisualOffset(
+                piece = piece,
+                boardLayoutInfo = layoutInfo
+            )
+        } ?: Offset(fallbackDragOffset, fallbackDragOffset)
     } ?: Offset(fallbackDragOffset, fallbackDragOffset)
 
     val placementPreview = createPlacementPreview(
         dragState = dragState,
-        boardLayoutInfo = boardLayoutInfo,
-        board = gameState.board,
-        dragVisualOffset = dragVisualOffset
+        placementResolution = dragState.placementResolution
     )
 
     LaunchedEffect(lineClearFeedback?.token) {
@@ -108,23 +109,21 @@ fun GameScreen(modifier: Modifier = Modifier) {
     fun finishDrag() {
         val pieceIndex = dragState.pieceIndex
         val piece = dragState.piece
-        val origin = mapPositionToBoardOrigin(
-            position = dragState.dragPosition + dragVisualOffset,
-            boardLayoutInfo = boardLayoutInfo
-        )
+        val resolution = dragState.placementResolution
+        val target = resolution?.target
 
-        if (pieceIndex != null && piece != null && origin != null) {
+        if (pieceIndex != null && piece != null && target != null && resolution.isValid) {
             val clearResult = previewClearResult(
                 board = gameState.board,
                 piece = piece,
-                startRow = origin.first,
-                startCol = origin.second
+                startRow = target.startRow,
+                startCol = target.startCol
             )
             val nextState = GameEngine.placePiece(
                 state = gameState,
                 pieceIndex = pieceIndex,
-                startRow = origin.first,
-                startCol = origin.second
+                startRow = target.startRow,
+                startCol = target.startCol
             )
 
             if (nextState != gameState) {
@@ -201,17 +200,38 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 usedPieceIndices = gameState.usedPieceIndices,
                 draggingPieceIndex = dragState.pieceIndex,
                 onPieceDragStarted = { pieceIndex, piece, position, startOffset ->
+                    val resolution = calculateCurrentDragPlacementResolution(
+                        piece = piece,
+                        dragPosition = position,
+                        boardLayoutInfo = boardLayoutInfo,
+                        board = gameState.board
+                    )
                     dragState = DragState(
                         pieceIndex = pieceIndex,
                         piece = piece,
                         dragPosition = position,
                         dragStartOffset = startOffset,
+                        placementResolution = resolution,
                         isDragging = true
                     )
                 },
                 onPieceDragged = { dragAmount ->
+                    val piece = dragState.piece
+                    val nextPosition = dragState.dragPosition + dragAmount
+                    val resolution = if (piece != null) {
+                        calculateCurrentDragPlacementResolution(
+                            piece = piece,
+                            dragPosition = nextPosition,
+                            boardLayoutInfo = boardLayoutInfo,
+                            board = gameState.board
+                        )
+                    } else {
+                        null
+                    }
+
                     dragState = dragState.copy(
-                        dragPosition = dragState.dragPosition + dragAmount
+                        dragPosition = nextPosition,
+                        placementResolution = resolution
                     )
                 },
                 onPieceDragEnded = ::finishDrag,
@@ -308,9 +328,17 @@ private fun DraggedPiece(
     spacingPx: Float,
     modifier: Modifier = Modifier
 ) {
-    val bounds = pieceBounds(piece)
-    val widthPx = cellSizePx * bounds.colCount + spacingPx * max(0, bounds.colCount - 1)
-    val heightPx = cellSizePx * bounds.rowCount + spacingPx * max(0, bounds.rowCount - 1)
+    val bounds = piece.bounds()
+    val widthPx = visualPieceWidth(
+        piece = piece,
+        cellSizePx = cellSizePx,
+        spacingPx = spacingPx
+    )
+    val heightPx = visualPieceHeight(
+        piece = piece,
+        cellSizePx = cellSizePx,
+        spacingPx = spacingPx
+    )
     val density = LocalDensity.current
     val widthDp = with(density) { widthPx.toDp() }
     val heightDp = with(density) { heightPx.toDp() }
@@ -363,24 +391,37 @@ private fun DraggedPiece(
 
 private fun createPlacementPreview(
     dragState: DragState,
-    boardLayoutInfo: BoardLayoutInfo?,
-    board: Board,
-    dragVisualOffset: Offset
+    placementResolution: DragPlacementResolution?
 ): PlacementPreview? {
     val piece = dragState.piece ?: return null
     if (!dragState.isDragging) return null
-    val origin = mapPositionToBoardOrigin(dragState.dragPosition + dragVisualOffset, boardLayoutInfo) ?: return null
+    val target = placementResolution?.target ?: return null
 
     return PlacementPreview(
         piece = piece,
-        originRow = origin.first,
-        originCol = origin.second,
-        isValid = GameEngine.canPlace(
-            board = board,
-            piece = piece,
-            startRow = origin.first,
-            startCol = origin.second
-        )
+        originRow = target.startRow,
+        originCol = target.startCol,
+        isValid = placementResolution.isValid
+    )
+}
+
+private fun calculateCurrentDragPlacementResolution(
+    piece: Piece,
+    dragPosition: Offset,
+    boardLayoutInfo: BoardLayoutInfo?,
+    board: Board
+): DragPlacementResolution? {
+    val layoutInfo = boardLayoutInfo ?: return null
+    val currentDragVisualOffset = calculateDragVisualOffset(
+        piece = piece,
+        boardLayoutInfo = layoutInfo
+    )
+
+    return calculateDragPlacementResolution(
+        piece = piece,
+        visualPieceTopLeft = dragPosition + currentDragVisualOffset,
+        boardLayoutInfo = layoutInfo,
+        board = board
     )
 }
 
@@ -401,53 +442,4 @@ private fun previewClearResult(
     }
 
     return GameEngine.clearLines(placedBoard)
-}
-
-private fun mapPositionToBoardOrigin(
-    position: Offset,
-    boardLayoutInfo: BoardLayoutInfo?
-): Pair<Int, Int>? {
-    val layoutInfo = boardLayoutInfo ?: return null
-    val relativeX = position.x - layoutInfo.topLeft.x
-    val relativeY = position.y - layoutInfo.topLeft.y
-
-    if (relativeX < 0f || relativeY < 0f || relativeX > layoutInfo.sizePx || relativeY > layoutInfo.sizePx) {
-        return null
-    }
-
-    val stride = layoutInfo.cellSizePx + layoutInfo.spacingPx
-    val col = ((relativeX - layoutInfo.spacingPx) / stride).toInt()
-    val row = ((relativeY - layoutInfo.spacingPx) / stride).toInt()
-
-    if (row !in 0 until Board.SIZE || col !in 0 until Board.SIZE) {
-        return null
-    }
-
-    val cellLeft = layoutInfo.spacingPx + col * stride
-    val cellTop = layoutInfo.spacingPx + row * stride
-    val insideCell = relativeX in cellLeft..(cellLeft + layoutInfo.cellSizePx) &&
-        relativeY in cellTop..(cellTop + layoutInfo.cellSizePx)
-
-    return if (insideCell) row to col else null
-}
-
-private data class PieceBounds(
-    val minRow: Int,
-    val minCol: Int,
-    val rowCount: Int,
-    val colCount: Int
-)
-
-private fun pieceBounds(piece: Piece): PieceBounds {
-    val minRow = piece.cells.minOf { it.row }
-    val maxRow = piece.cells.maxOf { it.row }
-    val minCol = piece.cells.minOf { it.col }
-    val maxCol = piece.cells.maxOf { it.col }
-
-    return PieceBounds(
-        minRow = minRow,
-        minCol = minCol,
-        rowCount = maxRow - minRow + 1,
-        colCount = maxCol - minCol + 1
-    )
 }

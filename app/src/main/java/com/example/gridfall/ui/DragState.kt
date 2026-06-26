@@ -8,5 +8,6 @@ data class DragState(
     val piece: Piece? = null,
     val dragPosition: Offset = Offset.Zero,
     val dragStartOffset: Offset = Offset.Zero,
+    val placementResolution: DragPlacementResolution? = null,
     val isDragging: Boolean = false
 )
