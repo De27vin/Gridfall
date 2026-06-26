@@ -25,7 +25,7 @@ class DragPlacementTargetTest {
         val offset = calculateDragVisualOffset(piece, layout)
 
         assertEquals(-50f, offset.x)
-        assertEquals(-150f, offset.y)
+        assertEquals(-250f, offset.y)
     }
 
     @Test
@@ -38,7 +38,33 @@ class DragPlacementTargetTest {
         val offset = calculateDragVisualOffset(piece, layout)
 
         assertEquals(-200f, offset.x)
-        assertEquals(-150f, offset.y)
+        assertEquals(-250f, offset.y)
+    }
+
+    @Test
+    fun dragVisualOffsetAnchorsVerticalPieceBottomAboveFinger() {
+        val piece = Piece(
+            id = "vertical",
+            cells = listOf(Cell(0, 0), Cell(1, 0), Cell(2, 0), Cell(3, 0))
+        )
+
+        val offset = calculateDragVisualOffset(piece, layout)
+
+        assertEquals(-50f, offset.x)
+        assertEquals(-550f, offset.y)
+    }
+
+    @Test
+    fun dragVisualOffsetAnchorsLShapeBottomAboveFinger() {
+        val piece = Piece(
+            id = "l",
+            cells = listOf(Cell(0, 0), Cell(1, 0), Cell(2, 0), Cell(2, 1))
+        )
+
+        val offset = calculateDragVisualOffset(piece, layout)
+
+        assertEquals(-100f, offset.x)
+        assertEquals(-450f, offset.y)
     }
 
     @Test

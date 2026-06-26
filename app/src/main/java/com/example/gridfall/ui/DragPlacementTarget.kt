@@ -49,10 +49,16 @@ internal fun calculateDragVisualOffset(
         cellSizePx = boardLayoutInfo.cellSizePx,
         spacingPx = boardLayoutInfo.spacingPx
     )
+    val pieceHeight = visualPieceSize(
+        cellCount = bounds.rowCount,
+        cellSizePx = boardLayoutInfo.cellSizePx,
+        spacingPx = boardLayoutInfo.spacingPx
+    )
+    val lift = boardLayoutInfo.cellSizePx * 1.5f
 
     return Offset(
         x = -pieceWidth / 2f,
-        y = -boardLayoutInfo.cellSizePx * 1.5f
+        y = -lift - pieceHeight
     )
 }
 
