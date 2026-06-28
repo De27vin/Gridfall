@@ -68,6 +68,9 @@ fun GameScreen(modifier: Modifier = Modifier) {
     var scoreEventFeedback by remember { mutableStateOf<ScoreEventFeedback?>(null) }
     var scoreEventFeedbackToken by remember { mutableStateOf(0) }
     var showRestartConfirmDialog by remember { mutableStateOf(false) }
+    var showSettingsScreen by remember { mutableStateOf(false) }
+    var selectedTheme by remember { mutableStateOf("Premium Tactical") }
+    var soundEnabled by remember { mutableStateOf(true) }
     val currentLevel = LevelSystem.levelForScore(gameState.score)
     val nextLevelScore = LevelSystem.nextLevelScore(currentLevel)
     val density = LocalDensity.current
@@ -129,6 +132,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
 
     fun restartGame() {
         showRestartConfirmDialog = false
+        showSettingsScreen = false
         gameState = GameEngine.createInitialState()
         dragState = DragState()
         lineClearFeedback = null
@@ -211,6 +215,24 @@ fun GameScreen(modifier: Modifier = Modifier) {
         dragState = DragState()
     }
 
+    if (showSettingsScreen) {
+        SettingsScreen(
+            selectedTheme = selectedTheme,
+            soundEnabled = soundEnabled,
+            onThemeSelected = { theme ->
+                selectedTheme = theme
+            },
+            onSoundEnabledChange = { enabled ->
+                soundEnabled = enabled
+            },
+            onReturnToGame = {
+                showSettingsScreen = false
+            },
+            modifier = modifier
+        )
+        return
+    }
+
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -231,6 +253,10 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 level = currentLevel,
                 nextLevelScore = nextLevelScore,
                 combo = gameState.combo,
+                onSettingsClick = {
+                    showRestartConfirmDialog = false
+                    showSettingsScreen = true
+                },
                 modifier = Modifier.fillMaxWidth()
             )
 

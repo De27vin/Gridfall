@@ -2,6 +2,7 @@ package com.example.gridfall.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,6 +32,7 @@ fun GameTopBar(
     level: Int,
     nextLevelScore: Int?,
     combo: Int,
+    onSettingsClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Box(
@@ -59,6 +61,22 @@ fun GameTopBar(
                         text = String.format(Locale.US, "%,d", score),
                         color = IceWhite,
                         style = MaterialTheme.typography.displayMedium
+                    )
+                }
+
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(999.dp))
+                        .background(SlateButton.copy(alpha = 0.74f))
+                        .border(1.dp, SoftCyanBorder.copy(alpha = 0.52f), RoundedCornerShape(999.dp))
+                        .clickable(onClick = onSettingsClick)
+                        .padding(horizontal = 11.dp, vertical = 6.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Settings",
+                        color = SoftIce,
+                        style = MaterialTheme.typography.labelMedium
                     )
                 }
 
