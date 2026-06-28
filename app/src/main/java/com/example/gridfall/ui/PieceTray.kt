@@ -68,10 +68,18 @@ fun PieceTray(
                     .weight(1f)
                     .aspectRatio(1f)
                     .clip(slotShape)
-                    .background(if (isDragging) Color(0x99151D2A) else Color(0x66151D2A))
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = if (isDragging) {
+                                listOf(Color(0xBB1B2A3D), Color(0xAA0E1724))
+                            } else {
+                                listOf(Color(0x88192538), Color(0x77101824))
+                            }
+                        )
+                    )
                     .border(
                         width = 1.dp,
-                        color = if (isDragging) LevelCyan.copy(alpha = 0.5f) else Color(0x552B3A50),
+                        color = if (isDragging) LevelCyan.copy(alpha = 0.55f) else SoftCyanBorder.copy(alpha = 0.42f),
                         shape = slotShape
                     )
                     .onGloballyPositioned { coordinates ->
@@ -154,57 +162,16 @@ internal fun PiecePreview(
 }
 
 private fun DrawScope.drawTrayCell(topLeft: Offset, cellSize: Float, variant: Int) {
-    val cornerRadius = CornerRadius(cellSize * 0.16f, cellSize * 0.16f)
-    
-    val (topColor, midColor, bottomColor) = when (variant) {
-        1 -> Triple(ArcCyanTop, ArcCyan, ArcCyanBottom)
-        2 -> Triple(TacticalVioletTop, TacticalViolet, TacticalVioletBottom)
-        3 -> Triple(SignalAmberTop, SignalAmber, SignalAmberBottom)
-        4 -> Triple(RewardMintTop, RewardMint, RewardMintBottom)
-        else -> Triple(BombMagenta, BombMagenta, BombMagenta) // Bomb
-    }
-
-    // Main Gradient Fill
     drawRoundRect(
-        brush = Brush.verticalGradient(
-            colors = listOf(topColor, midColor, bottomColor),
-            startY = topLeft.y,
-            endY = topLeft.y + cellSize
-        ),
-        topLeft = topLeft,
+        color = Color.Black.copy(alpha = 0.18f),
+        topLeft = topLeft + Offset(cellSize * 0.06f, cellSize * 0.08f),
         size = Size(cellSize, cellSize),
-        cornerRadius = cornerRadius
+        cornerRadius = CornerRadius(cellSize * 0.16f, cellSize * 0.16f)
     )
 
-    // Inner highlight (top edge)
-    drawRoundRect(
-        color = Color(0x33FFFFFF),
-        topLeft = topLeft + Offset(cellSize * 0.05f, cellSize * 0.05f),
-        size = Size(cellSize * 0.9f, cellSize * 0.3f),
-        cornerRadius = cornerRadius
-    )
-
-    // Outer border for depth
-    drawRoundRect(
-        color = Color(0x22FFFFFF),
+    drawTacticalBlock(
         topLeft = topLeft,
-        size = Size(cellSize, cellSize),
-        cornerRadius = cornerRadius,
-        style = androidx.compose.ui.graphics.drawscope.Stroke(width = (cellSize * 0.03f).coerceAtLeast(1f))
+        cellSize = cellSize,
+        variant = variant
     )
-
-    if (variant == 0) {
-        // Bomb detail
-        val center = topLeft + Offset(cellSize / 2f, cellSize / 2f)
-        drawCircle(
-            color = HotCore,
-            radius = cellSize * 0.24f,
-            center = center
-        )
-        drawCircle(
-            color = WarningOrange,
-            radius = cellSize * 0.12f,
-            center = center
-        )
-    }
 }

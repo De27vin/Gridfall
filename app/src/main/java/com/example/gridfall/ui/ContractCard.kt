@@ -2,7 +2,9 @@ package com.example.gridfall.ui
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,11 +21,19 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.example.gridfall.game.Contract
 import com.example.gridfall.game.ContractState
 import com.example.gridfall.game.ContractType
+import com.example.gridfall.ui.theme.ActionCyan
+import com.example.gridfall.ui.theme.BlueGray
+import com.example.gridfall.ui.theme.ContractChipNavy
+import com.example.gridfall.ui.theme.CoralWarning
+import com.example.gridfall.ui.theme.DeepContractGlass
+import com.example.gridfall.ui.theme.IceWhite
+import com.example.gridfall.ui.theme.RewardMint
+import com.example.gridfall.ui.theme.SoftCyanBorder
+import com.example.gridfall.ui.theme.SoftIce
 
 @Composable
 fun ContractOfferPopup(
@@ -36,14 +46,15 @@ fun ContractOfferPopup(
         modifier = modifier
             .widthIn(max = 360.dp)
             .fillMaxWidth(),
-        shape = RoundedCornerShape(8.dp),
+        shape = RoundedCornerShape(22.dp),
+        border = BorderStroke(1.dp, SoftCyanBorder.copy(alpha = 0.70f)),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFF1F2937)
+            containerColor = DeepContractGlass
         )
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -52,27 +63,32 @@ fun ContractOfferPopup(
             ) {
                 Text(
                     text = contract.title,
-                    color = Color.White,
+                    color = IceWhite,
                     style = MaterialTheme.typography.titleMedium
                 )
                 Text(
-                    text = "+${contract.rewardPoints} / -${contract.penaltyPoints}",
-                    color = Color(0xFFBAE6FD),
+                    text = "+${contract.rewardPoints}",
+                    color = RewardMint,
                     style = MaterialTheme.typography.labelLarge
                 )
             }
 
             Text(
                 text = contract.description,
-                color = Color(0xFFD1D5DB),
-                style = MaterialTheme.typography.bodySmall
+                color = SoftIce,
+                style = MaterialTheme.typography.bodyMedium
             )
 
-            Text(
-                text = "Reward +${contract.rewardPoints}   Penalty -${contract.penaltyPoints}",
-                color = Color(0xFFFCA5A5),
-                style = MaterialTheme.typography.labelLarge
-            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ContractMiniBadge(
+                    text = "Reward +${contract.rewardPoints}",
+                    color = RewardMint
+                )
+                ContractMiniBadge(
+                    text = "Risk -${contract.penaltyPoints}",
+                    color = CoralWarning
+                )
+            }
 
             Row(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -81,19 +97,21 @@ fun ContractOfferPopup(
                 Button(
                     onClick = onAccept,
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF38BDF8),
-                        contentColor = Color(0xFF082F49)
-                    )
+                        containerColor = ActionCyan,
+                        contentColor = ContractChipNavy
+                    ),
+                    shape = RoundedCornerShape(14.dp)
                 ) {
                     Text(text = "Accept")
                 }
 
                 OutlinedButton(
                     onClick = onSkip,
-                    border = BorderStroke(1.dp, Color(0xFF9CA3AF)),
+                    border = BorderStroke(1.dp, SoftCyanBorder.copy(alpha = 0.70f)),
                     colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = Color(0xFFE5E7EB)
-                    )
+                        contentColor = SoftIce
+                    ),
+                    shape = RoundedCornerShape(14.dp)
                 ) {
                     Text(text = "Skip")
                 }
@@ -109,14 +127,30 @@ fun ContractActiveChip(
 ) {
     val contract = contractState.activeContract ?: return
 
-    Text(
-        text = "${contract.title} - ${shortProgressText(contractState)} - +${contract.rewardPoints}/-${contract.penaltyPoints}",
-        color = Color(0xFFBAE6FD),
-        style = MaterialTheme.typography.labelLarge,
+    Row(
         modifier = modifier
-            .background(Color(0xEE1F2937), RoundedCornerShape(50))
-            .padding(horizontal = 12.dp, vertical = 8.dp)
-    )
+            .background(ContractChipNavy.copy(alpha = 0.94f), RoundedCornerShape(999.dp))
+            .border(1.dp, SoftCyanBorder.copy(alpha = 0.62f), RoundedCornerShape(999.dp))
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = contract.title,
+            color = IceWhite,
+            style = MaterialTheme.typography.labelLarge
+        )
+        Text(
+            text = shortProgressText(contractState),
+            color = BlueGray,
+            style = MaterialTheme.typography.labelMedium
+        )
+        Text(
+            text = "+${contract.rewardPoints}/-${contract.penaltyPoints}",
+            color = RewardMint,
+            style = MaterialTheme.typography.labelMedium
+        )
+    }
 }
 
 @Composable
@@ -126,20 +160,40 @@ fun ContractResultChip(
 ) {
     val contract = contractState.resolvedContract ?: return
     val text = if (contractState.isCompleted) {
-        "Contract Complete +${contract.rewardPoints}"
+        "Mission Complete +${contract.rewardPoints}"
     } else {
-        "Contract Failed -${contract.penaltyPoints}"
+        "Mission Failed -${contract.penaltyPoints}"
     }
-    val textColor = if (contractState.isCompleted) Color(0xFFBAE6FD) else Color(0xFFFCA5A5)
+    val accent = if (contractState.isCompleted) RewardMint else CoralWarning
 
     Text(
         text = text,
-        color = textColor,
+        color = if (contractState.isCompleted) IceWhite else CoralWarning,
         style = MaterialTheme.typography.titleSmall,
         modifier = modifier
-            .background(Color(0xF01F2937), RoundedCornerShape(8.dp))
-            .padding(horizontal = 14.dp, vertical = 10.dp)
+            .background(ContractChipNavy.copy(alpha = 0.96f), RoundedCornerShape(999.dp))
+            .border(1.dp, accent.copy(alpha = 0.72f), RoundedCornerShape(999.dp))
+            .padding(horizontal = 14.dp, vertical = 8.dp)
     )
+}
+
+@Composable
+private fun ContractMiniBadge(
+    text: String,
+    color: androidx.compose.ui.graphics.Color
+) {
+    Box(
+        modifier = Modifier
+            .background(color.copy(alpha = 0.12f), RoundedCornerShape(999.dp))
+            .border(1.dp, color.copy(alpha = 0.36f), RoundedCornerShape(999.dp))
+            .padding(horizontal = 10.dp, vertical = 5.dp)
+    ) {
+        Text(
+            text = text,
+            color = color,
+            style = MaterialTheme.typography.labelMedium
+        )
+    }
 }
 
 private fun shortProgressText(contractState: ContractState): String {

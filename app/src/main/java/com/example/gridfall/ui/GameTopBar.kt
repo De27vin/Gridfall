@@ -132,22 +132,22 @@ fun GameTopBar(
                 }
             }
 
-            // Combo Indicator (Active Only)
-            if (combo > 1) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.End)
-                        .clip(RoundedCornerShape(999.dp))
-                        .background(Color(0xCC2A1F0E))
-                        .border(1.dp, Color(0x66FFC857), RoundedCornerShape(999.dp))
-                        .padding(horizontal = 12.dp, vertical = 5.dp)
-                ) {
-                    Text(
-                        text = "COMBO ×$combo",
-                        color = ComboAmber,
-                        style = MaterialTheme.typography.labelLarge
-                    )
-                }
+        }
+
+        if (combo > 1) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .clip(RoundedCornerShape(999.dp))
+                    .background(Color(0xE6261D0D))
+                    .border(1.dp, ComboAmber.copy(alpha = 0.58f), RoundedCornerShape(999.dp))
+                    .padding(horizontal = 10.dp, vertical = 4.dp)
+            ) {
+                Text(
+                    text = "COMBO x$combo",
+                    color = ComboAmber,
+                    style = MaterialTheme.typography.labelMedium
+                )
             }
         }
     }

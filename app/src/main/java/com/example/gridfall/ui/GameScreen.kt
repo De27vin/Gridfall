@@ -47,6 +47,7 @@ import com.example.gridfall.game.GameEngine
 import com.example.gridfall.game.LevelSystem
 import com.example.gridfall.game.Piece
 import com.example.gridfall.game.PieceEffect
+import com.example.gridfall.game.ScoreSystem
 import com.example.gridfall.ui.theme.*
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
@@ -62,6 +63,10 @@ fun GameScreen(modifier: Modifier = Modifier) {
     var isNewBestThisGame by remember { mutableStateOf(false) }
     var lineClearFeedback by remember { mutableStateOf<LineClearFeedback?>(null) }
     var lineClearFeedbackToken by remember { mutableStateOf(0) }
+    var bombPulseFeedback by remember { mutableStateOf<BombPulseFeedback?>(null) }
+    var bombPulseFeedbackToken by remember { mutableStateOf(0) }
+    var scoreEventFeedback by remember { mutableStateOf<ScoreEventFeedback?>(null) }
+    var scoreEventFeedbackToken by remember { mutableStateOf(0) }
     val currentLevel = LevelSystem.levelForScore(gameState.score)
     val nextLevelScore = LevelSystem.nextLevelScore(currentLevel)
     val density = LocalDensity.current
@@ -91,6 +96,20 @@ fun GameScreen(modifier: Modifier = Modifier) {
         }
     }
 
+    LaunchedEffect(scoreEventFeedback?.token) {
+        if (scoreEventFeedback != null) {
+            delay(900)
+            scoreEventFeedback = null
+        }
+    }
+
+    LaunchedEffect(bombPulseFeedback?.token) {
+        if (bombPulseFeedback != null) {
+            delay(560)
+            bombPulseFeedback = null
+        }
+    }
+
     var showContractResult by remember { mutableStateOf(false) }
     LaunchedEffect(
         gameState.contractState.resolvedContract,
@@ -111,6 +130,8 @@ fun GameScreen(modifier: Modifier = Modifier) {
         gameState = GameEngine.createInitialState()
         dragState = DragState()
         lineClearFeedback = null
+        bombPulseFeedback = null
+        scoreEventFeedback = null
         isNewBestThisGame = false
     }
 
@@ -136,6 +157,14 @@ fun GameScreen(modifier: Modifier = Modifier) {
 
             if (nextState != gameState) {
                 view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                val nextScoreEvent = createScoreEventFeedback(
+                    board = gameState.board,
+                    piece = piece,
+                    startRow = target.startRow,
+                    startCol = target.startCol,
+                    clearResult = clearResult,
+                    nextState = nextState
+                )
                 gameState = nextState
 
                 if (nextState.score > highScore) {
@@ -151,6 +180,20 @@ fun GameScreen(modifier: Modifier = Modifier) {
                         clearedColumns = clearResult.clearedColumns,
                         token = lineClearFeedbackToken
                     )
+                }
+
+                createBombPulseFeedback(
+                    piece = piece,
+                    startRow = target.startRow,
+                    startCol = target.startCol
+                )?.let { feedback ->
+                    bombPulseFeedbackToken += 1
+                    bombPulseFeedback = feedback.copy(token = bombPulseFeedbackToken)
+                }
+
+                if (nextScoreEvent != null) {
+                    scoreEventFeedbackToken += 1
+                    scoreEventFeedback = nextScoreEvent.copy(token = scoreEventFeedbackToken)
                 }
 
                 if (nextState.isGameOver) {
@@ -195,6 +238,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 board = gameState.board,
                 placementPreview = placementPreview,
                 lineClearFeedback = lineClearFeedback,
+                bombPulseFeedback = bombPulseFeedback,
                 onBoardLayoutChanged = { layoutInfo ->
                     boardLayoutInfo = layoutInfo
                 },
@@ -303,6 +347,16 @@ fun GameScreen(modifier: Modifier = Modifier) {
             )
         }
 
+        scoreEventFeedback?.let { feedback ->
+            ScoreEventChip(
+                feedback = feedback,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .systemBarsPadding()
+                    .padding(top = 160.dp)
+            )
+        }
+
         val offeredContract = gameState.contractState.offeredContract
         if (offeredContract != null) {
             Box(
@@ -375,67 +429,17 @@ private fun DraggedPiece(
 }
 
 private fun DrawScope.drawDraggedCell(topLeft: Offset, cellSize: Float, variant: Int) {
-    val cornerRadius = CornerRadius(8.dp.toPx(), 8.dp.toPx())
-    
-    val (topColor, midColor, bottomColor) = when (variant) {
-        1 -> Triple(ArcCyanTop, ArcCyan, ArcCyanBottom)
-        2 -> Triple(TacticalVioletTop, TacticalViolet, TacticalVioletBottom)
-        3 -> Triple(SignalAmberTop, SignalAmber, SignalAmberBottom)
-        4 -> Triple(RewardMintTop, RewardMint, RewardMintBottom)
-        else -> Triple(BombMagenta, BombMagenta, BombMagenta) // Bomb
-    }
-
-    // Main Gradient Fill
     drawRoundRect(
-        brush = Brush.verticalGradient(
-            colors = listOf(topColor, midColor, bottomColor),
-            startY = topLeft.y,
-            endY = topLeft.y + cellSize
-        ),
-        topLeft = topLeft,
+        color = Color.Black.copy(alpha = 0.24f),
+        topLeft = topLeft + Offset(cellSize * 0.08f, cellSize * 0.10f),
         size = Size(cellSize, cellSize),
-        cornerRadius = cornerRadius
+        cornerRadius = CornerRadius(8.dp.toPx(), 8.dp.toPx())
     )
-
-    // Inner highlight (top edge)
-    drawRoundRect(
-        color = Color(0x33FFFFFF),
-        topLeft = topLeft + Offset(2.dp.toPx(), 2.dp.toPx()),
-        size = Size(cellSize - 4.dp.toPx(), cellSize / 3f),
-        cornerRadius = cornerRadius
-    )
-
-    // Outer border for depth
-    drawRoundRect(
-        color = Color(0x22FFFFFF),
+    drawTacticalBlock(
         topLeft = topLeft,
-        size = Size(cellSize, cellSize),
-        cornerRadius = cornerRadius,
-        style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.dp.toPx())
+        cellSize = cellSize,
+        variant = variant
     )
-    
-    // Bottom shade
-    drawRoundRect(
-        color = Color(0x24000000),
-        topLeft = topLeft + Offset(0f, cellSize * 0.7f),
-        size = Size(cellSize, cellSize * 0.3f),
-        cornerRadius = cornerRadius
-    )
-
-    if (variant == 0) {
-        // Bomb detail
-        val center = topLeft + Offset(cellSize / 2f, cellSize / 2f)
-        drawCircle(
-            color = HotCore,
-            radius = cellSize * 0.24f,
-            center = center
-        )
-        drawCircle(
-            color = WarningOrange,
-            radius = cellSize * 0.12f,
-            center = center
-        )
-    }
 }
 
 private fun createPlacementPreview(
@@ -494,4 +498,89 @@ private fun previewClearResult(
     }
 
     return GameEngine.clearLines(placedBoard)
+}
+
+private fun createScoreEventFeedback(
+    board: Board,
+    piece: Piece,
+    startRow: Int,
+    startCol: Int,
+    clearResult: ClearResult?,
+    nextState: com.example.gridfall.game.GameState
+): ScoreEventFeedback? {
+    if (nextState.board.isEmpty()) {
+        return ScoreEventFeedback(
+            text = "Perfect Clear +${ScoreSystem.PERFECT_CLEAR_BONUS}",
+            tone = FeedbackTone.Success,
+            token = 0
+        )
+    }
+
+    if (
+        clearResult != null &&
+        clearResult.clearedRows.isNotEmpty() &&
+        clearResult.clearedColumns.isNotEmpty()
+    ) {
+        return ScoreEventFeedback(
+            text = "Cross Clear +${ScoreSystem.CROSS_CLEAR_BONUS}",
+            tone = FeedbackTone.Accent,
+            token = 0
+        )
+    }
+
+    if (piece.effect == PieceEffect.Bomb) {
+        val clearedCells = previewBombClearedCellCount(
+            board = board,
+            piece = piece,
+            startRow = startRow,
+            startCol = startCol
+        )
+        if (clearedCells > 0) {
+            return ScoreEventFeedback(
+                text = "Bomb Clear +${clearedCells * ScoreSystem.BOMB_CLEAR_POINTS_PER_CELL}",
+                tone = FeedbackTone.Bomb,
+                token = 0
+            )
+        }
+    }
+
+    return null
+}
+
+private fun createBombPulseFeedback(
+    piece: Piece,
+    startRow: Int,
+    startCol: Int
+): BombPulseFeedback? {
+    if (piece.effect != PieceEffect.Bomb) return null
+    val bombCell = piece.cells.singleOrNull() ?: return null
+
+    return BombPulseFeedback(
+        centerRow = startRow + bombCell.row,
+        centerCol = startCol + bombCell.col,
+        token = 0
+    )
+}
+
+private fun previewBombClearedCellCount(
+    board: Board,
+    piece: Piece,
+    startRow: Int,
+    startCol: Int
+): Int {
+    if (piece.effect != PieceEffect.Bomb) return 0
+    val bombCell = piece.cells.singleOrNull() ?: return 0
+    val centerRow = startRow + bombCell.row
+    val centerCol = startCol + bombCell.col
+    var clearedCells = 0
+
+    for (row in centerRow - 1..centerRow + 1) {
+        for (col in centerCol - 1..centerCol + 1) {
+            if (board.isInside(row, col) && board.get(row, col) != 0) {
+                clearedCells += 1
+            }
+        }
+    }
+
+    return clearedCells
 }
