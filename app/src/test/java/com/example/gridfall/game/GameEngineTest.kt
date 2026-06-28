@@ -1,5 +1,8 @@
 package com.example.gridfall.game
 
+import com.example.gridfall.ui.centerWarningCells
+import com.example.gridfall.ui.contractWarningCells
+import com.example.gridfall.ui.edgeWarningCells
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -963,21 +966,29 @@ class GameEngineTest {
     }
 
     @Test
-    fun expandedPieceLibraryContainsNewShapes() {
+    fun expandedPieceLibraryContainsRemainingNewShapes() {
         val ids = PieceLibrary.starterPieces.map { it.id }.toSet()
 
         assertTrue(ids.containsAll(
             setOf(
-                "horizontal_5",
-                "vertical_5",
                 "plus_5",
+                "big_l_5",
+                "big_l_5_mirrored",
                 "t_4",
                 "t_4_down",
                 "s_4",
-                "z_4",
-                "square_3x3"
+                "z_4"
             )
         ))
+    }
+
+    @Test
+    fun overlyDifficultPiecesAreRemovedFromLibrary() {
+        val ids = PieceLibrary.starterPieces.map { it.id }.toSet()
+
+        assertFalse(ids.contains("horizontal_5"))
+        assertFalse(ids.contains("vertical_5"))
+        assertFalse(ids.contains("square_3x3"))
     }
 
     @Test
@@ -1003,12 +1014,15 @@ class GameEngineTest {
     }
 
     @Test
-    fun squareThreeByThreeIsEpic() {
-        val square = PieceLibrary.starterPieces.first { it.id == "square_3x3" }
+    fun fourCellLPiecesAreEpic() {
+        val piecesById = PieceLibrary.starterPieces.associateBy { it.id }
+        val lPiece = piecesById.getValue("l_4")
+        val mirroredLPiece = piecesById.getValue("l_4_mirrored")
 
-        assertEquals(PieceRarity.Epic, square.rarity)
-        assertEquals(3, square.width)
-        assertEquals(3, square.height)
+        assertEquals(PieceRarity.Epic, lPiece.rarity)
+        assertEquals(PieceRarity.Epic, mirroredLPiece.rarity)
+        assertEquals(4, lPiece.cellCount)
+        assertEquals(4, mirroredLPiece.cellCount)
     }
 
     @Test
@@ -1064,6 +1078,71 @@ class GameEngineTest {
         val batch = PieceGenerator.generateBatch(random = Random(7), bombChance = 0f)
 
         assertEquals(3, batch.size)
+    }
+
+    @Test
+    fun generateBatchNeverReturnsRemovedPieces() {
+        val removedIds = setOf("horizontal_5", "vertical_5", "square_3x3")
+        val generatedIds = (0 until 500).flatMap { seed ->
+            PieceGenerator.generateBatch(
+                level = 8,
+                bombChance = 0f,
+                random = Random(seed)
+            )
+        }.map { it.id }.toSet()
+
+        assertTrue(generatedIds.intersect(removedIds).isEmpty())
+    }
+
+    @Test
+    fun edgeWarningCellsCoverOnlyBoardEdge() {
+        val cells = edgeWarningCells()
+
+        assertEquals(28, cells.size)
+        assertTrue(cells.contains(Cell(0, 0)))
+        assertTrue(cells.contains(Cell(0, Board.SIZE - 1)))
+        assertTrue(cells.contains(Cell(Board.SIZE - 1, 0)))
+        assertTrue(cells.contains(Cell(Board.SIZE - 1, Board.SIZE - 1)))
+        assertTrue(cells.contains(Cell(3, 0)))
+        assertTrue(cells.contains(Cell(7, 4)))
+        assertFalse(cells.contains(Cell(1, 1)))
+        assertFalse(cells.contains(Cell(3, 3)))
+    }
+
+    @Test
+    fun centerWarningCellsCoverCenterFourByFour() {
+        val cells = centerWarningCells()
+
+        assertEquals(16, cells.size)
+        assertTrue(cells.contains(Cell(2, 2)))
+        assertTrue(cells.contains(Cell(2, 5)))
+        assertTrue(cells.contains(Cell(5, 2)))
+        assertTrue(cells.contains(Cell(5, 5)))
+        assertFalse(cells.contains(Cell(1, 2)))
+        assertFalse(cells.contains(Cell(6, 5)))
+        assertFalse(cells.contains(Cell(0, 0)))
+    }
+
+    @Test
+    fun contractWarningCellsOnlyShowForAcceptedForbiddenZoneContracts() {
+        val noEdge = testContract(ContractType.NoEdgePlacement)
+        val avoidCenter = testContract(ContractType.AvoidCenterArea)
+        val lineContract = testContract(ContractType.ClearAtLeastOneLine)
+
+        assertEquals(
+            edgeWarningCells(),
+            contractWarningCells(ContractState(activeContract = noEdge, isAccepted = true))
+        )
+        assertEquals(
+            centerWarningCells(),
+            contractWarningCells(ContractState(activeContract = avoidCenter, isAccepted = true))
+        )
+        assertTrue(
+            contractWarningCells(ContractState(activeContract = lineContract, isAccepted = true)).isEmpty()
+        )
+        assertTrue(
+            contractWarningCells(ContractState(activeContract = noEdge, isAccepted = false)).isEmpty()
+        )
     }
 
     @Test

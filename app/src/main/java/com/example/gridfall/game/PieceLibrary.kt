@@ -107,7 +107,7 @@ object PieceLibrary {
                 Cell(1, 0),
                 Cell(2, 0), Cell(2, 1)
             ),
-            rarity = PieceRarity.Uncommon,
+            rarity = PieceRarity.Epic,
             colorVariant = 1
         ),
         Piece(
@@ -117,7 +117,7 @@ object PieceLibrary {
                 Cell(1, 1),
                 Cell(2, 0), Cell(2, 1)
             ),
-            rarity = PieceRarity.Uncommon,
+            rarity = PieceRarity.Epic,
             colorVariant = 2
         ),
         Piece(
@@ -137,18 +137,6 @@ object PieceLibrary {
             ),
             rarity = PieceRarity.Uncommon,
             colorVariant = 4
-        ),
-        Piece(
-            id = "horizontal_5",
-            cells = listOf(Cell(0, 0), Cell(0, 1), Cell(0, 2), Cell(0, 3), Cell(0, 4)),
-            rarity = PieceRarity.Rare,
-            colorVariant = 1
-        ),
-        Piece(
-            id = "vertical_5",
-            cells = listOf(Cell(0, 0), Cell(1, 0), Cell(2, 0), Cell(3, 0), Cell(4, 0)),
-            rarity = PieceRarity.Rare,
-            colorVariant = 2
         ),
         Piece(
             id = "plus_5",
@@ -181,16 +169,6 @@ object PieceLibrary {
             ),
             rarity = PieceRarity.Rare,
             colorVariant = 1
-        ),
-        Piece(
-            id = "square_3x3",
-            cells = listOf(
-                Cell(0, 0), Cell(0, 1), Cell(0, 2),
-                Cell(1, 0), Cell(1, 1), Cell(1, 2),
-                Cell(2, 0), Cell(2, 1), Cell(2, 2)
-            ),
-            rarity = PieceRarity.Epic,
-            colorVariant = 2
         )
     )
 }

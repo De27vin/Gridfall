@@ -136,10 +136,11 @@ internal fun PiecePreview(
         val maxCol = piece.cells.maxOf { it.col }
         val rowCount = maxRow - minRow + 1
         val colCount = maxCol - minCol + 1
-        val spacing = size.minDimension * 0.04f
+        val spacing = size.minDimension * 0.035f
+        val trayGridSize = max(3, max(rowCount, colCount))
         val cellSize = min(
-            (size.width - spacing * max(0, colCount - 1)) / colCount,
-            (size.height - spacing * max(0, rowCount - 1)) / rowCount
+            (size.width - spacing * max(0, trayGridSize - 1)) / trayGridSize,
+            (size.height - spacing * max(0, trayGridSize - 1)) / trayGridSize
         )
         val previewWidth = cellSize * colCount + spacing * max(0, colCount - 1)
         val previewHeight = cellSize * rowCount + spacing * max(0, rowCount - 1)

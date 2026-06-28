@@ -26,6 +26,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.unit.dp
 import com.example.gridfall.game.Board
+import com.example.gridfall.game.Cell
 import com.example.gridfall.game.PieceEffect
 import com.example.gridfall.ui.theme.*
 
@@ -36,6 +37,7 @@ fun BoardCanvas(
     placementPreview: PlacementPreview? = null,
     lineClearFeedback: LineClearFeedback? = null,
     bombPulseFeedback: BombPulseFeedback? = null,
+    contractWarningCells: Set<Cell> = emptySet(),
     onBoardLayoutChanged: (BoardLayoutInfo) -> Unit = {}
 ) {
     val linePulse = remember { Animatable(1f) }
@@ -102,6 +104,17 @@ fun BoardCanvas(
                     } else {
                         drawFilledCell(topLeft, cellSize, cellValue)
                     }
+                }
+            }
+
+            // Contract warning zones are guidance only; placement previews draw over them.
+            contractWarningCells.forEach { cell ->
+                if (cell.row in 0 until Board.SIZE && cell.col in 0 until Board.SIZE) {
+                    val topLeft = Offset(
+                        x = spacing + cell.col * (cellSize + spacing),
+                        y = spacing + cell.row * (cellSize + spacing)
+                    )
+                    drawContractWarningCell(topLeft, cellSize)
                 }
             }
 
@@ -316,5 +329,28 @@ private fun DrawScope.drawFilledCell(topLeft: Offset, cellSize: Float, variant: 
         topLeft = topLeft,
         cellSize = cellSize,
         variant = variant
+    )
+}
+
+private fun DrawScope.drawContractWarningCell(topLeft: Offset, cellSize: Float) {
+    val cornerRadius = CornerRadius(8.dp.toPx(), 8.dp.toPx())
+
+    drawRoundRect(
+        color = CoralWarning.copy(alpha = 0.14f),
+        topLeft = topLeft,
+        size = Size(cellSize, cellSize),
+        cornerRadius = cornerRadius
+    )
+    drawRoundRect(
+        color = CoralWarning.copy(alpha = 0.30f),
+        topLeft = topLeft + Offset(1.dp.toPx(), 1.dp.toPx()),
+        size = Size(cellSize - 2.dp.toPx(), cellSize - 2.dp.toPx()),
+        cornerRadius = cornerRadius,
+        style = Stroke(width = 1.dp.toPx())
+    )
+    drawRect(
+        color = CoralWarning.copy(alpha = 0.18f),
+        topLeft = topLeft + Offset(0f, cellSize * 0.78f),
+        size = Size(cellSize, 1.5.dp.toPx())
     )
 }

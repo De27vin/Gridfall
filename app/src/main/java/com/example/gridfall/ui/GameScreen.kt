@@ -239,6 +239,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 placementPreview = placementPreview,
                 lineClearFeedback = lineClearFeedback,
                 bombPulseFeedback = bombPulseFeedback,
+                contractWarningCells = contractWarningCells(gameState.contractState),
                 onBoardLayoutChanged = { layoutInfo ->
                     boardLayoutInfo = layoutInfo
                 },
