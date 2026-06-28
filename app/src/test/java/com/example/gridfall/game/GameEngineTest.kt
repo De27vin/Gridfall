@@ -737,13 +737,15 @@ class GameEngineTest {
         val afterSecond = GameEngine.placePiece(afterFirst, pieceIndex = 1, startRow = 1, startCol = 2)
         val afterThird = GameEngine.placePiece(afterSecond, pieceIndex = 2, startRow = 1, startCol = 3)
 
+        assertNotNull(afterFirst.contractState.activeContract)
+        assertFalse(afterFirst.contractState.isFailed)
         assertTrue(afterThird.contractState.isCompleted)
         assertFalse(afterThird.contractState.isFailed)
         assertEquals(28, afterThird.score)
     }
 
     @Test
-    fun noEdgePlacementContractFailsWhenPlacedCellTouchesEdge() {
+    fun noEdgePlacementContractFailsImmediatelyWhenPlacedCellTouchesEdge() {
         val piece = Piece("single", listOf(Cell(0, 0)))
         val contract = testContract(ContractType.NoEdgePlacement, rewardPoints = 25)
         val state = acceptedContractState(
@@ -752,13 +754,49 @@ class GameEngineTest {
         )
 
         val afterFirst = GameEngine.placePiece(state, pieceIndex = 0, startRow = 0, startCol = 1)
+
+        assertNull(afterFirst.contractState.activeContract)
+        assertEquals(contract, afterFirst.contractState.resolvedContract)
+        assertFalse(afterFirst.contractState.isCompleted)
+        assertTrue(afterFirst.contractState.isFailed)
+        assertTrue(afterFirst.contractState.penaltyApplied)
+        assertTrue(afterFirst.contractState.batchesUntilNextOffer in 12..18)
+        assertTrue(contractWarningCells(afterFirst.contractState).isEmpty())
+        assertEquals(0, afterFirst.score)
+    }
+
+    @Test
+    fun noEdgePlacementImmediateFailureAppliesPenaltyAndDoesNotApplyAgainAtBatchEnd() {
+        val piece = Piece("single", listOf(Cell(0, 0)))
+        val contract = testContract(ContractType.NoEdgePlacement, rewardPoints = 25)
+        val state = acceptedContractState(
+            contract = contract,
+            score = 80,
+            currentPieces = listOf(piece, piece, piece)
+        )
+
+        val afterFirst = GameEngine.placePiece(state, pieceIndex = 0, startRow = 0, startCol = 1)
         val afterSecond = GameEngine.placePiece(afterFirst, pieceIndex = 1, startRow = 1, startCol = 1)
         val afterThird = GameEngine.placePiece(afterSecond, pieceIndex = 2, startRow = 1, startCol = 2)
 
-        assertFalse(afterThird.contractState.isCompleted)
-        assertTrue(afterThird.contractState.isFailed)
-        assertTrue(afterThird.contractState.penaltyApplied)
-        assertEquals(0, afterThird.score)
+        assertEquals(31, afterFirst.score)
+        assertNull(afterFirst.contractState.activeContract)
+        assertTrue(afterFirst.contractState.penaltyApplied)
+        assertEquals(33, afterThird.score)
+    }
+
+    @Test
+    fun noEdgePlacementImmediateFailureClampsScoreAtZero() {
+        val piece = Piece("single", listOf(Cell(0, 0)))
+        val contract = testContract(ContractType.NoEdgePlacement, rewardPoints = 25)
+        val state = acceptedContractState(
+            contract = contract,
+            currentPieces = listOf(piece, piece, piece)
+        )
+
+        val afterFirst = GameEngine.placePiece(state, pieceIndex = 0, startRow = 0, startCol = 1)
+
+        assertEquals(0, afterFirst.score)
     }
 
     @Test
@@ -774,13 +812,15 @@ class GameEngineTest {
         val afterSecond = GameEngine.placePiece(afterFirst, pieceIndex = 1, startRow = 0, startCol = 1)
         val afterThird = GameEngine.placePiece(afterSecond, pieceIndex = 2, startRow = 0, startCol = 2)
 
+        assertNotNull(afterFirst.contractState.activeContract)
+        assertFalse(afterFirst.contractState.isFailed)
         assertTrue(afterThird.contractState.isCompleted)
         assertFalse(afterThird.contractState.isFailed)
         assertEquals(28, afterThird.score)
     }
 
     @Test
-    fun avoidCenterAreaContractFailsWhenPlacedCellUsesCenterFourByFour() {
+    fun avoidCenterAreaContractFailsImmediatelyWhenPlacedCellUsesCenterFourByFour() {
         val piece = Piece("single", listOf(Cell(0, 0)))
         val contract = testContract(ContractType.AvoidCenterArea, rewardPoints = 25)
         val state = acceptedContractState(
@@ -789,13 +829,35 @@ class GameEngineTest {
         )
 
         val afterFirst = GameEngine.placePiece(state, pieceIndex = 0, startRow = 2, startCol = 2)
+
+        assertNull(afterFirst.contractState.activeContract)
+        assertEquals(contract, afterFirst.contractState.resolvedContract)
+        assertFalse(afterFirst.contractState.isCompleted)
+        assertTrue(afterFirst.contractState.isFailed)
+        assertTrue(afterFirst.contractState.penaltyApplied)
+        assertTrue(afterFirst.contractState.batchesUntilNextOffer in 12..18)
+        assertTrue(contractWarningCells(afterFirst.contractState).isEmpty())
+        assertEquals(0, afterFirst.score)
+    }
+
+    @Test
+    fun avoidCenterAreaImmediateFailureAppliesPenaltyAndDoesNotApplyAgainAtBatchEnd() {
+        val piece = Piece("single", listOf(Cell(0, 0)))
+        val contract = testContract(ContractType.AvoidCenterArea, rewardPoints = 25)
+        val state = acceptedContractState(
+            contract = contract,
+            score = 80,
+            currentPieces = listOf(piece, piece, piece)
+        )
+
+        val afterFirst = GameEngine.placePiece(state, pieceIndex = 0, startRow = 2, startCol = 2)
         val afterSecond = GameEngine.placePiece(afterFirst, pieceIndex = 1, startRow = 0, startCol = 0)
         val afterThird = GameEngine.placePiece(afterSecond, pieceIndex = 2, startRow = 0, startCol = 1)
 
-        assertFalse(afterThird.contractState.isCompleted)
-        assertTrue(afterThird.contractState.isFailed)
-        assertTrue(afterThird.contractState.penaltyApplied)
-        assertEquals(0, afterThird.score)
+        assertEquals(31, afterFirst.score)
+        assertNull(afterFirst.contractState.activeContract)
+        assertTrue(afterFirst.contractState.penaltyApplied)
+        assertEquals(33, afterThird.score)
     }
 
     @Test
@@ -1147,11 +1209,30 @@ class GameEngineTest {
 
     @Test
     fun contractRewardScalesWithLevel() {
-        val lowLevelContract = ContractGenerator.generate(level = 1)
-        val highLevelContract = ContractGenerator.generate(level = 4)
+        val lowLevelEasyLine = ContractGenerator.generateForType(ContractType.ClearAtLeastOneLine, level = 1)
+        val highLevelEasyLine = ContractGenerator.generateForType(ContractType.ClearAtLeastOneLine, level = 4)
+        val lowLevelExactLines = ContractGenerator.generateForType(ContractType.ClearExactlyTwoLines, level = 1)
+        val highLevelExactLines = ContractGenerator.generateForType(ContractType.ClearExactlyTwoLines, level = 4)
 
-        assertTrue(lowLevelContract.rewardPoints in setOf(25, 35))
-        assertTrue(highLevelContract.rewardPoints in setOf(40, 50))
+        assertEquals(25, lowLevelEasyLine.rewardPoints)
+        assertEquals(40, highLevelEasyLine.rewardPoints)
+        assertEquals(40, lowLevelExactLines.rewardPoints)
+        assertEquals(55, highLevelExactLines.rewardPoints)
+        assertTrue(lowLevelExactLines.rewardPoints > lowLevelEasyLine.rewardPoints)
+    }
+
+    @Test
+    fun lineClearContractsHaveLowerGenerationWeightThanMediumContracts() {
+        val weights = ContractGenerator.contractTypeWeights()
+        val lineClearWeight = weights.getValue(ContractType.ClearAtLeastOneLine) +
+            weights.getValue(ContractType.ClearExactlyTwoLines)
+        val mediumWeight = weights.getValue(ContractType.NoEdgePlacement) +
+            weights.getValue(ContractType.AvoidCenterArea) +
+            weights.getValue(ContractType.ScoreAtLeastTwenty)
+
+        assertTrue(weights.getValue(ContractType.ClearAtLeastOneLine) < weights.getValue(ContractType.NoEdgePlacement))
+        assertTrue(weights.getValue(ContractType.ClearExactlyTwoLines) < weights.getValue(ContractType.AvoidCenterArea))
+        assertTrue(lineClearWeight < mediumWeight)
     }
 
     @Test

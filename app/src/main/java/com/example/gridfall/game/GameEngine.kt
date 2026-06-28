@@ -165,19 +165,24 @@ object GameEngine {
             clearedLineCount = placementResult.clearedLineCount,
             scoreGained = placementResult.scoreGained
         )
+        val immediateContractEvaluation = evaluateImmediateContractFailure(updatedContractState)
         val nextUsedPieceIndices = state.usedPieceIndices + pieceIndex
         val allPiecesUsed = state.currentPieces.indices.all { it in nextUsedPieceIndices }
-        val scoreAfterPlacement = state.score + placementResult.scoreGained
+        val scoreAfterPlacement = (
+            state.score +
+                placementResult.scoreGained +
+                immediateContractEvaluation.scoreDelta
+            ).coerceAtLeast(0)
 
         val nextPieces: List<Piece>
         val finalUsedPieceIndices: Set<Int>
         val finalContractState: ContractState
-        val rewardPoints: Int
+        val contractScoreDelta: Int
         if (allPiecesUsed) {
             finalUsedPieceIndices = emptySet()
-            val evaluation = evaluateContractBatch(updatedContractState)
-            rewardPoints = evaluation.scoreDelta
-            val finalScore = (scoreAfterPlacement + rewardPoints).coerceAtLeast(0)
+            val evaluation = evaluateContractBatch(immediateContractEvaluation.contractState)
+            contractScoreDelta = evaluation.scoreDelta
+            val finalScore = (scoreAfterPlacement + contractScoreDelta).coerceAtLeast(0)
             val nextLevel = LevelSystem.levelForScore(finalScore)
             nextPieces = PieceGenerator.generateBatch(level = nextLevel)
             finalContractState = advanceContractBatch(
@@ -187,8 +192,8 @@ object GameEngine {
         } else {
             nextPieces = state.currentPieces
             finalUsedPieceIndices = nextUsedPieceIndices
-            finalContractState = updatedContractState
-            rewardPoints = 0
+            finalContractState = immediateContractEvaluation.contractState
+            contractScoreDelta = 0
         }
 
         val availablePieces = nextPieces.filterIndexed { index, _ ->
@@ -200,7 +205,7 @@ object GameEngine {
             board = placementResult.board,
             currentPieces = nextPieces,
             usedPieceIndices = finalUsedPieceIndices,
-            score = (scoreAfterPlacement + rewardPoints).coerceAtLeast(0),
+            score = (scoreAfterPlacement + contractScoreDelta).coerceAtLeast(0),
             combo = placementResult.nextCombo,
             isGameOver = isGameOver,
             contractState = finalContractState
@@ -322,7 +327,44 @@ object GameEngine {
         )
     }
 
+    private fun evaluateImmediateContractFailure(contractState: ContractState): ContractEvaluation {
+        val activeContract = contractState.activeContract
+        if (!contractState.isAccepted || activeContract == null) {
+            return ContractEvaluation(contractState = contractState, scoreDelta = 0)
+        }
+
+        val failed = when (activeContract.type) {
+            ContractType.NoEdgePlacement -> contractState.usedEdge
+            ContractType.AvoidCenterArea -> contractState.usedCenter
+            ContractType.ClearAtLeastOneLine,
+            ContractType.ClearExactlyTwoLines,
+            ContractType.ScoreAtLeastTwenty -> false
+        }
+
+        if (!failed) {
+            return ContractEvaluation(contractState = contractState, scoreDelta = 0)
+        }
+
+        return ContractEvaluation(
+            contractState = ContractState(
+                resolvedContract = activeContract,
+                isFailed = true,
+                penaltyApplied = true,
+                batchesUntilNextOffer = ContractGenerator.nextOfferCooldown(),
+                completedBatchCount = contractState.completedBatchCount
+            ),
+            scoreDelta = -activeContract.penaltyPoints
+        )
+    }
+
     private fun evaluateContractBatch(contractState: ContractState): ContractEvaluation {
+        if (contractState.resolvedContract != null) {
+            return ContractEvaluation(
+                contractState = contractState,
+                scoreDelta = 0
+            )
+        }
+
         val activeContract = contractState.activeContract
         if (!contractState.isAccepted || activeContract == null) {
             return ContractEvaluation(
