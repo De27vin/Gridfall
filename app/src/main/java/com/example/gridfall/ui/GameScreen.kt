@@ -67,6 +67,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
     var bombPulseFeedbackToken by remember { mutableStateOf(0) }
     var scoreEventFeedback by remember { mutableStateOf<ScoreEventFeedback?>(null) }
     var scoreEventFeedbackToken by remember { mutableStateOf(0) }
+    var showRestartConfirmDialog by remember { mutableStateOf(false) }
     val currentLevel = LevelSystem.levelForScore(gameState.score)
     val nextLevelScore = LevelSystem.nextLevelScore(currentLevel)
     val density = LocalDensity.current
@@ -127,6 +128,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
     }
 
     fun restartGame() {
+        showRestartConfirmDialog = false
         gameState = GameEngine.createInitialState()
         dragState = DragState()
         lineClearFeedback = null
@@ -299,7 +301,9 @@ fun GameScreen(modifier: Modifier = Modifier) {
             Spacer(modifier = Modifier.height(12.dp))
 
             Button(
-                onClick = ::restartGame,
+                onClick = {
+                    showRestartConfirmDialog = true
+                },
                 colors = ButtonDefaults.buttonColors(
                     containerColor = SlateButton,
                     contentColor = IceWhite
@@ -386,6 +390,13 @@ fun GameScreen(modifier: Modifier = Modifier) {
             highScore = highScore,
             isNewBest = isNewBestThisGame,
             onRestart = ::restartGame
+        )
+    } else if (showRestartConfirmDialog) {
+        RestartConfirmDialog(
+            onCancel = {
+                showRestartConfirmDialog = false
+            },
+            onConfirmRestart = ::restartGame
         )
     }
 }
