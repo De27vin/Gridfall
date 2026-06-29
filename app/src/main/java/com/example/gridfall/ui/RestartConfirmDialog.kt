@@ -11,6 +11,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.gridfall.ui.theme.ContractChipNavy
 import com.example.gridfall.ui.theme.CoralWarning
@@ -24,15 +25,18 @@ fun RestartConfirmDialog(
     onCancel: () -> Unit,
     onConfirmRestart: () -> Unit
 ) {
+    val theme = com.example.gridfall.ui.theme.LocalGridfallColors.current
+
     AlertDialog(
         onDismissRequest = onCancel,
-        containerColor = DialogNavy,
+        modifier = Modifier.infernoPanelTexture(theme),
+        containerColor = theme.dialogBackground,
         shape = RoundedCornerShape(24.dp),
         tonalElevation = 0.dp,
         title = {
             Text(
                 text = "Restart game?",
-                color = IceWhite,
+                color = theme.textPrimary,
                 style = MaterialTheme.typography.headlineMedium
             )
         },
@@ -40,7 +44,7 @@ fun RestartConfirmDialog(
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
                     text = "Your current run will be lost.",
-                    color = SoftIce,
+                    color = theme.textSecondary,
                     style = MaterialTheme.typography.bodyMedium
                 )
             }
@@ -48,9 +52,9 @@ fun RestartConfirmDialog(
         dismissButton = {
             OutlinedButton(
                 onClick = onCancel,
-                border = BorderStroke(1.dp, SoftCyanBorder.copy(alpha = 0.72f)),
+                border = BorderStroke(1.dp, theme.panelBorder.copy(alpha = 0.72f)),
                 colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = SoftIce
+                    contentColor = theme.textSecondary
                 ),
                 shape = RoundedCornerShape(14.dp)
             ) {
@@ -61,8 +65,8 @@ fun RestartConfirmDialog(
             Button(
                 onClick = onConfirmRestart,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = CoralWarning,
-                    contentColor = ContractChipNavy
+                    containerColor = theme.danger,
+                    contentColor = theme.chipBackground
                 ),
                 shape = RoundedCornerShape(14.dp)
             ) {

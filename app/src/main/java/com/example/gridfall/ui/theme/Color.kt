@@ -1,5 +1,6 @@
 package com.example.gridfall.ui.theme
 
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 
 // Core Surfaces
@@ -60,3 +61,161 @@ val DialogNavy = Color(0xFF151D2A)
 val SoftCyanBorder = Color(0xFF31536A)
 val CoralWarning = Color(0xFFFF5A6A)
 val PremiumGold = Color(0xFFFFD166)
+
+enum class GridfallThemeMode(val id: String, val label: String) {
+    PremiumTactical("premium_tactical", "Premium Tactical"),
+    InfernoCore("inferno_core", "Inferno Core");
+
+    companion object {
+        fun fromId(id: String?): GridfallThemeMode {
+            return entries.firstOrNull { it.id == id } ?: PremiumTactical
+        }
+    }
+}
+
+data class GridfallColors(
+    val backgroundTop: Color,
+    val backgroundBottom: Color,
+    val darkGlass: Color,
+    val tacticalFrame: Color,
+    val boardInner: Color,
+    val emptyCell: Color,
+    val emptyCellBorder: Color,
+    val textPrimary: Color,
+    val textSecondary: Color,
+    val textMuted: Color,
+    val accent: Color,
+    val accentStrong: Color,
+    val success: Color,
+    val warning: Color,
+    val danger: Color,
+    val button: Color,
+    val buttonPressed: Color,
+    val dialogBackground: Color,
+    val chipBackground: Color,
+    val panelBackground: Color,
+    val panelBorder: Color,
+    val validPreviewFill: Color,
+    val validPreviewBorder: Color,
+    val invalidPreviewFill: Color,
+    val invalidPreviewBorder: Color,
+    val contractWarningFill: Color,
+    val contractWarningBorder: Color,
+    val block1Top: Color,
+    val block1Mid: Color,
+    val block1Bottom: Color,
+    val block2Top: Color,
+    val block2Mid: Color,
+    val block2Bottom: Color,
+    val block3Top: Color,
+    val block3Mid: Color,
+    val block3Bottom: Color,
+    val block4Top: Color,
+    val block4Mid: Color,
+    val block4Bottom: Color,
+    val bombOuter: Color,
+    val bombCore: Color,
+    val bombInner: Color,
+    val bombGlow: Color
+)
+
+val PremiumTacticalColors = GridfallColors(
+    backgroundTop = MidnightNavy,
+    backgroundBottom = DeepGraphite,
+    darkGlass = DarkGlass,
+    tacticalFrame = TacticalFrame,
+    boardInner = DeepBoardNavy,
+    emptyCell = MutedCellNavy,
+    emptyCellBorder = SoftCyanBorder,
+    textPrimary = IceWhite,
+    textSecondary = SoftIce,
+    textMuted = BlueGray,
+    accent = LevelCyan,
+    accentStrong = ActionCyan,
+    success = RewardMint,
+    warning = PremiumGold,
+    danger = CoralWarning,
+    button = SlateButton,
+    buttonPressed = PressedSlate,
+    dialogBackground = DialogNavy,
+    chipBackground = ContractChipNavy,
+    panelBackground = DeepContractGlass,
+    panelBorder = SoftCyanBorder,
+    validPreviewFill = MintGhost,
+    validPreviewBorder = MintBorder,
+    invalidPreviewFill = CoralGhost,
+    invalidPreviewBorder = CoralBorder,
+    contractWarningFill = CoralWarning.copy(alpha = 0.14f),
+    contractWarningBorder = CoralWarning.copy(alpha = 0.30f),
+    block1Top = ArcCyanTop,
+    block1Mid = ArcCyan,
+    block1Bottom = ArcCyanBottom,
+    block2Top = TacticalVioletTop,
+    block2Mid = TacticalViolet,
+    block2Bottom = TacticalVioletBottom,
+    block3Top = SignalAmberTop,
+    block3Mid = SignalAmber,
+    block3Bottom = SignalAmberBottom,
+    block4Top = RewardMintTop,
+    block4Mid = RewardMint,
+    block4Bottom = RewardMintBottom,
+    bombOuter = BombMagenta,
+    bombCore = HotCore,
+    bombInner = WarningOrange,
+    bombGlow = BombGlow
+)
+
+val InfernoCoreColors = GridfallColors(
+    backgroundTop = Color(0xFF0D0504),
+    backgroundBottom = Color(0xFF1A0704),
+    darkGlass = Color(0xE0160805),
+    tacticalFrame = Color(0xFF2F1209),
+    boardInner = Color(0xFF110604),
+    emptyCell = Color(0xFF251009),
+    emptyCellBorder = Color(0xFF4A1D0E),
+    textPrimary = Color(0xFFFFE6B3),
+    textSecondary = Color(0xFFFFD9A0),
+    textMuted = Color(0xFFB98A6A),
+    accent = Color(0xFFFF8A00),
+    accentStrong = Color(0xFFFFD166),
+    success = Color(0xFFFFD166),
+    warning = Color(0xFFFFB347),
+    danger = Color(0xFFFF1744),
+    button = Color(0xFF873412),
+    buttonPressed = Color(0xFFB64616),
+    dialogBackground = Color(0xFF1A0905),
+    chipBackground = Color(0xFF2D1209),
+    panelBackground = Color(0xF2220D07),
+    panelBorder = Color(0xFF823313),
+    validPreviewFill = Color(0x4DFFB347),
+    validPreviewBorder = Color(0xFFFFB347),
+    invalidPreviewFill = Color(0x66FF1744),
+    invalidPreviewBorder = Color(0xFFFF1744),
+    contractWarningFill = Color(0x33A50F1F),
+    contractWarningBorder = Color(0x99FF1744),
+    block1Top = Color(0xFFFFC25B),
+    block1Mid = Color(0xFFFF6A1A),
+    block1Bottom = Color(0xFF8E2409),
+    block2Top = Color(0xFFFFD980),
+    block2Mid = Color(0xFFFF8A24),
+    block2Bottom = Color(0xFFA93209),
+    block3Top = Color(0xFFFFE69A),
+    block3Mid = Color(0xFFFFBE32),
+    block3Bottom = Color(0xFF9F5A0B),
+    block4Top = Color(0xFFFF9B6D),
+    block4Mid = Color(0xFFFF3D00),
+    block4Bottom = Color(0xFF7C1206),
+    bombOuter = Color(0xFFFF3D00),
+    bombCore = Color(0xFFFFD166),
+    bombInner = Color(0xFFFF8A00),
+    bombGlow = Color(0x77FF8A00)
+)
+
+val LocalGridfallColors = staticCompositionLocalOf { PremiumTacticalColors }
+
+fun colorsForThemeMode(mode: GridfallThemeMode): GridfallColors {
+    return when (mode) {
+        GridfallThemeMode.PremiumTactical -> PremiumTacticalColors
+        GridfallThemeMode.InfernoCore -> InfernoCoreColors
+    }
+}

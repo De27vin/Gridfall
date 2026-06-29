@@ -35,12 +35,15 @@ fun GameTopBar(
     onSettingsClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val theme = LocalGridfallColors.current
+
     Box(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(18.dp))
-            .background(DarkGlass)
-            .border(1.dp, Color(0xFF2B3A50), RoundedCornerShape(18.dp))
+            .background(theme.darkGlass)
+            .infernoPanelTexture(theme)
+            .border(1.dp, theme.panelBorder.copy(alpha = 0.70f), RoundedCornerShape(18.dp))
             .padding(12.dp)
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -53,13 +56,13 @@ fun GameTopBar(
                 Column(horizontalAlignment = Alignment.Start) {
                     Text(
                         text = "SCORE",
-                        color = BlueGray,
+                        color = theme.textMuted,
                         style = MaterialTheme.typography.labelSmall,
                         fontSize = 11.sp
                     )
                     Text(
                         text = String.format(Locale.US, "%,d", score),
-                        color = IceWhite,
+                        color = theme.textPrimary,
                         style = MaterialTheme.typography.displayMedium
                     )
                 }
@@ -67,15 +70,16 @@ fun GameTopBar(
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(999.dp))
-                        .background(SlateButton.copy(alpha = 0.74f))
-                        .border(1.dp, SoftCyanBorder.copy(alpha = 0.52f), RoundedCornerShape(999.dp))
+                        .background(theme.button.copy(alpha = 0.74f))
+                        .infernoPanelTexture(theme)
+                        .border(1.dp, theme.panelBorder.copy(alpha = 0.52f), RoundedCornerShape(999.dp))
                         .clickable(onClick = onSettingsClick)
                         .padding(horizontal = 11.dp, vertical = 6.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = "Settings",
-                        color = SoftIce,
+                        color = theme.textSecondary,
                         style = MaterialTheme.typography.labelMedium
                     )
                 }
@@ -83,13 +87,13 @@ fun GameTopBar(
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
                         text = "BEST",
-                        color = BlueGray,
+                        color = theme.textMuted,
                         style = MaterialTheme.typography.labelSmall,
                         fontSize = 11.sp
                     )
                     Text(
                         text = String.format(Locale.US, "%,d", highScore),
-                        color = SoftIce,
+                        color = theme.textSecondary,
                         style = MaterialTheme.typography.displaySmall
                     )
                 }
@@ -104,7 +108,7 @@ fun GameTopBar(
                 ) {
                     Text(
                         text = "LEVEL $level",
-                        color = LevelCyan,
+                        color = theme.accent,
                         style = MaterialTheme.typography.labelLarge
                     )
 
@@ -118,7 +122,7 @@ fun GameTopBar(
 
                     Text(
                         text = progressText,
-                        color = BlueGray,
+                        color = theme.textMuted,
                         style = MaterialTheme.typography.labelSmall
                     )
                 }
@@ -138,14 +142,14 @@ fun GameTopBar(
                         .fillMaxWidth()
                         .height(6.dp)
                         .clip(RoundedCornerShape(999.dp))
-                        .background(SlateButton)
+                        .background(theme.button)
                 ) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth(progress)
                             .height(6.dp)
                             .clip(RoundedCornerShape(999.dp))
-                            .background(LevelCyan)
+                            .background(theme.accent)
                     )
                 }
             }
@@ -157,13 +161,13 @@ fun GameTopBar(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .clip(RoundedCornerShape(999.dp))
-                    .background(Color(0xE6261D0D))
-                    .border(1.dp, ComboAmber.copy(alpha = 0.58f), RoundedCornerShape(999.dp))
+                    .background(theme.warning.copy(alpha = 0.14f))
+                    .border(1.dp, theme.warning.copy(alpha = 0.58f), RoundedCornerShape(999.dp))
                     .padding(horizontal = 10.dp, vertical = 4.dp)
             ) {
                 Text(
                     text = "COMBO x$combo",
-                    color = ComboAmber,
+                    color = theme.warning,
                     style = MaterialTheme.typography.labelMedium
                 )
             }

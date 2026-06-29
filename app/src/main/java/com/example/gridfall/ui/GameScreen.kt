@@ -23,6 +23,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -69,8 +70,9 @@ fun GameScreen(modifier: Modifier = Modifier) {
     var scoreEventFeedbackToken by remember { mutableStateOf(0) }
     var showRestartConfirmDialog by remember { mutableStateOf(false) }
     var showSettingsScreen by remember { mutableStateOf(false) }
-    var selectedTheme by remember { mutableStateOf("Premium Tactical") }
+    var selectedThemeMode by remember { mutableStateOf(ThemePreferenceStore.load(context)) }
     var soundEnabled by remember { mutableStateOf(true) }
+    val activeThemeColors = colorsForThemeMode(selectedThemeMode)
     val currentLevel = LevelSystem.levelForScore(gameState.score)
     val nextLevelScore = LevelSystem.nextLevelScore(currentLevel)
     val density = LocalDensity.current
@@ -215,29 +217,34 @@ fun GameScreen(modifier: Modifier = Modifier) {
         dragState = DragState()
     }
 
-    if (showSettingsScreen) {
-        SettingsScreen(
-            selectedTheme = selectedTheme,
-            soundEnabled = soundEnabled,
-            onThemeSelected = { theme ->
-                selectedTheme = theme
-            },
-            onSoundEnabledChange = { enabled ->
-                soundEnabled = enabled
-            },
-            onReturnToGame = {
-                showSettingsScreen = false
-            },
-            modifier = modifier
-        )
-        return
-    }
-
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(MidnightNavy, DeepGraphite)))
-    ) {
+    CompositionLocalProvider(LocalGridfallColors provides activeThemeColors) {
+        if (showSettingsScreen) {
+            SettingsScreen(
+                selectedThemeMode = selectedThemeMode,
+                soundEnabled = soundEnabled,
+                onThemeSelected = { theme ->
+                    selectedThemeMode = theme
+                    ThemePreferenceStore.save(context, theme)
+                },
+                onSoundEnabledChange = { enabled ->
+                    soundEnabled = enabled
+                },
+                onReturnToGame = {
+                    showSettingsScreen = false
+                },
+                modifier = modifier
+            )
+        } else {
+            Box(
+                modifier = modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(activeThemeColors.backgroundTop, activeThemeColors.backgroundBottom)
+                        )
+                    )
+                    .infernoAppTexture(activeThemeColors)
+            ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -331,8 +338,8 @@ fun GameScreen(modifier: Modifier = Modifier) {
                     showRestartConfirmDialog = true
                 },
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = SlateButton,
-                    contentColor = IceWhite
+                    containerColor = activeThemeColors.button,
+                    contentColor = activeThemeColors.textPrimary
                 ),
                 shape = RoundedCornerShape(16.dp),
                 modifier = Modifier
@@ -393,7 +400,8 @@ fun GameScreen(modifier: Modifier = Modifier) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color(0xCC02060B))
+                    .background(activeThemeColors.backgroundTop.copy(alpha = 0.84f))
+                    .infernoAppTexture(activeThemeColors)
                     .padding(horizontal = 28.dp),
                 contentAlignment = Alignment.Center
             ) {
@@ -425,6 +433,8 @@ fun GameScreen(modifier: Modifier = Modifier) {
             onConfirmRestart = ::restartGame
         )
     }
+        }
+    }
 }
 
 @Composable
@@ -448,6 +458,7 @@ private fun DraggedPiece(
     val density = LocalDensity.current
     val widthDp = with(density) { widthPx.toDp() }
     val heightDp = with(density) { heightPx.toDp() }
+    val theme = LocalGridfallColors.current
 
     Canvas(
         modifier = modifier
@@ -461,12 +472,17 @@ private fun DraggedPiece(
                 y = row * (cellSizePx + spacingPx)
             )
 
-            drawDraggedCell(topLeft, cellSizePx, piece.colorVariant)
+            drawDraggedCell(topLeft, cellSizePx, piece.colorVariant, theme)
         }
     }
 }
 
-private fun DrawScope.drawDraggedCell(topLeft: Offset, cellSize: Float, variant: Int) {
+private fun DrawScope.drawDraggedCell(
+    topLeft: Offset,
+    cellSize: Float,
+    variant: Int,
+    colors: com.example.gridfall.ui.theme.GridfallColors
+) {
     drawRoundRect(
         color = Color.Black.copy(alpha = 0.24f),
         topLeft = topLeft + Offset(cellSize * 0.08f, cellSize * 0.10f),
@@ -476,7 +492,8 @@ private fun DrawScope.drawDraggedCell(topLeft: Offset, cellSize: Float, variant:
     drawTacticalBlock(
         topLeft = topLeft,
         cellSize = cellSize,
-        variant = variant
+        variant = variant,
+        colors = colors
     )
 }
 

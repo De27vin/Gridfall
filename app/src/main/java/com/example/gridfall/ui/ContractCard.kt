@@ -31,6 +31,7 @@ import com.example.gridfall.ui.theme.ContractChipNavy
 import com.example.gridfall.ui.theme.CoralWarning
 import com.example.gridfall.ui.theme.DeepContractGlass
 import com.example.gridfall.ui.theme.IceWhite
+import com.example.gridfall.ui.theme.LocalGridfallColors
 import com.example.gridfall.ui.theme.RewardMint
 import com.example.gridfall.ui.theme.SoftCyanBorder
 import com.example.gridfall.ui.theme.SoftIce
@@ -42,18 +43,22 @@ fun ContractOfferPopup(
     onSkip: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val theme = LocalGridfallColors.current
+
     Card(
         modifier = modifier
             .widthIn(max = 360.dp)
             .fillMaxWidth(),
         shape = RoundedCornerShape(22.dp),
-        border = BorderStroke(1.dp, SoftCyanBorder.copy(alpha = 0.70f)),
+        border = BorderStroke(1.dp, theme.panelBorder.copy(alpha = 0.70f)),
         colors = CardDefaults.cardColors(
-            containerColor = DeepContractGlass
+            containerColor = theme.panelBackground
         )
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp),
+            modifier = Modifier
+                .infernoPanelTexture(theme)
+                .padding(horizontal = 18.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Row(
@@ -63,30 +68,30 @@ fun ContractOfferPopup(
             ) {
                 Text(
                     text = contract.title,
-                    color = IceWhite,
+                    color = theme.textPrimary,
                     style = MaterialTheme.typography.titleMedium
                 )
                 Text(
                     text = "+${contract.rewardPoints}",
-                    color = RewardMint,
+                    color = theme.success,
                     style = MaterialTheme.typography.labelLarge
                 )
             }
 
             Text(
                 text = contract.description,
-                color = SoftIce,
+                color = theme.textSecondary,
                 style = MaterialTheme.typography.bodyMedium
             )
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 ContractMiniBadge(
                     text = "Reward +${contract.rewardPoints}",
-                    color = RewardMint
+                    color = theme.success
                 )
                 ContractMiniBadge(
                     text = "Risk -${contract.penaltyPoints}",
-                    color = CoralWarning
+                    color = theme.danger
                 )
             }
 
@@ -97,8 +102,8 @@ fun ContractOfferPopup(
                 Button(
                     onClick = onAccept,
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = ActionCyan,
-                        contentColor = ContractChipNavy
+                        containerColor = theme.accentStrong,
+                        contentColor = theme.chipBackground
                     ),
                     shape = RoundedCornerShape(14.dp)
                 ) {
@@ -107,9 +112,9 @@ fun ContractOfferPopup(
 
                 OutlinedButton(
                     onClick = onSkip,
-                    border = BorderStroke(1.dp, SoftCyanBorder.copy(alpha = 0.70f)),
+                    border = BorderStroke(1.dp, theme.panelBorder.copy(alpha = 0.70f)),
                     colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = SoftIce
+                        contentColor = theme.textSecondary
                     ),
                     shape = RoundedCornerShape(14.dp)
                 ) {
@@ -126,28 +131,30 @@ fun ContractActiveChip(
     modifier: Modifier = Modifier
 ) {
     val contract = contractState.activeContract ?: return
+    val theme = LocalGridfallColors.current
 
     Row(
         modifier = modifier
-            .background(ContractChipNavy.copy(alpha = 0.94f), RoundedCornerShape(999.dp))
-            .border(1.dp, SoftCyanBorder.copy(alpha = 0.62f), RoundedCornerShape(999.dp))
+            .background(theme.chipBackground.copy(alpha = 0.94f), RoundedCornerShape(999.dp))
+            .infernoPanelTexture(theme)
+            .border(1.dp, theme.panelBorder.copy(alpha = 0.62f), RoundedCornerShape(999.dp))
             .padding(horizontal = 12.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             text = contract.title,
-            color = IceWhite,
+            color = theme.textPrimary,
             style = MaterialTheme.typography.labelLarge
         )
         Text(
             text = shortProgressText(contractState),
-            color = BlueGray,
+            color = theme.textMuted,
             style = MaterialTheme.typography.labelMedium
         )
         Text(
             text = "+${contract.rewardPoints}/-${contract.penaltyPoints}",
-            color = RewardMint,
+            color = theme.success,
             style = MaterialTheme.typography.labelMedium
         )
     }
@@ -164,14 +171,16 @@ fun ContractResultChip(
     } else {
         "Mission Failed -${contract.penaltyPoints}"
     }
-    val accent = if (contractState.isCompleted) RewardMint else CoralWarning
+    val theme = LocalGridfallColors.current
+    val accent = if (contractState.isCompleted) theme.success else theme.danger
 
     Text(
         text = text,
-        color = if (contractState.isCompleted) IceWhite else CoralWarning,
+        color = if (contractState.isCompleted) theme.textPrimary else theme.danger,
         style = MaterialTheme.typography.titleSmall,
         modifier = modifier
-            .background(ContractChipNavy.copy(alpha = 0.96f), RoundedCornerShape(999.dp))
+            .background(theme.chipBackground.copy(alpha = 0.96f), RoundedCornerShape(999.dp))
+            .infernoPanelTexture(theme)
             .border(1.dp, accent.copy(alpha = 0.72f), RoundedCornerShape(999.dp))
             .padding(horizontal = 14.dp, vertical = 8.dp)
     )
@@ -182,9 +191,12 @@ private fun ContractMiniBadge(
     text: String,
     color: androidx.compose.ui.graphics.Color
 ) {
+    val theme = LocalGridfallColors.current
+
     Box(
         modifier = Modifier
             .background(color.copy(alpha = 0.12f), RoundedCornerShape(999.dp))
+            .infernoPanelTexture(theme)
             .border(1.dp, color.copy(alpha = 0.36f), RoundedCornerShape(999.dp))
             .padding(horizontal = 10.dp, vertical = 5.dp)
     ) {

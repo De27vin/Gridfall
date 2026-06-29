@@ -32,34 +32,35 @@ import androidx.compose.ui.unit.dp
 import com.example.gridfall.ui.theme.ActionCyan
 import com.example.gridfall.ui.theme.BlueGray
 import com.example.gridfall.ui.theme.ContractChipNavy
-import com.example.gridfall.ui.theme.DarkGlass
-import com.example.gridfall.ui.theme.DeepGraphite
+import com.example.gridfall.ui.theme.GridfallThemeMode
 import com.example.gridfall.ui.theme.IceWhite
-import com.example.gridfall.ui.theme.MidnightNavy
 import com.example.gridfall.ui.theme.MutedSlate
 import com.example.gridfall.ui.theme.SlateButton
 import com.example.gridfall.ui.theme.SoftCyanBorder
 import com.example.gridfall.ui.theme.SoftIce
+import com.example.gridfall.ui.theme.LocalGridfallColors
 
 private val themeOptions = listOf(
-    "Premium Tactical",
-    "Neon Grid",
-    "Classic Dark"
+    GridfallThemeMode.PremiumTactical,
+    GridfallThemeMode.InfernoCore
 )
 
 @Composable
 fun SettingsScreen(
-    selectedTheme: String,
+    selectedThemeMode: GridfallThemeMode,
     soundEnabled: Boolean,
-    onThemeSelected: (String) -> Unit,
+    onThemeSelected: (GridfallThemeMode) -> Unit,
     onSoundEnabledChange: (Boolean) -> Unit,
     onReturnToGame: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val theme = LocalGridfallColors.current
+
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(MidnightNavy, DeepGraphite)))
+            .background(Brush.verticalGradient(listOf(theme.backgroundTop, theme.backgroundBottom)))
+            .infernoAppTexture(theme)
     ) {
         Column(
             modifier = Modifier
@@ -71,7 +72,7 @@ fun SettingsScreen(
         ) {
             Text(
                 text = "Settings",
-                color = IceWhite,
+                color = theme.textPrimary,
                 style = MaterialTheme.typography.headlineMedium
             )
 
@@ -79,8 +80,8 @@ fun SettingsScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     themeOptions.forEach { option ->
                         ThemeOptionRow(
-                            label = option,
-                            selected = selectedTheme == option,
+                            label = option.label,
+                            selected = selectedThemeMode == option,
                             onClick = { onThemeSelected(option) }
                         )
                     }
@@ -96,12 +97,12 @@ fun SettingsScreen(
                     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text(
                             text = if (soundEnabled) "Sound On" else "Sound Off",
-                            color = IceWhite,
+                            color = theme.textPrimary,
                             style = MaterialTheme.typography.titleSmall
                         )
                         Text(
                             text = "Placeholder for future audio.",
-                            color = BlueGray,
+                            color = theme.textMuted,
                             style = MaterialTheme.typography.bodyMedium
                         )
                     }
@@ -110,11 +111,11 @@ fun SettingsScreen(
                         checked = soundEnabled,
                         onCheckedChange = onSoundEnabledChange,
                         colors = SwitchDefaults.colors(
-                            checkedThumbColor = ContractChipNavy,
-                            checkedTrackColor = ActionCyan,
-                            uncheckedThumbColor = SoftIce,
-                            uncheckedTrackColor = SlateButton,
-                            uncheckedBorderColor = SoftCyanBorder
+                            checkedThumbColor = theme.chipBackground,
+                            checkedTrackColor = theme.accentStrong,
+                            uncheckedThumbColor = theme.textSecondary,
+                            uncheckedTrackColor = theme.button,
+                            uncheckedBorderColor = theme.panelBorder
                         )
                     )
                 }
@@ -125,8 +126,8 @@ fun SettingsScreen(
             Button(
                 onClick = onReturnToGame,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = SlateButton,
-                    contentColor = IceWhite
+                    containerColor = theme.button,
+                    contentColor = theme.textPrimary
                 ),
                 shape = RoundedCornerShape(16.dp),
                 modifier = Modifier.fillMaxWidth()
@@ -142,18 +143,21 @@ private fun SettingsPanel(
     title: String,
     content: @Composable () -> Unit
 ) {
+    val theme = LocalGridfallColors.current
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(18.dp))
-            .background(DarkGlass)
-            .border(1.dp, SoftCyanBorder.copy(alpha = 0.48f), RoundedCornerShape(18.dp))
+            .background(theme.darkGlass)
+            .infernoPanelTexture(theme)
+            .border(1.dp, theme.panelBorder.copy(alpha = 0.48f), RoundedCornerShape(18.dp))
             .padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text(
             text = title,
-            color = SoftIce,
+            color = theme.textSecondary,
             style = MaterialTheme.typography.titleSmall
         )
         content()
@@ -166,16 +170,18 @@ private fun ThemeOptionRow(
     selected: Boolean,
     onClick: () -> Unit
 ) {
-    val borderColor = if (selected) ActionCyan else SoftCyanBorder.copy(alpha = 0.34f)
-    val backgroundColor = if (selected) ActionCyan.copy(alpha = 0.14f) else ContractChipNavy.copy(alpha = 0.62f)
-    val textColor = if (selected) IceWhite else SoftIce
-    val markerColor = if (selected) ActionCyan else MutedSlate
+    val theme = LocalGridfallColors.current
+    val borderColor = if (selected) theme.accentStrong else theme.panelBorder.copy(alpha = 0.34f)
+    val backgroundColor = if (selected) theme.accent.copy(alpha = 0.14f) else theme.chipBackground.copy(alpha = 0.62f)
+    val textColor = if (selected) theme.textPrimary else theme.textSecondary
+    val markerColor = if (selected) theme.accentStrong else theme.textMuted
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
             .background(backgroundColor)
+            .infernoPanelTexture(theme)
             .border(BorderStroke(1.dp, borderColor), RoundedCornerShape(14.dp))
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 11.dp),

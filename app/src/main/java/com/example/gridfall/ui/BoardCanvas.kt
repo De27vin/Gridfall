@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import com.example.gridfall.game.Board
 import com.example.gridfall.game.Cell
 import com.example.gridfall.game.PieceEffect
+import com.example.gridfall.ui.theme.GridfallColors
 import com.example.gridfall.ui.theme.*
 
 @Composable
@@ -42,6 +43,7 @@ fun BoardCanvas(
 ) {
     val linePulse = remember { Animatable(1f) }
     val bombPulse = remember { Animatable(1f) }
+    val theme = LocalGridfallColors.current
 
     LaunchedEffect(lineClearFeedback?.token) {
         if (lineClearFeedback != null) {
@@ -62,14 +64,16 @@ fun BoardCanvas(
             .aspectRatio(1f)
             .background(
                 brush = Brush.verticalGradient(
-                    listOf(Color(0xFF152235), TacticalFrame)
+                    listOf(theme.panelBackground, theme.tacticalFrame)
                 ),
                 shape = RoundedCornerShape(22.dp)
             )
-            .border(1.dp, SoftCyanBorder, RoundedCornerShape(22.dp))
+            .infernoBoardFrameTexture(theme)
+            .border(1.dp, theme.panelBorder, RoundedCornerShape(22.dp))
             .padding(8.dp)
             .clip(RoundedCornerShape(14.dp))
-            .background(DeepBoardNavy)
+            .background(theme.boardInner)
+            .infernoBoardWellTexture(theme)
             .onGloballyPositioned { coordinates ->
                 val sizePx = minOf(coordinates.size.width, coordinates.size.height).toFloat()
                 val spacing = 4.dp.value * (sizePx / 300f) // Scale spacing roughly
@@ -100,9 +104,9 @@ fun BoardCanvas(
                     )
 
                     if (cellValue == 0) {
-                        drawEmptyCell(topLeft, cellSize)
+                        drawEmptyCell(topLeft, cellSize, theme)
                     } else {
-                        drawFilledCell(topLeft, cellSize, cellValue)
+                        drawFilledCell(topLeft, cellSize, cellValue, theme)
                     }
                 }
             }
@@ -114,14 +118,14 @@ fun BoardCanvas(
                         x = spacing + cell.col * (cellSize + spacing),
                         y = spacing + cell.row * (cellSize + spacing)
                     )
-                    drawContractWarningCell(topLeft, cellSize)
+                    drawContractWarningCell(topLeft, cellSize, theme)
                 }
             }
 
             // Placement Preview
             placementPreview?.let { preview ->
-                val previewColor = if (!preview.isValid) CoralBorder else MintBorder
-                val previewFill = if (!preview.isValid) CoralGhost else MintGhost
+                val previewColor = if (!preview.isValid) theme.invalidPreviewBorder else theme.validPreviewBorder
+                val previewFill = if (!preview.isValid) theme.invalidPreviewFill else theme.validPreviewFill
 
                 if (preview.piece.effect == PieceEffect.Bomb && preview.isValid) {
                     // Bomb preview (3x3 area)
@@ -145,6 +149,15 @@ fun BoardCanvas(
                                     cornerRadius = cornerRadius,
                                     style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.dp.toPx())
                                 )
+                                if (theme.isInfernoTheme()) {
+                                    drawRoundRect(
+                                        color = previewColor.copy(alpha = if (preview.isValid) 0.30f else 0.42f),
+                                        topLeft = topLeft - Offset(1.dp.toPx(), 1.dp.toPx()),
+                                        size = Size(cellSize + 2.dp.toPx(), cellSize + 2.dp.toPx()),
+                                        cornerRadius = cornerRadius,
+                                        style = Stroke(width = 1.dp.toPx())
+                                    )
+                                }
                             }
                         }
                     }
@@ -173,6 +186,15 @@ fun BoardCanvas(
                             cornerRadius = cornerRadius,
                             style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.dp.toPx())
                         )
+                        if (theme.isInfernoTheme()) {
+                            drawRoundRect(
+                                color = previewColor.copy(alpha = if (preview.isValid) 0.30f else 0.42f),
+                                topLeft = topLeft - Offset(1.dp.toPx(), 1.dp.toPx()),
+                                size = Size(cellSize + 2.dp.toPx(), cellSize + 2.dp.toPx()),
+                                cornerRadius = cornerRadius,
+                                style = Stroke(width = 1.dp.toPx())
+                            )
+                        }
                     }
                 }
             }
@@ -181,10 +203,10 @@ fun BoardCanvas(
             lineClearFeedback?.let { feedback ->
                 val progress = linePulse.value.coerceIn(0f, 1f)
                 val fade = (1f - progress).coerceIn(0f, 1f)
-                val fillColor = LevelCyan.copy(alpha = 0.18f * fade)
-                val glowColor = LevelCyan.copy(alpha = 0.26f * fade)
-                val railColor = RewardMint.copy(alpha = 0.70f * fade)
-                val strokeColor = LevelCyan.copy(alpha = 0.48f * fade)
+                val fillColor = theme.accent.copy(alpha = 0.18f * fade)
+                val glowColor = theme.accent.copy(alpha = 0.26f * fade)
+                val railColor = theme.success.copy(alpha = 0.70f * fade)
+                val strokeColor = theme.accent.copy(alpha = 0.48f * fade)
                 val scanOffset = cellSize * progress
 
                 feedback.clearedRows.forEach { row ->
@@ -252,8 +274,8 @@ fun BoardCanvas(
                 val centerX = spacing + feedback.centerCol * (cellSize + spacing) + cellSize / 2f
                 val centerY = spacing + feedback.centerRow * (cellSize + spacing) + cellSize / 2f
                 val center = Offset(centerX, centerY)
-                val affectedFill = WarningOrange.copy(alpha = 0.20f * fade)
-                val affectedStroke = PremiumGold.copy(alpha = 0.48f * fade)
+                val affectedFill = theme.bombInner.copy(alpha = 0.20f * fade)
+                val affectedStroke = theme.warning.copy(alpha = 0.48f * fade)
 
                 for (row in feedback.centerRow - 1..feedback.centerRow + 1) {
                     for (col in feedback.centerCol - 1..feedback.centerCol + 1) {
@@ -280,13 +302,13 @@ fun BoardCanvas(
                 }
 
                 drawCircle(
-                    color = WarningOrange.copy(alpha = 0.20f * fade),
+                    color = theme.bombInner.copy(alpha = 0.20f * fade),
                     radius = cellSize * (0.65f + progress * 1.75f),
                     center = center,
                     style = Stroke(width = (4.dp.toPx() * fade).coerceAtLeast(1.dp.toPx()))
                 )
                 drawCircle(
-                    color = PremiumGold.copy(alpha = 0.34f * fade),
+                    color = theme.bombCore.copy(alpha = 0.34f * fade),
                     radius = cellSize * (0.30f + progress * 0.80f),
                     center = center
                 )
@@ -295,20 +317,46 @@ fun BoardCanvas(
     }
 }
 
-private fun DrawScope.drawEmptyCell(topLeft: Offset, cellSize: Float) {
+private fun DrawScope.drawEmptyCell(
+    topLeft: Offset,
+    cellSize: Float,
+    colors: GridfallColors
+) {
     val cornerRadius = CornerRadius(8.dp.toPx(), 8.dp.toPx())
     
     // Background fill
-    drawRoundRect(
-        color = MutedCellNavy,
-        topLeft = topLeft,
-        size = Size(cellSize, cellSize),
-        cornerRadius = cornerRadius
-    )
+    if (colors.isInfernoTheme()) {
+        drawRoundRect(
+            brush = Brush.verticalGradient(
+                colors = listOf(
+                    colors.emptyCell.copy(alpha = 0.98f),
+                    colors.boardInner.copy(alpha = 0.92f)
+                ),
+                startY = topLeft.y,
+                endY = topLeft.y + cellSize
+            ),
+            topLeft = topLeft,
+            size = Size(cellSize, cellSize),
+            cornerRadius = cornerRadius
+        )
+        drawLine(
+            color = colors.accent.copy(alpha = 0.055f),
+            start = topLeft + Offset(cellSize * 0.16f, cellSize * 0.18f),
+            end = topLeft + Offset(cellSize * 0.82f, cellSize * 0.74f),
+            strokeWidth = 1.dp.toPx()
+        )
+    } else {
+        drawRoundRect(
+            color = colors.emptyCell,
+            topLeft = topLeft,
+            size = Size(cellSize, cellSize),
+            cornerRadius = cornerRadius
+        )
+    }
     
     // Subtle border
     drawRoundRect(
-        color = Color.White.copy(alpha = 0.06f),
+        color = colors.emptyCellBorder.copy(alpha = 0.34f),
         topLeft = topLeft,
         size = Size(cellSize, cellSize),
         cornerRadius = cornerRadius,
@@ -316,7 +364,7 @@ private fun DrawScope.drawEmptyCell(topLeft: Offset, cellSize: Float) {
     )
 
     drawRoundRect(
-        color = Color.Black.copy(alpha = 0.14f),
+        color = Color.Black.copy(alpha = if (colors.isInfernoTheme()) 0.20f else 0.14f),
         topLeft = topLeft + Offset(1.dp.toPx(), 1.dp.toPx()),
         size = Size(cellSize - 2.dp.toPx(), cellSize - 2.dp.toPx()),
         cornerRadius = cornerRadius,
@@ -324,32 +372,42 @@ private fun DrawScope.drawEmptyCell(topLeft: Offset, cellSize: Float) {
     )
 }
 
-private fun DrawScope.drawFilledCell(topLeft: Offset, cellSize: Float, variant: Int) {
+private fun DrawScope.drawFilledCell(
+    topLeft: Offset,
+    cellSize: Float,
+    variant: Int,
+    colors: GridfallColors
+) {
     drawTacticalBlock(
         topLeft = topLeft,
         cellSize = cellSize,
-        variant = variant
+        variant = variant,
+        colors = colors
     )
 }
 
-private fun DrawScope.drawContractWarningCell(topLeft: Offset, cellSize: Float) {
+private fun DrawScope.drawContractWarningCell(
+    topLeft: Offset,
+    cellSize: Float,
+    colors: GridfallColors
+) {
     val cornerRadius = CornerRadius(8.dp.toPx(), 8.dp.toPx())
 
     drawRoundRect(
-        color = CoralWarning.copy(alpha = 0.14f),
+        color = colors.contractWarningFill,
         topLeft = topLeft,
         size = Size(cellSize, cellSize),
         cornerRadius = cornerRadius
     )
     drawRoundRect(
-        color = CoralWarning.copy(alpha = 0.30f),
+        color = colors.contractWarningBorder,
         topLeft = topLeft + Offset(1.dp.toPx(), 1.dp.toPx()),
         size = Size(cellSize - 2.dp.toPx(), cellSize - 2.dp.toPx()),
         cornerRadius = cornerRadius,
         style = Stroke(width = 1.dp.toPx())
     )
     drawRect(
-        color = CoralWarning.copy(alpha = 0.18f),
+        color = colors.contractWarningBorder.copy(alpha = 0.44f),
         topLeft = topLeft + Offset(0f, cellSize * 0.78f),
         size = Size(cellSize, 1.5.dp.toPx())
     )

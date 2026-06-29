@@ -33,6 +33,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.unit.dp
 import com.example.gridfall.game.Piece
+import com.example.gridfall.ui.theme.GridfallColors
 import com.example.gridfall.ui.theme.*
 import kotlin.math.max
 import kotlin.math.min
@@ -48,6 +49,8 @@ fun PieceTray(
     onPieceDragCancelled: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val theme = LocalGridfallColors.current
+
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -71,15 +74,16 @@ fun PieceTray(
                     .background(
                         brush = Brush.verticalGradient(
                             colors = if (isDragging) {
-                                listOf(Color(0xBB1B2A3D), Color(0xAA0E1724))
+                                listOf(theme.panelBackground.copy(alpha = 0.78f), theme.boardInner.copy(alpha = 0.70f))
                             } else {
-                                listOf(Color(0x88192538), Color(0x77101824))
+                                listOf(theme.panelBackground.copy(alpha = 0.54f), theme.boardInner.copy(alpha = 0.46f))
                             }
                         )
                     )
+                    .infernoSlotTexture(theme, active = isDragging)
                     .border(
                         width = 1.dp,
-                        color = if (isDragging) LevelCyan.copy(alpha = 0.55f) else SoftCyanBorder.copy(alpha = 0.42f),
+                        color = if (isDragging) theme.accentStrong.copy(alpha = 0.70f) else theme.panelBorder.copy(alpha = 0.46f),
                         shape = slotShape
                     )
                     .onGloballyPositioned { coordinates ->
@@ -112,6 +116,7 @@ fun PieceTray(
                 if (piece != null && !isUsed) {
                     PiecePreview(
                         piece = piece,
+                        colors = theme,
                         modifier = Modifier
                             .fillMaxSize()
                             .alpha(if (isDragging) 0.35f else 1f)
@@ -125,6 +130,7 @@ fun PieceTray(
 @Composable
 internal fun PiecePreview(
     piece: Piece,
+    colors: GridfallColors,
     modifier: Modifier = Modifier
 ) {
     Canvas(modifier = modifier) {
@@ -157,12 +163,17 @@ internal fun PiecePreview(
                 y = origin.y + row * (cellSize + spacing)
             )
 
-            drawTrayCell(topLeft, cellSize, piece.colorVariant)
+            drawTrayCell(topLeft, cellSize, piece.colorVariant, colors)
         }
     }
 }
 
-private fun DrawScope.drawTrayCell(topLeft: Offset, cellSize: Float, variant: Int) {
+private fun DrawScope.drawTrayCell(
+    topLeft: Offset,
+    cellSize: Float,
+    variant: Int,
+    colors: GridfallColors
+) {
     drawRoundRect(
         color = Color.Black.copy(alpha = 0.18f),
         topLeft = topLeft + Offset(cellSize * 0.06f, cellSize * 0.08f),
@@ -173,6 +184,7 @@ private fun DrawScope.drawTrayCell(topLeft: Offset, cellSize: Float, variant: In
     drawTacticalBlock(
         topLeft = topLeft,
         cellSize = cellSize,
-        variant = variant
+        variant = variant,
+        colors = colors
     )
 }

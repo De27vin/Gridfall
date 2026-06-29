@@ -46,20 +46,22 @@ fun ScoreEventChip(
     feedback: ScoreEventFeedback,
     modifier: Modifier = Modifier
 ) {
+    val theme = com.example.gridfall.ui.theme.LocalGridfallColors.current
     val accent = when (feedback.tone) {
-        FeedbackTone.Accent -> LevelCyan
-        FeedbackTone.Success -> RewardMint
-        FeedbackTone.Warning -> CoralWarning
-        FeedbackTone.Bomb -> BombMagenta
+        FeedbackTone.Accent -> theme.accent
+        FeedbackTone.Success -> theme.success
+        FeedbackTone.Warning -> theme.warning
+        FeedbackTone.Bomb -> theme.bombOuter
     }
-    val textColor = if (feedback.tone == FeedbackTone.Warning) CoralWarning else IceWhite
+    val textColor = if (feedback.tone == FeedbackTone.Warning) theme.danger else theme.textPrimary
 
     Text(
         text = feedback.text,
         color = textColor,
         style = MaterialTheme.typography.titleSmall,
         modifier = modifier
-            .background(ContractChipNavy.copy(alpha = 0.94f), RoundedCornerShape(999.dp))
+            .background(theme.chipBackground.copy(alpha = 0.94f), RoundedCornerShape(999.dp))
+            .infernoPanelTexture(theme)
             .border(1.dp, accent.copy(alpha = 0.70f), RoundedCornerShape(999.dp))
             .padding(horizontal = 14.dp, vertical = 8.dp)
     )

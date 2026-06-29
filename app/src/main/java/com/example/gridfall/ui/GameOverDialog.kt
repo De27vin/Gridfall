@@ -36,28 +36,31 @@ fun GameOverDialog(
     isNewBest: Boolean,
     onRestart: () -> Unit
 ) {
+    val theme = com.example.gridfall.ui.theme.LocalGridfallColors.current
+
     AlertDialog(
         onDismissRequest = {},
-        containerColor = DialogNavy,
+        modifier = Modifier.infernoPanelTexture(theme),
+        containerColor = theme.dialogBackground,
         shape = RoundedCornerShape(24.dp),
         tonalElevation = 0.dp,
         title = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
                     text = "Game Over",
-                    color = IceWhite,
+                    color = theme.textPrimary,
                     style = MaterialTheme.typography.headlineMedium
                 )
                 if (isNewBest) {
                     Box(
                         modifier = Modifier
-                            .background(RewardMint.copy(alpha = 0.12f), RoundedCornerShape(999.dp))
-                            .border(1.dp, RewardMint.copy(alpha = 0.42f), RoundedCornerShape(999.dp))
+                            .background(theme.success.copy(alpha = 0.12f), RoundedCornerShape(999.dp))
+                            .border(1.dp, theme.success.copy(alpha = 0.42f), RoundedCornerShape(999.dp))
                             .padding(horizontal = 10.dp, vertical = 5.dp)
                     ) {
                         Text(
                             text = "New Best!",
-                            color = RewardMint,
+                            color = theme.success,
                             style = MaterialTheme.typography.labelLarge
                         )
                     }
@@ -66,16 +69,16 @@ fun GameOverDialog(
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                ScoreRow(label = "FINAL SCORE", value = finalScore, accent = PremiumGold)
-                ScoreRow(label = "HIGH SCORE", value = highScore, accent = ActionCyan)
+                ScoreRow(label = "FINAL SCORE", value = finalScore, accent = theme.warning)
+                ScoreRow(label = "HIGH SCORE", value = highScore, accent = theme.accentStrong)
             }
         },
         confirmButton = {
             Button(
                 onClick = onRestart,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = ActionCyan,
-                    contentColor = ContractChipNavy
+                    containerColor = theme.accentStrong,
+                    contentColor = theme.chipBackground
                 ),
                 shape = RoundedCornerShape(14.dp)
             ) {
@@ -91,10 +94,12 @@ private fun ScoreRow(
     value: Int,
     accent: androidx.compose.ui.graphics.Color
 ) {
+    val theme = com.example.gridfall.ui.theme.LocalGridfallColors.current
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(ContractChipNavy.copy(alpha = 0.72f), RoundedCornerShape(14.dp))
+            .background(theme.chipBackground.copy(alpha = 0.72f), RoundedCornerShape(14.dp))
             .border(BorderStroke(1.dp, accent.copy(alpha = 0.34f)), RoundedCornerShape(14.dp))
             .padding(horizontal = 12.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -102,12 +107,12 @@ private fun ScoreRow(
     ) {
         Text(
             text = label,
-            color = BlueGray,
+            color = theme.textMuted,
             style = MaterialTheme.typography.labelMedium
         )
         Text(
             text = String.format(Locale.US, "%,d", value),
-            color = SoftIce,
+            color = theme.textSecondary,
             style = MaterialTheme.typography.titleSmall
         )
     }
