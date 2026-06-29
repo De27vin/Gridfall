@@ -103,7 +103,7 @@ fun SettingsScreen(
                             style = MaterialTheme.typography.titleSmall.retroText(theme)
                         )
                         Text(
-                            text = "Placeholder for future audio.",
+                            text = "Game sound effects.",
                             color = theme.textMuted,
                             style = MaterialTheme.typography.bodyMedium.retroText(theme)
                         )

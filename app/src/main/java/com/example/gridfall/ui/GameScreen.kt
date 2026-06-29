@@ -25,6 +25,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -43,6 +44,9 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import com.example.gridfall.audio.GridfallSoundManager
+import com.example.gridfall.audio.SoundPreferenceStore
+import com.example.gridfall.audio.ThemeSoundEvent
 import com.example.gridfall.game.Board
 import com.example.gridfall.game.ClearResult
 import com.example.gridfall.game.GameEngine
@@ -72,7 +76,8 @@ fun GameScreen(modifier: Modifier = Modifier) {
     var showRestartConfirmDialog by remember { mutableStateOf(false) }
     var showSettingsScreen by remember { mutableStateOf(false) }
     var selectedThemeMode by remember { mutableStateOf(ThemePreferenceStore.load(context)) }
-    var soundEnabled by remember { mutableStateOf(true) }
+    var soundEnabled by remember { mutableStateOf(SoundPreferenceStore.load(context)) }
+    val soundManager = remember { GridfallSoundManager(context) }
     val activeThemeColors = colorsForThemeMode(selectedThemeMode)
     val currentLevel = LevelSystem.levelForScore(gameState.score)
     val nextLevelScore = LevelSystem.nextLevelScore(currentLevel)
@@ -95,6 +100,12 @@ fun GameScreen(modifier: Modifier = Modifier) {
         dragState = dragState,
         placementResolution = dragState.placementResolution
     )
+
+    DisposableEffect(soundManager) {
+        onDispose {
+            soundManager.release()
+        }
+    }
 
     LaunchedEffect(lineClearFeedback?.token) {
         if (lineClearFeedback != null) {
@@ -127,9 +138,23 @@ fun GameScreen(modifier: Modifier = Modifier) {
             gameState.contractState.resolvedContract != null &&
             (gameState.contractState.isCompleted || gameState.contractState.isFailed)
         ) {
+            if (gameState.contractState.isCompleted) {
+                soundManager.playContractSuccess(soundEnabled)
+            } else {
+                soundManager.playContractFailed(soundEnabled)
+            }
             showContractResult = true
             delay(1200)
             showContractResult = false
+        }
+    }
+
+    val contractOfferSoundKey = gameState.contractState.offeredContract?.let { contract ->
+        "${gameState.contractState.completedBatchCount}:${contract.id}:${contract.rewardPoints}"
+    }
+    LaunchedEffect(contractOfferSoundKey) {
+        if (contractOfferSoundKey != null) {
+            soundManager.playContractPopup(soundEnabled)
         }
     }
 
@@ -205,7 +230,20 @@ fun GameScreen(modifier: Modifier = Modifier) {
                     scoreEventFeedback = nextScoreEvent.copy(token = scoreEventFeedbackToken)
                 }
 
+                playMoveSound(
+                    soundManager = soundManager,
+                    themeMode = selectedThemeMode,
+                    soundEnabled = soundEnabled,
+                    piece = piece,
+                    clearedLineCount = clearResult?.clearedLineCount ?: 0
+                )
+
                 if (nextState.isGameOver) {
+                    soundManager.playThemeEvent(
+                        themeMode = selectedThemeMode,
+                        event = ThemeSoundEvent.GameOver,
+                        soundEnabled = soundEnabled
+                    )
                     view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                 }
             } else {
@@ -229,6 +267,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 },
                 onSoundEnabledChange = { enabled ->
                     soundEnabled = enabled
+                    SoundPreferenceStore.save(context, enabled)
                 },
                 onReturnToGame = {
                     showSettingsScreen = false
@@ -506,6 +545,27 @@ private fun DrawScope.drawDraggedCell(
         cellSize = cellSize,
         variant = variant,
         colors = colors
+    )
+}
+
+private fun playMoveSound(
+    soundManager: GridfallSoundManager,
+    themeMode: GridfallThemeMode,
+    soundEnabled: Boolean,
+    piece: Piece,
+    clearedLineCount: Int
+) {
+    val event = when {
+        piece.effect == PieceEffect.Bomb -> ThemeSoundEvent.Bomb
+        clearedLineCount >= 2 -> ThemeSoundEvent.MultiLineClear
+        clearedLineCount == 1 -> ThemeSoundEvent.LineClear
+        else -> ThemeSoundEvent.Place
+    }
+
+    soundManager.playThemeEvent(
+        themeMode = themeMode,
+        event = event,
+        soundEnabled = soundEnabled
     )
 }
 
