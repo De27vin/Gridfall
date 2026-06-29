@@ -63,7 +63,7 @@ fun PieceTray(
             val isUsed = index in usedPieceIndices
             val isSelectable = piece != null && !isUsed
             val isDragging = draggingPieceIndex == index && isSelectable
-            val slotShape = RoundedCornerShape(18.dp)
+            val slotShape = RoundedCornerShape(retroCorner(theme, 18.dp))
             var slotTopLeft by remember { mutableStateOf(Offset.Zero) }
 
             Box(
@@ -81,9 +81,10 @@ fun PieceTray(
                         )
                     )
                     .infernoSlotTexture(theme, active = isDragging)
+                    .retroSlotTexture(theme, active = isDragging)
                     .border(
-                        width = 1.dp,
-                        color = if (isDragging) theme.accentStrong.copy(alpha = 0.70f) else theme.panelBorder.copy(alpha = 0.46f),
+                        width = if (theme.isRetroTheme()) 2.dp else 1.dp,
+                        color = if (isDragging) theme.accentStrong.copy(alpha = 0.76f) else theme.panelBorder.copy(alpha = if (theme.isRetroTheme()) 0.72f else 0.46f),
                         shape = slotShape
                     )
                     .onGloballyPositioned { coordinates ->

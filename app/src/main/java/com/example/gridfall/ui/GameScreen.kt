@@ -3,6 +3,7 @@ package com.example.gridfall.ui
 import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -244,6 +245,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                         )
                     )
                     .infernoAppTexture(activeThemeColors)
+                    .retroAppTexture(activeThemeColors)
             ) {
         Column(
             modifier = Modifier
@@ -333,6 +335,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
 
             Spacer(modifier = Modifier.height(12.dp))
 
+            val restartShape = RoundedCornerShape(retroCorner(activeThemeColors, 16.dp))
             Button(
                 onClick = {
                     showRestartConfirmDialog = true
@@ -341,12 +344,20 @@ fun GameScreen(modifier: Modifier = Modifier) {
                     containerColor = activeThemeColors.button,
                     contentColor = activeThemeColors.textPrimary
                 ),
-                shape = RoundedCornerShape(16.dp),
+                shape = restartShape,
                 modifier = Modifier
                     .height(44.dp)
                     .widthIn(min = 132.dp)
+                    .border(
+                        width = if (activeThemeColors.isRetroTheme()) 1.dp else 0.dp,
+                        color = activeThemeColors.panelBorder.copy(alpha = if (activeThemeColors.isRetroTheme()) 0.82f else 0f),
+                        shape = restartShape
+                    )
             ) {
-                Text(text = "Restart", style = MaterialTheme.typography.labelLarge)
+                Text(
+                    text = if (activeThemeColors.isRetroTheme()) "RESTART" else "Restart",
+                    style = MaterialTheme.typography.labelLarge.retroText(activeThemeColors)
+                )
             }
         }
 
@@ -402,6 +413,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                     .fillMaxSize()
                     .background(activeThemeColors.backgroundTop.copy(alpha = 0.84f))
                     .infernoAppTexture(activeThemeColors)
+                    .retroAppTexture(activeThemeColors)
                     .padding(horizontal = 28.dp),
                 contentAlignment = Alignment.Center
             ) {

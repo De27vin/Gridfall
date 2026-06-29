@@ -36,14 +36,23 @@ fun GameTopBar(
     modifier: Modifier = Modifier
 ) {
     val theme = LocalGridfallColors.current
+    val panelShape = RoundedCornerShape(retroCorner(theme, 18.dp))
+    val chipShape = RoundedCornerShape(if (theme.isRetroTheme()) 6.dp else 999.dp)
+    val scoreText = if (theme.isRetroTheme()) String.format(Locale.US, "%06d", score) else String.format(Locale.US, "%,d", score)
+    val bestText = if (theme.isRetroTheme()) String.format(Locale.US, "%06d", highScore) else String.format(Locale.US, "%,d", highScore)
 
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
+            .clip(panelShape)
             .background(theme.darkGlass)
             .infernoPanelTexture(theme)
-            .border(1.dp, theme.panelBorder.copy(alpha = 0.70f), RoundedCornerShape(18.dp))
+            .retroPanelTexture(theme)
+            .border(
+                if (theme.isRetroTheme()) 2.dp else 1.dp,
+                theme.panelBorder.copy(alpha = if (theme.isRetroTheme()) 0.92f else 0.70f),
+                panelShape
+            )
             .padding(12.dp)
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -57,30 +66,31 @@ fun GameTopBar(
                     Text(
                         text = "SCORE",
                         color = theme.textMuted,
-                        style = MaterialTheme.typography.labelSmall,
+                        style = MaterialTheme.typography.labelSmall.retroText(theme),
                         fontSize = 11.sp
                     )
                     Text(
-                        text = String.format(Locale.US, "%,d", score),
+                        text = scoreText,
                         color = theme.textPrimary,
-                        style = MaterialTheme.typography.displayMedium
+                        style = MaterialTheme.typography.displayMedium.retroText(theme)
                     )
                 }
 
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(999.dp))
+                        .clip(chipShape)
                         .background(theme.button.copy(alpha = 0.74f))
                         .infernoPanelTexture(theme)
-                        .border(1.dp, theme.panelBorder.copy(alpha = 0.52f), RoundedCornerShape(999.dp))
+                        .retroPanelTexture(theme)
+                        .border(1.dp, theme.panelBorder.copy(alpha = if (theme.isRetroTheme()) 0.90f else 0.52f), chipShape)
                         .clickable(onClick = onSettingsClick)
                         .padding(horizontal = 11.dp, vertical = 6.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "Settings",
+                        text = if (theme.isRetroTheme()) "SETTINGS" else "Settings",
                         color = theme.textSecondary,
-                        style = MaterialTheme.typography.labelMedium
+                        style = MaterialTheme.typography.labelMedium.retroText(theme)
                     )
                 }
 
@@ -88,13 +98,13 @@ fun GameTopBar(
                     Text(
                         text = "BEST",
                         color = theme.textMuted,
-                        style = MaterialTheme.typography.labelSmall,
+                        style = MaterialTheme.typography.labelSmall.retroText(theme),
                         fontSize = 11.sp
                     )
                     Text(
-                        text = String.format(Locale.US, "%,d", highScore),
+                        text = bestText,
                         color = theme.textSecondary,
-                        style = MaterialTheme.typography.displaySmall
+                        style = MaterialTheme.typography.displaySmall.retroText(theme)
                     )
                 }
             }
@@ -107,9 +117,9 @@ fun GameTopBar(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "LEVEL $level",
+                        text = if (theme.isRetroTheme()) "LVL $level" else "LEVEL $level",
                         color = theme.accent,
-                        style = MaterialTheme.typography.labelLarge
+                        style = MaterialTheme.typography.labelLarge.retroText(theme)
                     )
 
                     val progressText = if (nextLevelScore == null) {
@@ -123,7 +133,7 @@ fun GameTopBar(
                     Text(
                         text = progressText,
                         color = theme.textMuted,
-                        style = MaterialTheme.typography.labelSmall
+                        style = MaterialTheme.typography.labelSmall.retroText(theme)
                     )
                 }
 
@@ -141,14 +151,14 @@ fun GameTopBar(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(6.dp)
-                        .clip(RoundedCornerShape(999.dp))
+                        .clip(RoundedCornerShape(if (theme.isRetroTheme()) 2.dp else 999.dp))
                         .background(theme.button)
                 ) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth(progress)
                             .height(6.dp)
-                            .clip(RoundedCornerShape(999.dp))
+                            .clip(RoundedCornerShape(if (theme.isRetroTheme()) 2.dp else 999.dp))
                             .background(theme.accent)
                     )
                 }
@@ -160,15 +170,16 @@ fun GameTopBar(
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .clip(RoundedCornerShape(999.dp))
+                    .clip(chipShape)
                     .background(theme.warning.copy(alpha = 0.14f))
-                    .border(1.dp, theme.warning.copy(alpha = 0.58f), RoundedCornerShape(999.dp))
+                    .retroPanelTexture(theme)
+                    .border(1.dp, theme.warning.copy(alpha = 0.58f), chipShape)
                     .padding(horizontal = 10.dp, vertical = 4.dp)
             ) {
                 Text(
                     text = "COMBO x$combo",
                     color = theme.warning,
-                    style = MaterialTheme.typography.labelMedium
+                    style = MaterialTheme.typography.labelMedium.retroText(theme)
                 )
             }
         }

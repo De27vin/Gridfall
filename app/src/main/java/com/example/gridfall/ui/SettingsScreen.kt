@@ -42,7 +42,8 @@ import com.example.gridfall.ui.theme.LocalGridfallColors
 
 private val themeOptions = listOf(
     GridfallThemeMode.PremiumTactical,
-    GridfallThemeMode.InfernoCore
+    GridfallThemeMode.InfernoCore,
+    GridfallThemeMode.RetroArcade
 )
 
 @Composable
@@ -61,6 +62,7 @@ fun SettingsScreen(
             .fillMaxSize()
             .background(Brush.verticalGradient(listOf(theme.backgroundTop, theme.backgroundBottom)))
             .infernoAppTexture(theme)
+            .retroAppTexture(theme)
     ) {
         Column(
             modifier = Modifier
@@ -73,7 +75,7 @@ fun SettingsScreen(
             Text(
                 text = "Settings",
                 color = theme.textPrimary,
-                style = MaterialTheme.typography.headlineMedium
+                style = MaterialTheme.typography.headlineMedium.retroText(theme)
             )
 
             SettingsPanel(title = "Theme") {
@@ -98,12 +100,12 @@ fun SettingsScreen(
                         Text(
                             text = if (soundEnabled) "Sound On" else "Sound Off",
                             color = theme.textPrimary,
-                            style = MaterialTheme.typography.titleSmall
+                            style = MaterialTheme.typography.titleSmall.retroText(theme)
                         )
                         Text(
                             text = "Placeholder for future audio.",
                             color = theme.textMuted,
-                            style = MaterialTheme.typography.bodyMedium
+                            style = MaterialTheme.typography.bodyMedium.retroText(theme)
                         )
                     }
 
@@ -123,16 +125,26 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(4.dp))
 
+            val returnShape = RoundedCornerShape(retroCorner(theme, 16.dp))
             Button(
                 onClick = onReturnToGame,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = theme.button,
                     contentColor = theme.textPrimary
                 ),
-                shape = RoundedCornerShape(16.dp),
-                modifier = Modifier.fillMaxWidth()
+                shape = returnShape,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(
+                        width = if (theme.isRetroTheme()) 1.dp else 0.dp,
+                        color = theme.panelBorder.copy(alpha = if (theme.isRetroTheme()) 0.82f else 0f),
+                        shape = returnShape
+                    )
             ) {
-                Text(text = "Return to Game", style = MaterialTheme.typography.labelLarge)
+                Text(
+                    text = if (theme.isRetroTheme()) "RETURN TO GAME" else "Return to Game",
+                    style = MaterialTheme.typography.labelLarge.retroText(theme)
+                )
             }
         }
     }
@@ -144,21 +156,23 @@ private fun SettingsPanel(
     content: @Composable () -> Unit
 ) {
     val theme = LocalGridfallColors.current
+    val shape = RoundedCornerShape(retroCorner(theme, 18.dp))
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
+            .clip(shape)
             .background(theme.darkGlass)
             .infernoPanelTexture(theme)
-            .border(1.dp, theme.panelBorder.copy(alpha = 0.48f), RoundedCornerShape(18.dp))
+            .retroPanelTexture(theme)
+            .border(if (theme.isRetroTheme()) 2.dp else 1.dp, theme.panelBorder.copy(alpha = if (theme.isRetroTheme()) 0.84f else 0.48f), shape)
             .padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text(
             text = title,
             color = theme.textSecondary,
-            style = MaterialTheme.typography.titleSmall
+            style = MaterialTheme.typography.titleSmall.retroText(theme)
         )
         content()
     }
@@ -175,14 +189,16 @@ private fun ThemeOptionRow(
     val backgroundColor = if (selected) theme.accent.copy(alpha = 0.14f) else theme.chipBackground.copy(alpha = 0.62f)
     val textColor = if (selected) theme.textPrimary else theme.textSecondary
     val markerColor = if (selected) theme.accentStrong else theme.textMuted
+    val shape = RoundedCornerShape(retroCorner(theme, 14.dp))
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
+            .clip(shape)
             .background(backgroundColor)
             .infernoPanelTexture(theme)
-            .border(BorderStroke(1.dp, borderColor), RoundedCornerShape(14.dp))
+            .retroPanelTexture(theme)
+            .border(BorderStroke(if (theme.isRetroTheme()) 2.dp else 1.dp, borderColor), shape)
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 11.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -191,12 +207,12 @@ private fun ThemeOptionRow(
         Text(
             text = label,
             color = textColor,
-            style = MaterialTheme.typography.bodyLarge
+            style = MaterialTheme.typography.bodyLarge.retroText(theme)
         )
         Text(
             text = if (selected) "Selected" else "Select",
             color = markerColor,
-            style = MaterialTheme.typography.labelMedium
+            style = MaterialTheme.typography.labelMedium.retroText(theme)
         )
     }
 }

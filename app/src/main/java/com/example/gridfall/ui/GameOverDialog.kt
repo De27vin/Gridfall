@@ -37,19 +37,22 @@ fun GameOverDialog(
     onRestart: () -> Unit
 ) {
     val theme = com.example.gridfall.ui.theme.LocalGridfallColors.current
+    val dialogShape = RoundedCornerShape(retroCorner(theme, 24.dp))
 
     AlertDialog(
         onDismissRequest = {},
-        modifier = Modifier.infernoPanelTexture(theme),
+        modifier = Modifier
+            .infernoPanelTexture(theme)
+            .retroPanelTexture(theme),
         containerColor = theme.dialogBackground,
-        shape = RoundedCornerShape(24.dp),
+        shape = dialogShape,
         tonalElevation = 0.dp,
         title = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    text = "Game Over",
+                    text = if (theme.isRetroTheme()) "GAME OVER" else "Game Over",
                     color = theme.textPrimary,
-                    style = MaterialTheme.typography.headlineMedium
+                    style = MaterialTheme.typography.headlineMedium.retroText(theme)
                 )
                 if (isNewBest) {
                     Box(
@@ -61,7 +64,7 @@ fun GameOverDialog(
                         Text(
                             text = "New Best!",
                             color = theme.success,
-                            style = MaterialTheme.typography.labelLarge
+                            style = MaterialTheme.typography.labelLarge.retroText(theme)
                         )
                     }
                 }
@@ -80,9 +83,9 @@ fun GameOverDialog(
                     containerColor = theme.accentStrong,
                     contentColor = theme.chipBackground
                 ),
-                shape = RoundedCornerShape(14.dp)
+                shape = RoundedCornerShape(retroCorner(theme, 14.dp))
             ) {
-                Text(text = "Restart")
+                Text(text = if (theme.isRetroTheme()) "RESTART" else "Restart", style = MaterialTheme.typography.labelLarge.retroText(theme))
             }
         }
     )
@@ -95,12 +98,14 @@ private fun ScoreRow(
     accent: androidx.compose.ui.graphics.Color
 ) {
     val theme = com.example.gridfall.ui.theme.LocalGridfallColors.current
+    val shape = RoundedCornerShape(retroCorner(theme, 14.dp))
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(theme.chipBackground.copy(alpha = 0.72f), RoundedCornerShape(14.dp))
-            .border(BorderStroke(1.dp, accent.copy(alpha = 0.34f)), RoundedCornerShape(14.dp))
+            .background(theme.chipBackground.copy(alpha = 0.72f), shape)
+            .retroPanelTexture(theme)
+            .border(BorderStroke(if (theme.isRetroTheme()) 2.dp else 1.dp, accent.copy(alpha = if (theme.isRetroTheme()) 0.62f else 0.34f)), shape)
             .padding(horizontal = 12.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
@@ -108,12 +113,12 @@ private fun ScoreRow(
         Text(
             text = label,
             color = theme.textMuted,
-            style = MaterialTheme.typography.labelMedium
+            style = MaterialTheme.typography.labelMedium.retroText(theme)
         )
         Text(
             text = String.format(Locale.US, "%,d", value),
             color = theme.textSecondary,
-            style = MaterialTheme.typography.titleSmall
+            style = MaterialTheme.typography.titleSmall.retroText(theme)
         )
     }
 }

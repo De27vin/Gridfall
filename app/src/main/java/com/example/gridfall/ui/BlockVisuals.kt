@@ -21,6 +21,11 @@ internal fun DrawScope.drawTacticalBlock(
     val palette = paletteForVariant(variant, colors)
     val isInferno = colors.isInfernoTheme()
 
+    if (colors.isRetroTheme()) {
+        drawRetroBlock(topLeft = topLeft, cellSize = cellSize, variant = variant, colors = colors)
+        return
+    }
+
     if (variant == 0) {
         drawRoundRect(
             color = colors.bombGlow.copy(alpha = if (isInferno) 0.62f else colors.bombGlow.alpha),
@@ -95,6 +100,108 @@ internal fun DrawScope.drawTacticalBlock(
     if (variant == 0) {
         drawBombCore(topLeft = topLeft, cellSize = cellSize, colors = colors)
     }
+}
+
+private fun DrawScope.drawRetroBlock(
+    topLeft: Offset,
+    cellSize: Float,
+    variant: Int,
+    colors: GridfallColors
+) {
+    val corner = cellSize * 0.045f
+    val cornerRadius = CornerRadius(corner, corner)
+    val palette = paletteForVariant(variant, colors)
+
+    if (variant == 0) {
+        drawRoundRect(
+            color = colors.bombGlow.copy(alpha = 0.55f),
+            topLeft = topLeft - Offset(cellSize * 0.10f, cellSize * 0.10f),
+            size = Size(cellSize * 1.20f, cellSize * 1.20f),
+            cornerRadius = CornerRadius(corner * 2.2f, corner * 2.2f)
+        )
+    }
+
+    drawRoundRect(
+        color = Color.Black.copy(alpha = 0.34f),
+        topLeft = topLeft + Offset(cellSize * 0.09f, cellSize * 0.10f),
+        size = Size(cellSize, cellSize),
+        cornerRadius = cornerRadius
+    )
+    drawRoundRect(
+        brush = Brush.verticalGradient(
+            colors = listOf(palette.top, palette.middle, palette.bottom),
+            startY = topLeft.y,
+            endY = topLeft.y + cellSize
+        ),
+        topLeft = topLeft,
+        size = Size(cellSize, cellSize),
+        cornerRadius = cornerRadius
+    )
+    drawRoundRect(
+        color = Color.White.copy(alpha = 0.20f),
+        topLeft = topLeft + Offset(cellSize * 0.08f, cellSize * 0.08f),
+        size = Size(cellSize * 0.84f, cellSize * 0.16f),
+        cornerRadius = cornerRadius
+    )
+    drawLine(
+        color = Color.Black.copy(alpha = 0.34f),
+        start = topLeft + Offset(0f, cellSize * 0.74f),
+        end = topLeft + Offset(cellSize, cellSize * 0.74f),
+        strokeWidth = (cellSize * 0.050f).coerceAtLeast(1f)
+    )
+    drawRoundRect(
+        color = colors.boardInner.copy(alpha = 0.86f),
+        topLeft = topLeft,
+        size = Size(cellSize, cellSize),
+        cornerRadius = cornerRadius,
+        style = Stroke(width = (cellSize * 0.085f).coerceAtLeast(2f))
+    )
+    drawRoundRect(
+        color = colors.accent.copy(alpha = if (variant == 1) 0.56f else 0.24f),
+        topLeft = topLeft + Offset(cellSize * 0.03f, cellSize * 0.03f),
+        size = Size(cellSize * 0.94f, cellSize * 0.94f),
+        cornerRadius = cornerRadius,
+        style = Stroke(width = (cellSize * 0.030f).coerceAtLeast(1f))
+    )
+
+    if (variant == 0) {
+        drawRetroBombCore(topLeft = topLeft, cellSize = cellSize, colors = colors)
+    }
+}
+
+private fun DrawScope.drawRetroBombCore(
+    topLeft: Offset,
+    cellSize: Float,
+    colors: GridfallColors
+) {
+    val center = topLeft + Offset(cellSize / 2f, cellSize / 2f)
+    drawCircle(
+        color = colors.accentStrong.copy(alpha = 0.82f),
+        radius = cellSize * 0.36f,
+        center = center
+    )
+    drawCircle(
+        color = colors.bombCore,
+        radius = cellSize * 0.25f,
+        center = center
+    )
+    drawCircle(
+        color = colors.bombInner,
+        radius = cellSize * 0.12f,
+        center = center
+    )
+    drawLine(
+        color = colors.dialogBackground.copy(alpha = 0.82f),
+        start = center + Offset(-cellSize * 0.20f, 0f),
+        end = center + Offset(cellSize * 0.20f, 0f),
+        strokeWidth = (cellSize * 0.045f).coerceAtLeast(1f)
+    )
+    drawLine(
+        color = colors.dialogBackground.copy(alpha = 0.82f),
+        start = center + Offset(0f, -cellSize * 0.20f),
+        end = center + Offset(0f, cellSize * 0.20f),
+        strokeWidth = (cellSize * 0.045f).coerceAtLeast(1f)
+    )
 }
 
 private fun DrawScope.drawBombCore(

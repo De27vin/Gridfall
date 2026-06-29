@@ -26,18 +26,22 @@ fun RestartConfirmDialog(
     onConfirmRestart: () -> Unit
 ) {
     val theme = com.example.gridfall.ui.theme.LocalGridfallColors.current
+    val dialogShape = RoundedCornerShape(retroCorner(theme, 24.dp))
+    val buttonShape = RoundedCornerShape(retroCorner(theme, 14.dp))
 
     AlertDialog(
         onDismissRequest = onCancel,
-        modifier = Modifier.infernoPanelTexture(theme),
+        modifier = Modifier
+            .infernoPanelTexture(theme)
+            .retroPanelTexture(theme),
         containerColor = theme.dialogBackground,
-        shape = RoundedCornerShape(24.dp),
+        shape = dialogShape,
         tonalElevation = 0.dp,
         title = {
             Text(
                 text = "Restart game?",
                 color = theme.textPrimary,
-                style = MaterialTheme.typography.headlineMedium
+                style = MaterialTheme.typography.headlineMedium.retroText(theme)
             )
         },
         text = {
@@ -45,7 +49,7 @@ fun RestartConfirmDialog(
                 Text(
                     text = "Your current run will be lost.",
                     color = theme.textSecondary,
-                    style = MaterialTheme.typography.bodyMedium
+                    style = MaterialTheme.typography.bodyMedium.retroText(theme)
                 )
             }
         },
@@ -56,9 +60,9 @@ fun RestartConfirmDialog(
                 colors = ButtonDefaults.outlinedButtonColors(
                     contentColor = theme.textSecondary
                 ),
-                shape = RoundedCornerShape(14.dp)
+                shape = buttonShape
             ) {
-                Text(text = "Cancel")
+                Text(text = if (theme.isRetroTheme()) "CANCEL" else "Cancel", style = MaterialTheme.typography.labelLarge.retroText(theme))
             }
         },
         confirmButton = {
@@ -68,9 +72,9 @@ fun RestartConfirmDialog(
                     containerColor = theme.danger,
                     contentColor = theme.chipBackground
                 ),
-                shape = RoundedCornerShape(14.dp)
+                shape = buttonShape
             ) {
-                Text(text = "Restart")
+                Text(text = if (theme.isRetroTheme()) "RESTART" else "Restart", style = MaterialTheme.typography.labelLarge.retroText(theme))
             }
         }
     )

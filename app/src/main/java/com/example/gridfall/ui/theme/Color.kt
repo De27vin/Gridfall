@@ -64,7 +64,8 @@ val PremiumGold = Color(0xFFFFD166)
 
 enum class GridfallThemeMode(val id: String, val label: String) {
     PremiumTactical("premium_tactical", "Premium Tactical"),
-    InfernoCore("inferno_core", "Inferno Core");
+    InfernoCore("inferno_core", "Inferno Core"),
+    RetroArcade("retro_arcade", "Retro Arcade");
 
     companion object {
         fun fromId(id: String?): GridfallThemeMode {
@@ -211,11 +212,58 @@ val InfernoCoreColors = GridfallColors(
     bombGlow = Color(0x77FF8A00)
 )
 
+val RetroArcadeColors = GridfallColors(
+    backgroundTop = Color(0xFF070014),
+    backgroundBottom = Color(0xFF120026),
+    darkGlass = Color(0xE8120026),
+    tacticalFrame = Color(0xFF100020),
+    boardInner = Color(0xFF05000D),
+    emptyCell = Color(0xFF140026),
+    emptyCellBorder = Color(0xFF402060),
+    textPrimary = Color(0xFFFFE600),
+    textSecondary = Color(0xFF00F5FF),
+    textMuted = Color(0xFFA875FF),
+    accent = Color(0xFF00F5FF),
+    accentStrong = Color(0xFFFF2BD6),
+    success = Color(0xFF7CFF00),
+    warning = Color(0xFFFFE600),
+    danger = Color(0xFFFF1744),
+    button = Color(0xFF24004D),
+    buttonPressed = Color(0xFF3A007A),
+    dialogBackground = Color(0xFF100020),
+    chipBackground = Color(0xFF1B0038),
+    panelBackground = Color(0xF218002F),
+    panelBorder = Color(0xFFFF2BD6),
+    validPreviewFill = Color(0x4D7CFF00),
+    validPreviewBorder = Color(0xFF7CFF00),
+    invalidPreviewFill = Color(0x70FF1744),
+    invalidPreviewBorder = Color(0xFFFF1744),
+    contractWarningFill = Color(0x335A1AFF),
+    contractWarningBorder = Color(0xCCFF2BD6),
+    block1Top = Color(0xFF82FFFF),
+    block1Mid = Color(0xFF00F5FF),
+    block1Bottom = Color(0xFF0088A8),
+    block2Top = Color(0xFFFF7BEA),
+    block2Mid = Color(0xFFFF2BD6),
+    block2Bottom = Color(0xFF9E007F),
+    block3Top = Color(0xFFFFFF7A),
+    block3Mid = Color(0xFFFFE600),
+    block3Bottom = Color(0xFFB99500),
+    block4Top = Color(0xFFB6FF66),
+    block4Mid = Color(0xFF7CFF00),
+    block4Bottom = Color(0xFF2F9E00),
+    bombOuter = Color(0xFFFF2BD6),
+    bombCore = Color(0xFFFFE600),
+    bombInner = Color(0xFF00F5FF),
+    bombGlow = Color(0x7700F5FF)
+)
+
 val LocalGridfallColors = staticCompositionLocalOf { PremiumTacticalColors }
 
 fun colorsForThemeMode(mode: GridfallThemeMode): GridfallColors {
     return when (mode) {
         GridfallThemeMode.PremiumTactical -> PremiumTacticalColors
         GridfallThemeMode.InfernoCore -> InfernoCoreColors
+        GridfallThemeMode.RetroArcade -> RetroArcadeColors
     }
 }

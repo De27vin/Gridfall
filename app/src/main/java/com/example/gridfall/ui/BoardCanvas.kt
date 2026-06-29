@@ -44,6 +44,8 @@ fun BoardCanvas(
     val linePulse = remember { Animatable(1f) }
     val bombPulse = remember { Animatable(1f) }
     val theme = LocalGridfallColors.current
+    val outerShape = RoundedCornerShape(retroCorner(theme, 22.dp))
+    val innerShape = RoundedCornerShape(retroCorner(theme, 14.dp))
 
     LaunchedEffect(lineClearFeedback?.token) {
         if (lineClearFeedback != null) {
@@ -66,14 +68,16 @@ fun BoardCanvas(
                 brush = Brush.verticalGradient(
                     listOf(theme.panelBackground, theme.tacticalFrame)
                 ),
-                shape = RoundedCornerShape(22.dp)
+                shape = outerShape
             )
             .infernoBoardFrameTexture(theme)
-            .border(1.dp, theme.panelBorder, RoundedCornerShape(22.dp))
-            .padding(8.dp)
-            .clip(RoundedCornerShape(14.dp))
+            .retroBoardFrameTexture(theme)
+            .border(if (theme.isRetroTheme()) 2.dp else 1.dp, theme.panelBorder, outerShape)
+            .padding(if (theme.isRetroTheme()) 10.dp else 8.dp)
+            .clip(innerShape)
             .background(theme.boardInner)
             .infernoBoardWellTexture(theme)
+            .retroBoardWellTexture(theme)
             .onGloballyPositioned { coordinates ->
                 val sizePx = minOf(coordinates.size.width, coordinates.size.height).toFloat()
                 val spacing = 4.dp.value * (sizePx / 300f) // Scale spacing roughly
@@ -126,6 +130,11 @@ fun BoardCanvas(
             placementPreview?.let { preview ->
                 val previewColor = if (!preview.isValid) theme.invalidPreviewBorder else theme.validPreviewBorder
                 val previewFill = if (!preview.isValid) theme.invalidPreviewFill else theme.validPreviewFill
+                val previewCornerRadius = if (theme.isRetroTheme()) {
+                    CornerRadius(cellSize * 0.045f, cellSize * 0.045f)
+                } else {
+                    cornerRadius
+                }
 
                 if (preview.piece.effect == PieceEffect.Bomb && preview.isValid) {
                     // Bomb preview (3x3 area)
@@ -140,13 +149,13 @@ fun BoardCanvas(
                                     color = previewFill,
                                     topLeft = topLeft,
                                     size = Size(cellSize, cellSize),
-                                    cornerRadius = cornerRadius
+                                    cornerRadius = previewCornerRadius
                                 )
                                 drawRoundRect(
                                     color = previewColor,
                                     topLeft = topLeft,
                                     size = Size(cellSize, cellSize),
-                                    cornerRadius = cornerRadius,
+                                    cornerRadius = previewCornerRadius,
                                     style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.dp.toPx())
                                 )
                                 if (theme.isInfernoTheme()) {
@@ -154,7 +163,7 @@ fun BoardCanvas(
                                         color = previewColor.copy(alpha = if (preview.isValid) 0.30f else 0.42f),
                                         topLeft = topLeft - Offset(1.dp.toPx(), 1.dp.toPx()),
                                         size = Size(cellSize + 2.dp.toPx(), cellSize + 2.dp.toPx()),
-                                        cornerRadius = cornerRadius,
+                                        cornerRadius = previewCornerRadius,
                                         style = Stroke(width = 1.dp.toPx())
                                     )
                                 }
@@ -177,13 +186,13 @@ fun BoardCanvas(
                             color = previewFill,
                             topLeft = topLeft,
                             size = Size(cellSize, cellSize),
-                            cornerRadius = cornerRadius
+                            cornerRadius = previewCornerRadius
                         )
                         drawRoundRect(
                             color = previewColor,
                             topLeft = topLeft,
                             size = Size(cellSize, cellSize),
-                            cornerRadius = cornerRadius,
+                            cornerRadius = previewCornerRadius,
                             style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.dp.toPx())
                         )
                         if (theme.isInfernoTheme()) {
@@ -191,7 +200,7 @@ fun BoardCanvas(
                                 color = previewColor.copy(alpha = if (preview.isValid) 0.30f else 0.42f),
                                 topLeft = topLeft - Offset(1.dp.toPx(), 1.dp.toPx()),
                                 size = Size(cellSize + 2.dp.toPx(), cellSize + 2.dp.toPx()),
-                                cornerRadius = cornerRadius,
+                                cornerRadius = previewCornerRadius,
                                 style = Stroke(width = 1.dp.toPx())
                             )
                         }
@@ -202,68 +211,79 @@ fun BoardCanvas(
             // Line Clear Feedback
             lineClearFeedback?.let { feedback ->
                 val progress = linePulse.value.coerceIn(0f, 1f)
-                val fade = (1f - progress).coerceIn(0f, 1f)
-                val fillColor = theme.accent.copy(alpha = 0.18f * fade)
-                val glowColor = theme.accent.copy(alpha = 0.26f * fade)
-                val railColor = theme.success.copy(alpha = 0.70f * fade)
-                val strokeColor = theme.accent.copy(alpha = 0.48f * fade)
-                val scanOffset = cellSize * progress
+                if (theme.isRetroTheme()) {
+                    drawRetroLineClearSweep(
+                        clearedRows = feedback.clearedRows,
+                        clearedColumns = feedback.clearedColumns,
+                        progress = progress,
+                        spacing = spacing,
+                        cellSize = cellSize,
+                        colors = theme
+                    )
+                } else {
+                    val fade = (1f - progress).coerceIn(0f, 1f)
+                    val fillColor = theme.accent.copy(alpha = 0.18f * fade)
+                    val glowColor = theme.accent.copy(alpha = 0.26f * fade)
+                    val railColor = theme.success.copy(alpha = 0.70f * fade)
+                    val strokeColor = theme.accent.copy(alpha = 0.48f * fade)
+                    val scanOffset = cellSize * progress
 
-                feedback.clearedRows.forEach { row ->
-                    if (row in 0 until Board.SIZE) {
-                        val topLeft = Offset(0f, spacing + row * (cellSize + spacing))
-                        drawRoundRect(
-                            color = fillColor,
-                            topLeft = topLeft,
-                            size = Size(size.width, cellSize),
-                            cornerRadius = cornerRadius
-                        )
-                        drawRoundRect(
-                            color = strokeColor,
-                            topLeft = topLeft,
-                            size = Size(size.width, cellSize),
-                            cornerRadius = cornerRadius,
-                            style = Stroke(width = 1.5.dp.toPx())
-                        )
-                        drawRect(
-                            color = glowColor,
-                            topLeft = topLeft + Offset(0f, cellSize * 0.26f),
-                            size = Size(size.width, cellSize * 0.48f)
-                        )
-                        drawRect(
-                            color = railColor,
-                            topLeft = topLeft + Offset(0f, scanOffset.coerceAtMost(cellSize - 2.dp.toPx())),
-                            size = Size(size.width, 2.dp.toPx())
-                        )
+                    feedback.clearedRows.forEach { row ->
+                        if (row in 0 until Board.SIZE) {
+                            val topLeft = Offset(0f, spacing + row * (cellSize + spacing))
+                            drawRoundRect(
+                                color = fillColor,
+                                topLeft = topLeft,
+                                size = Size(size.width, cellSize),
+                                cornerRadius = cornerRadius
+                            )
+                            drawRoundRect(
+                                color = strokeColor,
+                                topLeft = topLeft,
+                                size = Size(size.width, cellSize),
+                                cornerRadius = cornerRadius,
+                                style = Stroke(width = 1.5.dp.toPx())
+                            )
+                            drawRect(
+                                color = glowColor,
+                                topLeft = topLeft + Offset(0f, cellSize * 0.26f),
+                                size = Size(size.width, cellSize * 0.48f)
+                            )
+                            drawRect(
+                                color = railColor,
+                                topLeft = topLeft + Offset(0f, scanOffset.coerceAtMost(cellSize - 2.dp.toPx())),
+                                size = Size(size.width, 2.dp.toPx())
+                            )
+                        }
                     }
-                }
 
-                feedback.clearedColumns.forEach { col ->
-                    if (col in 0 until Board.SIZE) {
-                        val topLeft = Offset(spacing + col * (cellSize + spacing), 0f)
-                        drawRoundRect(
-                            color = fillColor,
-                            topLeft = topLeft,
-                            size = Size(cellSize, size.height),
-                            cornerRadius = cornerRadius
-                        )
-                        drawRoundRect(
-                            color = strokeColor,
-                            topLeft = topLeft,
-                            size = Size(cellSize, size.height),
-                            cornerRadius = cornerRadius,
-                            style = Stroke(width = 1.5.dp.toPx())
-                        )
-                        drawRect(
-                            color = glowColor,
-                            topLeft = topLeft + Offset(cellSize * 0.26f, 0f),
-                            size = Size(cellSize * 0.48f, size.height)
-                        )
-                        drawRect(
-                            color = railColor,
-                            topLeft = topLeft + Offset(scanOffset.coerceAtMost(cellSize - 2.dp.toPx()), 0f),
-                            size = Size(2.dp.toPx(), size.height)
-                        )
+                    feedback.clearedColumns.forEach { col ->
+                        if (col in 0 until Board.SIZE) {
+                            val topLeft = Offset(spacing + col * (cellSize + spacing), 0f)
+                            drawRoundRect(
+                                color = fillColor,
+                                topLeft = topLeft,
+                                size = Size(cellSize, size.height),
+                                cornerRadius = cornerRadius
+                            )
+                            drawRoundRect(
+                                color = strokeColor,
+                                topLeft = topLeft,
+                                size = Size(cellSize, size.height),
+                                cornerRadius = cornerRadius,
+                                style = Stroke(width = 1.5.dp.toPx())
+                            )
+                            drawRect(
+                                color = glowColor,
+                                topLeft = topLeft + Offset(cellSize * 0.26f, 0f),
+                                size = Size(cellSize * 0.48f, size.height)
+                            )
+                            drawRect(
+                                color = railColor,
+                                topLeft = topLeft + Offset(scanOffset.coerceAtMost(cellSize - 2.dp.toPx()), 0f),
+                                size = Size(2.dp.toPx(), size.height)
+                            )
+                        }
                     }
                 }
             }
@@ -312,6 +332,14 @@ fun BoardCanvas(
                     radius = cellSize * (0.30f + progress * 0.80f),
                     center = center
                 )
+                if (theme.isRetroTheme()) {
+                    drawRetroBombShatter(
+                        center = center,
+                        cellSize = cellSize,
+                        progress = progress,
+                        colors = theme
+                    )
+                }
             }
         }
     }
@@ -323,6 +351,11 @@ private fun DrawScope.drawEmptyCell(
     colors: GridfallColors
 ) {
     val cornerRadius = CornerRadius(8.dp.toPx(), 8.dp.toPx())
+
+    if (colors.isRetroTheme()) {
+        drawRetroEmptyCell(topLeft, cellSize, colors)
+        return
+    }
     
     // Background fill
     if (colors.isInfernoTheme()) {

@@ -54,15 +54,17 @@ fun ScoreEventChip(
         FeedbackTone.Bomb -> theme.bombOuter
     }
     val textColor = if (feedback.tone == FeedbackTone.Warning) theme.danger else theme.textPrimary
+    val shape = RoundedCornerShape(if (theme.isRetroTheme()) 6.dp else 999.dp)
 
     Text(
         text = feedback.text,
         color = textColor,
-        style = MaterialTheme.typography.titleSmall,
+        style = MaterialTheme.typography.titleSmall.retroText(theme),
         modifier = modifier
-            .background(theme.chipBackground.copy(alpha = 0.94f), RoundedCornerShape(999.dp))
+            .background(theme.chipBackground.copy(alpha = 0.94f), shape)
             .infernoPanelTexture(theme)
-            .border(1.dp, accent.copy(alpha = 0.70f), RoundedCornerShape(999.dp))
+            .retroPanelTexture(theme)
+            .border(if (theme.isRetroTheme()) 2.dp else 1.dp, accent.copy(alpha = 0.70f), shape)
             .padding(horizontal = 14.dp, vertical = 8.dp)
     )
 }
