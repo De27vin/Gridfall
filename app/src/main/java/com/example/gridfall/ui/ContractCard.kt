@@ -44,14 +44,17 @@ fun ContractOfferPopup(
     modifier: Modifier = Modifier
 ) {
     val theme = LocalGridfallColors.current
-    val popupShape = RoundedCornerShape(retroCorner(theme, 22.dp))
+    val popupShape = RoundedCornerShape(retroCorner(theme, infernoCorner(theme, 22.dp)))
 
     Card(
         modifier = modifier
             .widthIn(max = 360.dp)
             .fillMaxWidth(),
         shape = popupShape,
-        border = BorderStroke(if (theme.isRetroTheme()) 2.dp else 1.dp, theme.panelBorder.copy(alpha = if (theme.isRetroTheme()) 0.90f else 0.70f)),
+        border = BorderStroke(
+            if (theme.isRetroTheme() || theme.isInfernoTheme()) 2.dp else 1.dp,
+            theme.panelBorder.copy(alpha = if (theme.isRetroTheme() || theme.isInfernoTheme()) 0.90f else 0.70f)
+        ),
         colors = CardDefaults.cardColors(
             containerColor = theme.panelBackground
         )
@@ -107,7 +110,7 @@ fun ContractOfferPopup(
                         containerColor = theme.accentStrong,
                         contentColor = theme.chipBackground
                     ),
-                    shape = RoundedCornerShape(retroCorner(theme, 14.dp))
+                    shape = RoundedCornerShape(retroCorner(theme, infernoCorner(theme, 14.dp)))
                 ) {
                     Text(text = if (theme.isRetroTheme()) "ACCEPT" else "Accept", style = MaterialTheme.typography.labelLarge.retroText(theme))
                 }
@@ -118,7 +121,7 @@ fun ContractOfferPopup(
                     colors = ButtonDefaults.outlinedButtonColors(
                         contentColor = theme.textSecondary
                     ),
-                    shape = RoundedCornerShape(retroCorner(theme, 14.dp))
+                    shape = RoundedCornerShape(retroCorner(theme, infernoCorner(theme, 14.dp)))
                 ) {
                     Text(text = if (theme.isRetroTheme()) "SKIP" else "Skip", style = MaterialTheme.typography.labelLarge.retroText(theme))
                 }
@@ -134,14 +137,24 @@ fun ContractActiveChip(
 ) {
     val contract = contractState.activeContract ?: return
     val theme = LocalGridfallColors.current
-    val chipShape = RoundedCornerShape(if (theme.isRetroTheme()) 6.dp else 999.dp)
+    val chipShape = RoundedCornerShape(
+        when {
+            theme.isRetroTheme() -> 6.dp
+            theme.isInfernoTheme() -> 7.dp
+            else -> 999.dp
+        }
+    )
 
     Row(
         modifier = modifier
             .background(theme.chipBackground.copy(alpha = 0.94f), chipShape)
             .infernoPanelTexture(theme)
             .retroPanelTexture(theme)
-            .border(if (theme.isRetroTheme()) 2.dp else 1.dp, theme.panelBorder.copy(alpha = if (theme.isRetroTheme()) 0.82f else 0.62f), chipShape)
+            .border(
+                if (theme.isRetroTheme() || theme.isInfernoTheme()) 2.dp else 1.dp,
+                theme.panelBorder.copy(alpha = if (theme.isRetroTheme() || theme.isInfernoTheme()) 0.82f else 0.62f),
+                chipShape
+            )
             .padding(horizontal = 12.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -177,7 +190,13 @@ fun ContractResultChip(
     }
     val theme = LocalGridfallColors.current
     val accent = if (contractState.isCompleted) theme.success else theme.danger
-    val chipShape = RoundedCornerShape(if (theme.isRetroTheme()) 6.dp else 999.dp)
+    val chipShape = RoundedCornerShape(
+        when {
+            theme.isRetroTheme() -> 6.dp
+            theme.isInfernoTheme() -> 7.dp
+            else -> 999.dp
+        }
+    )
 
     Text(
         text = text,
@@ -187,7 +206,7 @@ fun ContractResultChip(
             .background(theme.chipBackground.copy(alpha = 0.96f), chipShape)
             .infernoPanelTexture(theme)
             .retroPanelTexture(theme)
-            .border(if (theme.isRetroTheme()) 2.dp else 1.dp, accent.copy(alpha = 0.72f), chipShape)
+            .border(if (theme.isRetroTheme() || theme.isInfernoTheme()) 2.dp else 1.dp, accent.copy(alpha = 0.72f), chipShape)
             .padding(horizontal = 14.dp, vertical = 8.dp)
     )
 }
@@ -198,14 +217,20 @@ private fun ContractMiniBadge(
     color: androidx.compose.ui.graphics.Color
 ) {
     val theme = LocalGridfallColors.current
-    val shape = RoundedCornerShape(if (theme.isRetroTheme()) 6.dp else 999.dp)
+    val shape = RoundedCornerShape(
+        when {
+            theme.isRetroTheme() -> 6.dp
+            theme.isInfernoTheme() -> 7.dp
+            else -> 999.dp
+        }
+    )
 
     Box(
         modifier = Modifier
             .background(color.copy(alpha = 0.12f), shape)
             .infernoPanelTexture(theme)
             .retroPanelTexture(theme)
-            .border(if (theme.isRetroTheme()) 2.dp else 1.dp, color.copy(alpha = 0.36f), shape)
+            .border(if (theme.isRetroTheme() || theme.isInfernoTheme()) 2.dp else 1.dp, color.copy(alpha = 0.36f), shape)
             .padding(horizontal = 10.dp, vertical = 5.dp)
     ) {
         Text(

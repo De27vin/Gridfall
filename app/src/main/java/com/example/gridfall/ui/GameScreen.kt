@@ -374,7 +374,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            val restartShape = RoundedCornerShape(retroCorner(activeThemeColors, 16.dp))
+            val restartShape = RoundedCornerShape(retroCorner(activeThemeColors, infernoCorner(activeThemeColors, 16.dp)))
             Button(
                 onClick = {
                     showRestartConfirmDialog = true
@@ -387,9 +387,11 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 modifier = Modifier
                     .height(44.dp)
                     .widthIn(min = 132.dp)
+                    .infernoPanelTexture(activeThemeColors)
+                    .retroPanelTexture(activeThemeColors)
                     .border(
-                        width = if (activeThemeColors.isRetroTheme()) 1.dp else 0.dp,
-                        color = activeThemeColors.panelBorder.copy(alpha = if (activeThemeColors.isRetroTheme()) 0.82f else 0f),
+                        width = if (activeThemeColors.isRetroTheme() || activeThemeColors.isInfernoTheme()) 1.dp else 0.dp,
+                        color = activeThemeColors.panelBorder.copy(alpha = if (activeThemeColors.isRetroTheme() || activeThemeColors.isInfernoTheme()) 0.82f else 0f),
                         shape = restartShape
                     )
             ) {
@@ -538,7 +540,11 @@ private fun DrawScope.drawDraggedCell(
         color = Color.Black.copy(alpha = 0.24f),
         topLeft = topLeft + Offset(cellSize * 0.08f, cellSize * 0.10f),
         size = Size(cellSize, cellSize),
-        cornerRadius = CornerRadius(8.dp.toPx(), 8.dp.toPx())
+        cornerRadius = if (colors.isInfernoTheme()) {
+            CornerRadius(cellSize * 0.055f, cellSize * 0.055f)
+        } else {
+            CornerRadius(8.dp.toPx(), 8.dp.toPx())
+        }
     )
     drawTacticalBlock(
         topLeft = topLeft,

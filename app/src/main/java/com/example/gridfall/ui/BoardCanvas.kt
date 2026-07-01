@@ -44,8 +44,8 @@ fun BoardCanvas(
     val linePulse = remember { Animatable(1f) }
     val bombPulse = remember { Animatable(1f) }
     val theme = LocalGridfallColors.current
-    val outerShape = RoundedCornerShape(retroCorner(theme, 22.dp))
-    val innerShape = RoundedCornerShape(retroCorner(theme, 14.dp))
+    val outerShape = RoundedCornerShape(retroCorner(theme, infernoCorner(theme, 22.dp)))
+    val innerShape = RoundedCornerShape(retroCorner(theme, infernoCorner(theme, 14.dp)))
 
     LaunchedEffect(lineClearFeedback?.token) {
         if (lineClearFeedback != null) {
@@ -72,8 +72,18 @@ fun BoardCanvas(
             )
             .infernoBoardFrameTexture(theme)
             .retroBoardFrameTexture(theme)
-            .border(if (theme.isRetroTheme()) 2.dp else 1.dp, theme.panelBorder, outerShape)
-            .padding(if (theme.isRetroTheme()) 10.dp else 8.dp)
+            .border(
+                if (theme.isRetroTheme() || theme.isInfernoTheme()) 2.dp else 1.dp,
+                theme.panelBorder.copy(alpha = if (theme.isInfernoTheme()) 0.92f else 1f),
+                outerShape
+            )
+            .padding(
+                when {
+                    theme.isRetroTheme() -> 10.dp
+                    theme.isInfernoTheme() -> 12.dp
+                    else -> 8.dp
+                }
+            )
             .clip(innerShape)
             .background(theme.boardInner)
             .infernoBoardWellTexture(theme)
@@ -132,6 +142,8 @@ fun BoardCanvas(
                 val previewFill = if (!preview.isValid) theme.invalidPreviewFill else theme.validPreviewFill
                 val previewCornerRadius = if (theme.isRetroTheme()) {
                     CornerRadius(cellSize * 0.045f, cellSize * 0.045f)
+                } else if (theme.isInfernoTheme()) {
+                    CornerRadius(cellSize * 0.060f, cellSize * 0.060f)
                 } else {
                     cornerRadius
                 }
@@ -213,6 +225,15 @@ fun BoardCanvas(
                 val progress = linePulse.value.coerceIn(0f, 1f)
                 if (theme.isRetroTheme()) {
                     drawRetroLineClearSweep(
+                        clearedRows = feedback.clearedRows,
+                        clearedColumns = feedback.clearedColumns,
+                        progress = progress,
+                        spacing = spacing,
+                        cellSize = cellSize,
+                        colors = theme
+                    )
+                } else if (theme.isInfernoTheme()) {
+                    drawInfernoLineClearBurn(
                         clearedRows = feedback.clearedRows,
                         clearedColumns = feedback.clearedColumns,
                         progress = progress,
@@ -339,6 +360,13 @@ fun BoardCanvas(
                         progress = progress,
                         colors = theme
                     )
+                } else if (theme.isInfernoTheme()) {
+                    drawInfernoBombBurst(
+                        center = center,
+                        cellSize = cellSize,
+                        progress = progress,
+                        colors = theme
+                    )
                 }
             }
         }
@@ -356,36 +384,19 @@ private fun DrawScope.drawEmptyCell(
         drawRetroEmptyCell(topLeft, cellSize, colors)
         return
     }
-    
-    // Background fill
+
     if (colors.isInfernoTheme()) {
-        drawRoundRect(
-            brush = Brush.verticalGradient(
-                colors = listOf(
-                    colors.emptyCell.copy(alpha = 0.98f),
-                    colors.boardInner.copy(alpha = 0.92f)
-                ),
-                startY = topLeft.y,
-                endY = topLeft.y + cellSize
-            ),
-            topLeft = topLeft,
-            size = Size(cellSize, cellSize),
-            cornerRadius = cornerRadius
-        )
-        drawLine(
-            color = colors.accent.copy(alpha = 0.055f),
-            start = topLeft + Offset(cellSize * 0.16f, cellSize * 0.18f),
-            end = topLeft + Offset(cellSize * 0.82f, cellSize * 0.74f),
-            strokeWidth = 1.dp.toPx()
-        )
-    } else {
-        drawRoundRect(
-            color = colors.emptyCell,
-            topLeft = topLeft,
-            size = Size(cellSize, cellSize),
-            cornerRadius = cornerRadius
-        )
+        drawInfernoEmptyCell(topLeft, cellSize, colors)
+        return
     }
+
+    // Background fill
+    drawRoundRect(
+        color = colors.emptyCell,
+        topLeft = topLeft,
+        size = Size(cellSize, cellSize),
+        cornerRadius = cornerRadius
+    )
     
     // Subtle border
     drawRoundRect(
@@ -397,7 +408,7 @@ private fun DrawScope.drawEmptyCell(
     )
 
     drawRoundRect(
-        color = Color.Black.copy(alpha = if (colors.isInfernoTheme()) 0.20f else 0.14f),
+        color = Color.Black.copy(alpha = 0.14f),
         topLeft = topLeft + Offset(1.dp.toPx(), 1.dp.toPx()),
         size = Size(cellSize - 2.dp.toPx(), cellSize - 2.dp.toPx()),
         cornerRadius = cornerRadius,
@@ -424,7 +435,11 @@ private fun DrawScope.drawContractWarningCell(
     cellSize: Float,
     colors: GridfallColors
 ) {
-    val cornerRadius = CornerRadius(8.dp.toPx(), 8.dp.toPx())
+    val cornerRadius = if (colors.isInfernoTheme()) {
+        CornerRadius(cellSize * 0.060f, cellSize * 0.060f)
+    } else {
+        CornerRadius(8.dp.toPx(), 8.dp.toPx())
+    }
 
     drawRoundRect(
         color = colors.contractWarningFill,

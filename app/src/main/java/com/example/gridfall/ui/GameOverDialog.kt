@@ -37,7 +37,7 @@ fun GameOverDialog(
     onRestart: () -> Unit
 ) {
     val theme = com.example.gridfall.ui.theme.LocalGridfallColors.current
-    val dialogShape = RoundedCornerShape(retroCorner(theme, 24.dp))
+    val dialogShape = RoundedCornerShape(retroCorner(theme, infernoCorner(theme, 24.dp)))
 
     AlertDialog(
         onDismissRequest = {},
@@ -55,10 +55,19 @@ fun GameOverDialog(
                     style = MaterialTheme.typography.headlineMedium.retroText(theme)
                 )
                 if (isNewBest) {
+                    val badgeShape = RoundedCornerShape(
+                        when {
+                            theme.isRetroTheme() -> 6.dp
+                            theme.isInfernoTheme() -> 7.dp
+                            else -> 999.dp
+                        }
+                    )
                     Box(
                         modifier = Modifier
-                            .background(theme.success.copy(alpha = 0.12f), RoundedCornerShape(999.dp))
-                            .border(1.dp, theme.success.copy(alpha = 0.42f), RoundedCornerShape(999.dp))
+                            .background(theme.success.copy(alpha = 0.12f), badgeShape)
+                            .infernoPanelTexture(theme)
+                            .retroPanelTexture(theme)
+                            .border(if (theme.isInfernoTheme()) 2.dp else 1.dp, theme.success.copy(alpha = 0.42f), badgeShape)
                             .padding(horizontal = 10.dp, vertical = 5.dp)
                     ) {
                         Text(
@@ -83,7 +92,7 @@ fun GameOverDialog(
                     containerColor = theme.accentStrong,
                     contentColor = theme.chipBackground
                 ),
-                shape = RoundedCornerShape(retroCorner(theme, 14.dp))
+                shape = RoundedCornerShape(retroCorner(theme, infernoCorner(theme, 14.dp)))
             ) {
                 Text(text = if (theme.isRetroTheme()) "RESTART" else "Restart", style = MaterialTheme.typography.labelLarge.retroText(theme))
             }
@@ -98,14 +107,21 @@ private fun ScoreRow(
     accent: androidx.compose.ui.graphics.Color
 ) {
     val theme = com.example.gridfall.ui.theme.LocalGridfallColors.current
-    val shape = RoundedCornerShape(retroCorner(theme, 14.dp))
+    val shape = RoundedCornerShape(retroCorner(theme, infernoCorner(theme, 14.dp)))
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .background(theme.chipBackground.copy(alpha = 0.72f), shape)
+            .infernoPanelTexture(theme)
             .retroPanelTexture(theme)
-            .border(BorderStroke(if (theme.isRetroTheme()) 2.dp else 1.dp, accent.copy(alpha = if (theme.isRetroTheme()) 0.62f else 0.34f)), shape)
+            .border(
+                BorderStroke(
+                    if (theme.isRetroTheme() || theme.isInfernoTheme()) 2.dp else 1.dp,
+                    accent.copy(alpha = if (theme.isRetroTheme() || theme.isInfernoTheme()) 0.62f else 0.34f)
+                ),
+                shape
+            )
             .padding(horizontal = 12.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically

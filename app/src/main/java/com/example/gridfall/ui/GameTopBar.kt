@@ -36,8 +36,14 @@ fun GameTopBar(
     modifier: Modifier = Modifier
 ) {
     val theme = LocalGridfallColors.current
-    val panelShape = RoundedCornerShape(retroCorner(theme, 18.dp))
-    val chipShape = RoundedCornerShape(if (theme.isRetroTheme()) 6.dp else 999.dp)
+    val panelShape = RoundedCornerShape(retroCorner(theme, infernoCorner(theme, 18.dp)))
+    val chipShape = RoundedCornerShape(
+        when {
+            theme.isRetroTheme() -> 6.dp
+            theme.isInfernoTheme() -> 7.dp
+            else -> 999.dp
+        }
+    )
     val scoreText = if (theme.isRetroTheme()) String.format(Locale.US, "%06d", score) else String.format(Locale.US, "%,d", score)
     val bestText = if (theme.isRetroTheme()) String.format(Locale.US, "%06d", highScore) else String.format(Locale.US, "%,d", highScore)
 
@@ -49,8 +55,8 @@ fun GameTopBar(
             .infernoPanelTexture(theme)
             .retroPanelTexture(theme)
             .border(
-                if (theme.isRetroTheme()) 2.dp else 1.dp,
-                theme.panelBorder.copy(alpha = if (theme.isRetroTheme()) 0.92f else 0.70f),
+                if (theme.isRetroTheme() || theme.isInfernoTheme()) 2.dp else 1.dp,
+                theme.panelBorder.copy(alpha = if (theme.isRetroTheme() || theme.isInfernoTheme()) 0.92f else 0.70f),
                 panelShape
             )
             .padding(12.dp)
@@ -82,7 +88,11 @@ fun GameTopBar(
                         .background(theme.button.copy(alpha = 0.74f))
                         .infernoPanelTexture(theme)
                         .retroPanelTexture(theme)
-                        .border(1.dp, theme.panelBorder.copy(alpha = if (theme.isRetroTheme()) 0.90f else 0.52f), chipShape)
+                        .border(
+                            if (theme.isInfernoTheme()) 2.dp else 1.dp,
+                            theme.panelBorder.copy(alpha = if (theme.isRetroTheme() || theme.isInfernoTheme()) 0.90f else 0.52f),
+                            chipShape
+                        )
                         .clickable(onClick = onSettingsClick)
                         .padding(horizontal = 11.dp, vertical = 6.dp),
                     contentAlignment = Alignment.Center
@@ -151,14 +161,14 @@ fun GameTopBar(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(6.dp)
-                        .clip(RoundedCornerShape(if (theme.isRetroTheme()) 2.dp else 999.dp))
+                        .clip(RoundedCornerShape(if (theme.isRetroTheme() || theme.isInfernoTheme()) 2.dp else 999.dp))
                         .background(theme.button)
                 ) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth(progress)
                             .height(6.dp)
-                            .clip(RoundedCornerShape(if (theme.isRetroTheme()) 2.dp else 999.dp))
+                            .clip(RoundedCornerShape(if (theme.isRetroTheme() || theme.isInfernoTheme()) 2.dp else 999.dp))
                             .background(theme.accent)
                     )
                 }
@@ -172,8 +182,9 @@ fun GameTopBar(
                     .align(Alignment.BottomEnd)
                     .clip(chipShape)
                     .background(theme.warning.copy(alpha = 0.14f))
+                    .infernoPanelTexture(theme)
                     .retroPanelTexture(theme)
-                    .border(1.dp, theme.warning.copy(alpha = 0.58f), chipShape)
+                    .border(if (theme.isInfernoTheme()) 2.dp else 1.dp, theme.warning.copy(alpha = 0.58f), chipShape)
                     .padding(horizontal = 10.dp, vertical = 4.dp)
             ) {
                 Text(

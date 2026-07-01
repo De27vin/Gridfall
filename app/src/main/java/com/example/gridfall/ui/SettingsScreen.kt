@@ -125,7 +125,7 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            val returnShape = RoundedCornerShape(retroCorner(theme, 16.dp))
+            val returnShape = RoundedCornerShape(retroCorner(theme, infernoCorner(theme, 16.dp)))
             Button(
                 onClick = onReturnToGame,
                 colors = ButtonDefaults.buttonColors(
@@ -135,9 +135,11 @@ fun SettingsScreen(
                 shape = returnShape,
                 modifier = Modifier
                     .fillMaxWidth()
+                    .infernoPanelTexture(theme)
+                    .retroPanelTexture(theme)
                     .border(
-                        width = if (theme.isRetroTheme()) 1.dp else 0.dp,
-                        color = theme.panelBorder.copy(alpha = if (theme.isRetroTheme()) 0.82f else 0f),
+                        width = if (theme.isRetroTheme() || theme.isInfernoTheme()) 1.dp else 0.dp,
+                        color = theme.panelBorder.copy(alpha = if (theme.isRetroTheme() || theme.isInfernoTheme()) 0.82f else 0f),
                         shape = returnShape
                     )
             ) {
@@ -156,7 +158,7 @@ private fun SettingsPanel(
     content: @Composable () -> Unit
 ) {
     val theme = LocalGridfallColors.current
-    val shape = RoundedCornerShape(retroCorner(theme, 18.dp))
+    val shape = RoundedCornerShape(retroCorner(theme, infernoCorner(theme, 18.dp)))
 
     Column(
         modifier = Modifier
@@ -165,7 +167,11 @@ private fun SettingsPanel(
             .background(theme.darkGlass)
             .infernoPanelTexture(theme)
             .retroPanelTexture(theme)
-            .border(if (theme.isRetroTheme()) 2.dp else 1.dp, theme.panelBorder.copy(alpha = if (theme.isRetroTheme()) 0.84f else 0.48f), shape)
+            .border(
+                if (theme.isRetroTheme() || theme.isInfernoTheme()) 2.dp else 1.dp,
+                theme.panelBorder.copy(alpha = if (theme.isRetroTheme() || theme.isInfernoTheme()) 0.84f else 0.48f),
+                shape
+            )
             .padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -189,7 +195,7 @@ private fun ThemeOptionRow(
     val backgroundColor = if (selected) theme.accent.copy(alpha = 0.14f) else theme.chipBackground.copy(alpha = 0.62f)
     val textColor = if (selected) theme.textPrimary else theme.textSecondary
     val markerColor = if (selected) theme.accentStrong else theme.textMuted
-    val shape = RoundedCornerShape(retroCorner(theme, 14.dp))
+    val shape = RoundedCornerShape(retroCorner(theme, infernoCorner(theme, 14.dp)))
 
     Row(
         modifier = Modifier
@@ -198,7 +204,7 @@ private fun ThemeOptionRow(
             .background(backgroundColor)
             .infernoPanelTexture(theme)
             .retroPanelTexture(theme)
-            .border(BorderStroke(if (theme.isRetroTheme()) 2.dp else 1.dp, borderColor), shape)
+            .border(BorderStroke(if (theme.isRetroTheme() || theme.isInfernoTheme()) 2.dp else 1.dp, borderColor), shape)
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 11.dp),
         horizontalArrangement = Arrangement.SpaceBetween,

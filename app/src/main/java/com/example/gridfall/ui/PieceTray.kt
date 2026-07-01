@@ -63,7 +63,7 @@ fun PieceTray(
             val isUsed = index in usedPieceIndices
             val isSelectable = piece != null && !isUsed
             val isDragging = draggingPieceIndex == index && isSelectable
-            val slotShape = RoundedCornerShape(retroCorner(theme, 18.dp))
+            val slotShape = RoundedCornerShape(retroCorner(theme, infernoCorner(theme, 18.dp)))
             var slotTopLeft by remember { mutableStateOf(Offset.Zero) }
 
             Box(
@@ -74,17 +74,21 @@ fun PieceTray(
                     .background(
                         brush = Brush.verticalGradient(
                             colors = if (isDragging) {
-                                listOf(theme.panelBackground.copy(alpha = 0.78f), theme.boardInner.copy(alpha = 0.70f))
+                                listOf(theme.panelBackground.copy(alpha = 0.88f), theme.boardInner.copy(alpha = 0.78f))
                             } else {
-                                listOf(theme.panelBackground.copy(alpha = 0.54f), theme.boardInner.copy(alpha = 0.46f))
+                                listOf(theme.panelBackground.copy(alpha = 0.62f), theme.boardInner.copy(alpha = 0.52f))
                             }
                         )
                     )
                     .infernoSlotTexture(theme, active = isDragging)
                     .retroSlotTexture(theme, active = isDragging)
                     .border(
-                        width = if (theme.isRetroTheme()) 2.dp else 1.dp,
-                        color = if (isDragging) theme.accentStrong.copy(alpha = 0.76f) else theme.panelBorder.copy(alpha = if (theme.isRetroTheme()) 0.72f else 0.46f),
+                        width = if (theme.isRetroTheme() || theme.isInfernoTheme()) 2.dp else 1.dp,
+                        color = if (isDragging) {
+                            theme.accentStrong.copy(alpha = 0.82f)
+                        } else {
+                            theme.panelBorder.copy(alpha = if (theme.isRetroTheme() || theme.isInfernoTheme()) 0.72f else 0.46f)
+                        },
                         shape = slotShape
                     )
                     .onGloballyPositioned { coordinates ->
@@ -179,7 +183,11 @@ private fun DrawScope.drawTrayCell(
         color = Color.Black.copy(alpha = 0.18f),
         topLeft = topLeft + Offset(cellSize * 0.06f, cellSize * 0.08f),
         size = Size(cellSize, cellSize),
-        cornerRadius = CornerRadius(cellSize * 0.16f, cellSize * 0.16f)
+        cornerRadius = if (colors.isInfernoTheme()) {
+            CornerRadius(cellSize * 0.055f, cellSize * 0.055f)
+        } else {
+            CornerRadius(cellSize * 0.16f, cellSize * 0.16f)
+        }
     )
 
     drawTacticalBlock(

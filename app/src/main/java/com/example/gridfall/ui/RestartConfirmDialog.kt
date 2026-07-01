@@ -26,8 +26,8 @@ fun RestartConfirmDialog(
     onConfirmRestart: () -> Unit
 ) {
     val theme = com.example.gridfall.ui.theme.LocalGridfallColors.current
-    val dialogShape = RoundedCornerShape(retroCorner(theme, 24.dp))
-    val buttonShape = RoundedCornerShape(retroCorner(theme, 14.dp))
+    val dialogShape = RoundedCornerShape(retroCorner(theme, infernoCorner(theme, 24.dp)))
+    val buttonShape = RoundedCornerShape(retroCorner(theme, infernoCorner(theme, 14.dp)))
 
     AlertDialog(
         onDismissRequest = onCancel,

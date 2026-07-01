@@ -26,6 +26,11 @@ internal fun DrawScope.drawTacticalBlock(
         return
     }
 
+    if (isInferno) {
+        drawInfernoBlock(topLeft = topLeft, cellSize = cellSize, variant = variant, colors = colors)
+        return
+    }
+
     if (variant == 0) {
         drawRoundRect(
             color = colors.bombGlow.copy(alpha = if (isInferno) 0.62f else colors.bombGlow.alpha),
@@ -100,6 +105,143 @@ internal fun DrawScope.drawTacticalBlock(
     if (variant == 0) {
         drawBombCore(topLeft = topLeft, cellSize = cellSize, colors = colors)
     }
+}
+
+private fun DrawScope.drawInfernoBlock(
+    topLeft: Offset,
+    cellSize: Float,
+    variant: Int,
+    colors: GridfallColors
+) {
+    val palette = paletteForVariant(variant, colors)
+    val corner = cellSize * 0.055f
+    val cornerRadius = CornerRadius(corner, corner)
+    val inset = cellSize * 0.105f
+
+    if (variant == 0) {
+        drawRoundRect(
+            color = colors.bombGlow.copy(alpha = 0.70f),
+            topLeft = topLeft - Offset(cellSize * 0.13f, cellSize * 0.13f),
+            size = Size(cellSize * 1.26f, cellSize * 1.26f),
+            cornerRadius = CornerRadius(corner * 3.0f, corner * 3.0f)
+        )
+    } else {
+        drawRoundRect(
+            color = colors.accent.copy(alpha = 0.18f),
+            topLeft = topLeft - Offset(cellSize * 0.05f, cellSize * 0.05f),
+            size = Size(cellSize * 1.10f, cellSize * 1.10f),
+            cornerRadius = CornerRadius(corner * 2.0f, corner * 2.0f)
+        )
+    }
+
+    drawRoundRect(
+        color = Color.Black.copy(alpha = 0.42f),
+        topLeft = topLeft + Offset(cellSize * 0.07f, cellSize * 0.09f),
+        size = Size(cellSize, cellSize),
+        cornerRadius = cornerRadius
+    )
+    drawRoundRect(
+        brush = Brush.verticalGradient(
+            colors = listOf(
+                Color(0xFF2B0B05),
+                palette.bottom,
+                Color.Black.copy(alpha = 0.56f)
+            ),
+            startY = topLeft.y,
+            endY = topLeft.y + cellSize
+        ),
+        topLeft = topLeft,
+        size = Size(cellSize, cellSize),
+        cornerRadius = cornerRadius
+    )
+    drawRoundRect(
+        brush = Brush.radialGradient(
+            colors = listOf(
+                palette.top.copy(alpha = 0.98f),
+                palette.middle.copy(alpha = 0.82f),
+                Color.Transparent
+            ),
+            center = topLeft + Offset(cellSize * 0.48f, cellSize * 0.38f),
+            radius = cellSize * 0.72f
+        ),
+        topLeft = topLeft + Offset(inset, inset),
+        size = Size(cellSize - inset * 2f, cellSize - inset * 2f),
+        cornerRadius = CornerRadius(corner * 0.70f, corner * 0.70f)
+    )
+    drawRoundRect(
+        color = Color.Black.copy(alpha = 0.52f),
+        topLeft = topLeft,
+        size = Size(cellSize, cellSize),
+        cornerRadius = cornerRadius,
+        style = Stroke(width = (cellSize * 0.075f).coerceAtLeast(2f))
+    )
+    drawLine(
+        color = colors.accentStrong.copy(alpha = 0.44f),
+        start = topLeft + Offset(cellSize * 0.16f, cellSize * 0.18f),
+        end = topLeft + Offset(cellSize * 0.70f, cellSize * 0.18f),
+        strokeWidth = (cellSize * 0.045f).coerceAtLeast(1f)
+    )
+    drawLine(
+        color = colors.warning.copy(alpha = 0.30f),
+        start = topLeft + Offset(cellSize * 0.20f, cellSize * 0.72f),
+        end = topLeft + Offset(cellSize * 0.78f, cellSize * 0.52f),
+        strokeWidth = (cellSize * 0.035f).coerceAtLeast(1f)
+    )
+    drawLine(
+        color = colors.accent.copy(alpha = 0.20f),
+        start = topLeft + Offset(cellSize * 0.62f, cellSize * 0.20f),
+        end = topLeft + Offset(cellSize * 0.82f, cellSize * 0.44f),
+        strokeWidth = (cellSize * 0.026f).coerceAtLeast(1f)
+    )
+
+    if (variant == 0) {
+        drawInfernoBombCore(topLeft = topLeft, cellSize = cellSize, colors = colors)
+    }
+}
+
+private fun DrawScope.drawInfernoBombCore(
+    topLeft: Offset,
+    cellSize: Float,
+    colors: GridfallColors
+) {
+    val center = topLeft + Offset(cellSize / 2f, cellSize / 2f)
+    drawCircle(
+        color = colors.bombGlow.copy(alpha = 0.68f),
+        radius = cellSize * 0.46f,
+        center = center
+    )
+    drawCircle(
+        brush = Brush.radialGradient(
+            colors = listOf(
+                colors.bombCore,
+                colors.bombInner,
+                colors.bombOuter.copy(alpha = 0.96f),
+                Color.Black.copy(alpha = 0.66f)
+            ),
+            center = center - Offset(cellSize * 0.08f, cellSize * 0.10f),
+            radius = cellSize * 0.42f
+        ),
+        radius = cellSize * 0.34f,
+        center = center
+    )
+    drawCircle(
+        color = colors.accentStrong.copy(alpha = 0.72f),
+        radius = cellSize * 0.25f,
+        center = center,
+        style = Stroke(width = (cellSize * 0.045f).coerceAtLeast(1f))
+    )
+    drawLine(
+        color = Color.Black.copy(alpha = 0.54f),
+        start = center + Offset(-cellSize * 0.18f, -cellSize * 0.11f),
+        end = center + Offset(cellSize * 0.18f, cellSize * 0.13f),
+        strokeWidth = (cellSize * 0.040f).coerceAtLeast(1f)
+    )
+    drawLine(
+        color = colors.bombCore.copy(alpha = 0.82f),
+        start = center + Offset(-cellSize * 0.10f, cellSize * 0.16f),
+        end = center + Offset(cellSize * 0.14f, -cellSize * 0.16f),
+        strokeWidth = (cellSize * 0.034f).coerceAtLeast(1f)
+    )
 }
 
 private fun DrawScope.drawRetroBlock(
