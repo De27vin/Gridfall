@@ -1,0 +1,212 @@
+package com.example.gridfall.ui
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.unit.dp
+import com.example.gridfall.game.JokerType
+import com.example.gridfall.game.Piece
+import com.example.gridfall.game.RiskSpinState
+import com.example.gridfall.ui.theme.PremiumTacticalColors
+
+@Composable
+fun JokerInventoryCarousel(
+    inventory: List<JokerType>,
+    draggingJokerInventoryIndex: Int?,
+    canUseRevert: Boolean,
+    onJokerDragStarted: (inventoryIndex: Int, jokerType: JokerType, piece: Piece, position: Offset, startOffset: Offset) -> Unit,
+    onJokerDragged: (Offset) -> Unit,
+    onJokerDragEnded: () -> Unit,
+    onJokerDragCancelled: () -> Unit,
+    onRevertClicked: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val colors = PremiumTacticalColors
+    val shape = RoundedCornerShape(14.dp)
+
+    Column(
+        modifier = modifier
+            .clip(shape)
+            .background(colors.panelBackground.copy(alpha = 0.72f))
+            .border(1.dp, colors.panelBorder.copy(alpha = 0.55f), shape)
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Jokers",
+                color = colors.textPrimary,
+                style = MaterialTheme.typography.labelLarge
+            )
+            Spacer(modifier = Modifier.weight(1f))
+            Text(
+                text = "${inventory.size}/${RiskSpinState.MAX_INVENTORY_SIZE}",
+                color = colors.textMuted,
+                style = MaterialTheme.typography.labelSmall
+            )
+        }
+
+        if (inventory.isEmpty()) {
+            Text(
+                text = "No jokers yet",
+                color = colors.textMuted,
+                style = MaterialTheme.typography.bodySmall
+            )
+        } else {
+            Row(
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                inventory.forEachIndexed { index, jokerType ->
+                    JokerChip(
+                        jokerType = jokerType,
+                        inventoryIndex = index,
+                        isDragging = draggingJokerInventoryIndex == index,
+                        canUseRevert = canUseRevert,
+                        onJokerDragStarted = onJokerDragStarted,
+                        onJokerDragged = onJokerDragged,
+                        onJokerDragEnded = onJokerDragEnded,
+                        onJokerDragCancelled = onJokerDragCancelled,
+                        onRevertClicked = onRevertClicked
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun JokerChip(
+    jokerType: JokerType,
+    inventoryIndex: Int,
+    isDragging: Boolean,
+    canUseRevert: Boolean,
+    onJokerDragStarted: (inventoryIndex: Int, jokerType: JokerType, piece: Piece, position: Offset, startOffset: Offset) -> Unit,
+    onJokerDragged: (Offset) -> Unit,
+    onJokerDragEnded: () -> Unit,
+    onJokerDragCancelled: () -> Unit,
+    onRevertClicked: () -> Unit
+) {
+    val colors = PremiumTacticalColors
+    val piece = jokerType.toPiece()
+    val shape = RoundedCornerShape(12.dp)
+    var chipTopLeft by remember { mutableStateOf(Offset.Zero) }
+    val enabled = piece != null || canUseRevert
+
+    Box(
+        modifier = Modifier
+            .size(width = 76.dp, height = 82.dp)
+            .clip(shape)
+            .background(colors.chipBackground.copy(alpha = if (enabled) 0.82f else 0.42f))
+            .border(
+                width = 1.dp,
+                color = colors.panelBorder.copy(alpha = if (enabled) 0.72f else 0.34f),
+                shape = shape
+            )
+            .onGloballyPositioned { coordinates ->
+                chipTopLeft = coordinates.positionInRoot()
+            }
+            .then(
+                if (piece != null) {
+                    Modifier.pointerInput(inventoryIndex, jokerType) {
+                        detectDragGestures(
+                            onDragStart = { offset ->
+                                onJokerDragStarted(
+                                    inventoryIndex,
+                                    jokerType,
+                                    piece,
+                                    chipTopLeft + offset,
+                                    offset
+                                )
+                            },
+                            onDragCancel = onJokerDragCancelled,
+                            onDragEnd = onJokerDragEnded,
+                            onDrag = { change, dragAmount ->
+                                change.consume()
+                                onJokerDragged(dragAmount)
+                            }
+                        )
+                    }
+                } else {
+                    Modifier.pointerInput(canUseRevert) {
+                        detectTapGestures(
+                            onTap = {
+                                if (canUseRevert) {
+                                    onRevertClicked()
+                                }
+                            }
+                        )
+                    }
+                }
+            )
+            .padding(7.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        if (piece != null) {
+            PiecePreview(
+                piece = piece,
+                colors = colors,
+                modifier = Modifier
+                    .size(46.dp)
+                    .alpha(if (isDragging) 0.35f else 1f)
+            )
+        } else {
+            Text(
+                text = "REV",
+                color = if (canUseRevert) colors.warning else colors.textMuted,
+                style = MaterialTheme.typography.labelLarge
+            )
+        }
+
+        Text(
+            text = shortJokerLabel(jokerType),
+            color = colors.textSecondary,
+            style = MaterialTheme.typography.labelSmall,
+            modifier = Modifier.align(Alignment.BottomCenter)
+        )
+    }
+}
+
+private fun shortJokerLabel(jokerType: JokerType): String {
+    return when (jokerType) {
+        JokerType.Single -> "1x1"
+        JokerType.HorizontalTwo -> "2x1"
+        JokerType.VerticalTwo -> "1x2"
+        JokerType.Bomb -> "Bomb"
+        JokerType.Revert -> "Revert"
+    }
+}

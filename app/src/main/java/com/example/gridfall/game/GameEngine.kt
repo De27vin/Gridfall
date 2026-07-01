@@ -1,5 +1,7 @@
 package com.example.gridfall.game
 
+import kotlin.random.Random
+
 object GameEngine {
     fun createInitialState(): GameState {
         val level = LevelSystem.levelForScore(0)
@@ -125,6 +127,59 @@ object GameEngine {
         }
     }
 
+    fun riskSpinAvailability(state: GameState): RiskSpinAvailability {
+        val level = LevelSystem.levelForScore(state.score)
+        return when {
+            state.isGameOver -> RiskSpinAvailability(false, "Game over")
+            level < 3 -> RiskSpinAvailability(false, "Unlocks at Level 3")
+            state.riskSpinState.cooldownBatchesRemaining > 0 -> RiskSpinAvailability(
+                false,
+                "Available in ${state.riskSpinState.cooldownBatchesRemaining} batches"
+            )
+            state.riskSpinState.isInventoryFull -> RiskSpinAvailability(false, "Inventory full")
+            RiskSpinOption.entries.none { canSelectRiskSpinOption(state, it) } -> RiskSpinAvailability(false, "Not enough score")
+            else -> RiskSpinAvailability(true)
+        }
+    }
+
+    fun riskSpinCost(state: GameState, option: RiskSpinOption): Int {
+        return option.cost(state.score)
+    }
+
+    fun canSelectRiskSpinOption(state: GameState, option: RiskSpinOption): Boolean {
+        return riskSpinCost(state, option) <= state.score
+    }
+
+    fun performRiskSpin(
+        state: GameState,
+        option: RiskSpinOption,
+        random: Random = Random.Default
+    ): RiskSpinResult? {
+        if (!riskSpinAvailability(state).isAvailable) return null
+        if (!canSelectRiskSpinOption(state, option)) return null
+
+        val cost = riskSpinCost(state, option)
+        val (nextInventory, entries) = RiskSpin.spinEntries(
+            spinCount = option.spinCount,
+            startingInventory = state.riskSpinState.inventory,
+            random = random
+        )
+        val nextState = state.copy(
+            score = (state.score - cost).coerceAtLeast(0),
+            riskSpinState = state.riskSpinState.copy(
+                inventory = nextInventory.take(RiskSpinState.MAX_INVENTORY_SIZE),
+                cooldownBatchesRemaining = RiskSpin.randomCooldown(random)
+            )
+        )
+
+        return RiskSpinResult(
+            state = nextState,
+            option = option,
+            cost = cost,
+            entries = entries
+        )
+    }
+
     fun hasAnyValidMove(
         board: Board,
         pieces: List<Piece>
@@ -151,6 +206,7 @@ object GameEngine {
         val piece = state.currentPieces[pieceIndex]
         if (!canPlace(state.board, piece, startRow, startCol)) return state
 
+        val previousSnapshot = snapshotBeforeMove(state)
         val placementResult = placePieceOnBoard(
             state = state,
             piece = piece,
@@ -177,6 +233,7 @@ object GameEngine {
         val nextPieces: List<Piece>
         val finalUsedPieceIndices: Set<Int>
         val finalContractState: ContractState
+        val advancedRiskSpinState: RiskSpinState
         val contractScoreDelta: Int
         if (allPiecesUsed) {
             finalUsedPieceIndices = emptySet()
@@ -189,17 +246,23 @@ object GameEngine {
                 contractState = evaluation.contractState,
                 level = nextLevel
             )
+            advancedRiskSpinState = advanceRiskSpinBatch(state.riskSpinState)
         } else {
             nextPieces = state.currentPieces
             finalUsedPieceIndices = nextUsedPieceIndices
             finalContractState = immediateContractEvaluation.contractState
             contractScoreDelta = 0
+            advancedRiskSpinState = state.riskSpinState
         }
 
         val availablePieces = nextPieces.filterIndexed { index, _ ->
             index !in finalUsedPieceIndices
         }
-        val isGameOver = !hasAnyValidMove(placementResult.board, availablePieces)
+        val finalRiskSpinState = advancedRiskSpinState.copy(previousMoveSnapshot = previousSnapshot)
+        val isGameOver = !hasAnyValidMove(
+            placementResult.board,
+            availablePieces + placeableJokerPieces(finalRiskSpinState.inventory)
+        )
 
         return state.copy(
             board = placementResult.board,
@@ -208,7 +271,80 @@ object GameEngine {
             score = (scoreAfterPlacement + contractScoreDelta).coerceAtLeast(0),
             combo = placementResult.nextCombo,
             isGameOver = isGameOver,
-            contractState = finalContractState
+            contractState = finalContractState,
+            riskSpinState = finalRiskSpinState
+        )
+    }
+
+    fun placeJoker(
+        state: GameState,
+        jokerType: JokerType,
+        startRow: Int,
+        startCol: Int
+    ): GameState {
+        if (state.isGameOver) return state
+        if (jokerType !in state.riskSpinState.inventory) return state
+        val piece = jokerType.toPiece() ?: return state
+        if (!canPlace(state.board, piece, startRow, startCol)) return state
+
+        val previousSnapshot = snapshotBeforeMove(state)
+        val placementResult = placePieceOnBoard(
+            state = state,
+            piece = piece,
+            startRow = startRow,
+            startCol = startCol
+        )
+        val updatedContractState = updateContractProgress(
+            contractState = state.contractState,
+            piece = piece,
+            startRow = startRow,
+            startCol = startCol,
+            clearedLineCount = placementResult.clearedLineCount,
+            scoreGained = placementResult.scoreGained
+        )
+        val immediateContractEvaluation = evaluateImmediateContractFailure(updatedContractState)
+        val scoreAfterPlacement = (
+            state.score +
+                placementResult.scoreGained +
+                immediateContractEvaluation.scoreDelta
+            ).coerceAtLeast(0)
+        val nextInventory = removeOneJoker(state.riskSpinState.inventory, jokerType)
+        val nextRiskSpinState = state.riskSpinState.copy(
+            inventory = nextInventory,
+            previousMoveSnapshot = previousSnapshot
+        )
+        val availablePieces = state.currentPieces.filterIndexed { index, _ ->
+            index !in state.usedPieceIndices
+        }
+        val isGameOver = !hasAnyValidMove(
+            placementResult.board,
+            availablePieces + placeableJokerPieces(nextInventory)
+        )
+
+        return state.copy(
+            board = placementResult.board,
+            score = scoreAfterPlacement,
+            combo = placementResult.nextCombo,
+            isGameOver = isGameOver,
+            contractState = immediateContractEvaluation.contractState,
+            riskSpinState = nextRiskSpinState
+        )
+    }
+
+    fun useRevertJoker(state: GameState): GameState {
+        if (JokerType.Revert !in state.riskSpinState.inventory) return state
+        val snapshot = state.riskSpinState.previousMoveSnapshot ?: return state
+        val restoredInventory = removeOneJoker(
+            inventory = snapshot.riskSpinState.inventory,
+            jokerType = JokerType.Revert
+        )
+
+        return snapshot.copy(
+            riskSpinState = snapshot.riskSpinState.copy(
+                inventory = restoredInventory,
+                previousMoveSnapshot = null
+            ),
+            isGameOver = false
         )
     }
 
@@ -471,6 +607,39 @@ object GameEngine {
         }
 
         return updatedBoard
+    }
+
+    private fun snapshotBeforeMove(state: GameState): GameState {
+        return state.copy(
+            riskSpinState = state.riskSpinState.copy(previousMoveSnapshot = null)
+        )
+    }
+
+    private fun advanceRiskSpinBatch(riskSpinState: RiskSpinState): RiskSpinState {
+        return riskSpinState.copy(
+            cooldownBatchesRemaining = (riskSpinState.cooldownBatchesRemaining - 1).coerceAtLeast(0)
+        )
+    }
+
+    private fun placeableJokerPieces(inventory: List<JokerType>): List<Piece> {
+        return inventory.mapNotNull { jokerType ->
+            jokerType.toPiece()
+        }
+    }
+
+    private fun removeOneJoker(
+        inventory: List<JokerType>,
+        jokerType: JokerType
+    ): List<JokerType> {
+        var removed = false
+        return inventory.filterNot { item ->
+            if (!removed && item == jokerType) {
+                removed = true
+                true
+            } else {
+                false
+            }
+        }
     }
 
     private data class ContractEvaluation(

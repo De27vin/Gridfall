@@ -7,5 +7,6 @@ data class GameState(
     val score: Int,
     val combo: Int,
     val isGameOver: Boolean,
-    val contractState: ContractState = ContractState()
+    val contractState: ContractState = ContractState(),
+    val riskSpinState: RiskSpinState = RiskSpinState()
 )

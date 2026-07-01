@@ -7,6 +7,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -53,9 +54,11 @@ import com.example.gridfall.audio.ThemeSoundEvent
 import com.example.gridfall.game.Board
 import com.example.gridfall.game.ClearResult
 import com.example.gridfall.game.GameEngine
+import com.example.gridfall.game.JokerType
 import com.example.gridfall.game.LevelSystem
 import com.example.gridfall.game.Piece
 import com.example.gridfall.game.PieceEffect
+import com.example.gridfall.game.RiskSpinResult
 import com.example.gridfall.game.ScoreSystem
 import com.example.gridfall.ui.theme.*
 import kotlinx.coroutines.delay
@@ -78,6 +81,8 @@ fun GameScreen(modifier: Modifier = Modifier) {
     var scoreEventFeedback by remember { mutableStateOf<ScoreEventFeedback?>(null) }
     var scoreEventFeedbackToken by remember { mutableStateOf(0) }
     var showRestartConfirmDialog by remember { mutableStateOf(false) }
+    var showRiskSpinDialog by remember { mutableStateOf(false) }
+    var riskSpinResult by remember { mutableStateOf<RiskSpinResult?>(null) }
     var showSettingsScreen by remember { mutableStateOf(false) }
     var selectedThemeMode by remember { mutableStateOf(ThemePreferenceStore.load(context)) }
     var soundEffectsVolume by remember { mutableStateOf(SoundPreferenceStore.loadSoundEffectsVolume(context)) }
@@ -204,6 +209,8 @@ fun GameScreen(modifier: Modifier = Modifier) {
 
     fun restartGame() {
         showRestartConfirmDialog = false
+        showRiskSpinDialog = false
+        riskSpinResult = null
         showSettingsScreen = false
         gameState = GameEngine.createInitialState()
         dragState = DragState()
@@ -215,23 +222,33 @@ fun GameScreen(modifier: Modifier = Modifier) {
 
     fun finishDrag() {
         val pieceIndex = dragState.pieceIndex
+        val jokerType = dragState.jokerType
         val piece = dragState.piece
         val resolution = dragState.placementResolution
         val target = resolution?.target
 
-        if (pieceIndex != null && piece != null && target != null && resolution.isValid) {
+        if (piece != null && target != null && resolution.isValid && (pieceIndex != null || jokerType != null)) {
             val clearResult = previewClearResult(
                 board = gameState.board,
                 piece = piece,
                 startRow = target.startRow,
                 startCol = target.startCol
             )
-            val nextState = GameEngine.placePiece(
-                state = gameState,
-                pieceIndex = pieceIndex,
-                startRow = target.startRow,
-                startCol = target.startCol
-            )
+            val nextState = if (jokerType != null) {
+                GameEngine.placeJoker(
+                    state = gameState,
+                    jokerType = jokerType,
+                    startRow = target.startRow,
+                    startCol = target.startCol
+                )
+            } else {
+                GameEngine.placePiece(
+                    state = gameState,
+                    pieceIndex = pieceIndex ?: return,
+                    startRow = target.startRow,
+                    startCol = target.startCol
+                )
+            }
 
             if (nextState != gameState) {
                 view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
@@ -293,7 +310,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
             } else {
                 view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
             }
-        } else if (pieceIndex != null) {
+        } else if (pieceIndex != null || jokerType != null) {
             view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
         }
 
@@ -424,31 +441,131 @@ fun GameScreen(modifier: Modifier = Modifier) {
             Spacer(modifier = Modifier.height(12.dp))
 
             val restartShape = RoundedCornerShape(retroCorner(activeThemeColors, infernoCorner(activeThemeColors, 16.dp)))
-            Button(
-                onClick = {
-                    showRestartConfirmDialog = true
-                },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = activeThemeColors.button,
-                    contentColor = activeThemeColors.textPrimary
-                ),
-                shape = restartShape,
-                modifier = Modifier
-                    .height(44.dp)
-                    .widthIn(min = 132.dp)
-                    .infernoPanelTexture(activeThemeColors)
-                    .retroPanelTexture(activeThemeColors)
-                    .border(
-                        width = if (activeThemeColors.isRetroTheme() || activeThemeColors.isInfernoTheme()) 1.dp else 0.dp,
-                        color = activeThemeColors.panelBorder.copy(alpha = if (activeThemeColors.isRetroTheme() || activeThemeColors.isInfernoTheme()) 0.82f else 0f),
-                        shape = restartShape
-                    )
+            val riskSpinAvailability = GameEngine.riskSpinAvailability(gameState)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
+                Button(
+                    onClick = {
+                        showRestartConfirmDialog = true
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = activeThemeColors.button,
+                        contentColor = activeThemeColors.textPrimary
+                    ),
+                    shape = restartShape,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(44.dp)
+                        .infernoPanelTexture(activeThemeColors)
+                        .retroPanelTexture(activeThemeColors)
+                        .border(
+                            width = if (activeThemeColors.isRetroTheme() || activeThemeColors.isInfernoTheme()) 1.dp else 0.dp,
+                            color = activeThemeColors.panelBorder.copy(alpha = if (activeThemeColors.isRetroTheme() || activeThemeColors.isInfernoTheme()) 0.82f else 0f),
+                            shape = restartShape
+                        )
+                ) {
+                    Text(
+                        text = if (activeThemeColors.isRetroTheme()) "RESTART" else "Restart",
+                        style = MaterialTheme.typography.labelLarge.retroText(activeThemeColors)
+                    )
+                }
+
+                Button(
+                    onClick = {
+                        showRiskSpinDialog = true
+                    },
+                    enabled = riskSpinAvailability.isAvailable,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = PremiumTacticalColors.button,
+                        contentColor = PremiumTacticalColors.textPrimary,
+                        disabledContainerColor = PremiumTacticalColors.chipBackground.copy(alpha = 0.48f),
+                        disabledContentColor = PremiumTacticalColors.textMuted
+                    ),
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(44.dp)
+                ) {
+                    Text(
+                        text = "Risk Spin",
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                }
+            }
+
+            if (!riskSpinAvailability.isAvailable && riskSpinAvailability.reason != null) {
+                Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = if (activeThemeColors.isRetroTheme()) "RESTART" else "Restart",
-                    style = MaterialTheme.typography.labelLarge.retroText(activeThemeColors)
+                    text = riskSpinAvailability.reason,
+                    color = PremiumTacticalColors.textMuted,
+                    style = MaterialTheme.typography.labelSmall
                 )
             }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            JokerInventoryCarousel(
+                inventory = gameState.riskSpinState.inventory,
+                draggingJokerInventoryIndex = dragState.jokerInventoryIndex,
+                canUseRevert = gameState.riskSpinState.previousMoveSnapshot != null &&
+                    JokerType.Revert in gameState.riskSpinState.inventory,
+                onJokerDragStarted = { inventoryIndex, selectedJokerType, jokerPiece, position, startOffset ->
+                    val resolution = calculateCurrentDragPlacementResolution(
+                        piece = jokerPiece,
+                        dragPosition = position,
+                        boardLayoutInfo = boardLayoutInfo,
+                        board = gameState.board,
+                        verticalShiftPx = verticalShiftPx
+                    )
+                    dragState = DragState(
+                        jokerInventoryIndex = inventoryIndex,
+                        jokerType = selectedJokerType,
+                        piece = jokerPiece,
+                        dragPosition = position,
+                        dragStartOffset = startOffset,
+                        placementResolution = resolution,
+                        isDragging = true
+                    )
+                },
+                onJokerDragged = { dragAmount ->
+                    val piece = dragState.piece
+                    val nextPosition = dragState.dragPosition + dragAmount
+                    val resolution = if (piece != null) {
+                        calculateCurrentDragPlacementResolution(
+                            piece = piece,
+                            dragPosition = nextPosition,
+                            boardLayoutInfo = boardLayoutInfo,
+                            board = gameState.board,
+                            verticalShiftPx = verticalShiftPx
+                        )
+                    } else {
+                        null
+                    }
+
+                    dragState = dragState.copy(
+                        dragPosition = nextPosition,
+                        placementResolution = resolution
+                    )
+                },
+                onJokerDragEnded = ::finishDrag,
+                onJokerDragCancelled = {
+                    dragState = DragState()
+                },
+                onRevertClicked = {
+                    val nextState = GameEngine.useRevertJoker(gameState)
+                    if (nextState != gameState) {
+                        gameState = nextState
+                        dragState = DragState()
+                        view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                    } else {
+                        view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            )
         }
 
         val draggedPiece = dragState.piece
@@ -527,12 +644,37 @@ fun GameScreen(modifier: Modifier = Modifier) {
             isNewBest = isNewBestThisGame,
             onRestart = ::restartGame
         )
+    } else if (showRiskSpinDialog) {
+        RiskSpinDialog(
+            gameState = gameState,
+            onOptionSelected = { option ->
+                val result = GameEngine.performRiskSpin(gameState, option)
+                if (result != null) {
+                    gameState = result.state
+                    riskSpinResult = result
+                    showRiskSpinDialog = false
+                    view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                }
+            },
+            onDismiss = {
+                showRiskSpinDialog = false
+            }
+        )
     } else if (showRestartConfirmDialog) {
         RestartConfirmDialog(
             onCancel = {
                 showRestartConfirmDialog = false
             },
             onConfirmRestart = ::restartGame
+        )
+    }
+
+    riskSpinResult?.let { result ->
+        RiskSpinResultDialog(
+            result = result,
+            onDismiss = {
+                riskSpinResult = null
+            }
         )
     }
         }
