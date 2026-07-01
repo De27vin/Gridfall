@@ -44,6 +44,9 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.findViewTreeLifecycleOwner
 import com.example.gridfall.audio.GridfallSoundManager
 import com.example.gridfall.audio.SoundPreferenceStore
 import com.example.gridfall.audio.ThemeSoundEvent
@@ -62,6 +65,7 @@ import kotlin.math.roundToInt
 fun GameScreen(modifier: Modifier = Modifier) {
     val context = LocalContext.current.applicationContext
     val view = LocalView.current
+    val lifecycleOwner = view.findViewTreeLifecycleOwner()
     var gameState by remember { mutableStateOf(GameEngine.createInitialState()) }
     var dragState by remember { mutableStateOf(DragState()) }
     var boardLayoutInfo by remember { mutableStateOf<BoardLayoutInfo?>(null) }
@@ -77,6 +81,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
     var showSettingsScreen by remember { mutableStateOf(false) }
     var selectedThemeMode by remember { mutableStateOf(ThemePreferenceStore.load(context)) }
     var soundEnabled by remember { mutableStateOf(SoundPreferenceStore.load(context)) }
+    var isAppInForeground by remember { mutableStateOf(true) }
     val soundManager = remember { GridfallSoundManager(context) }
     val activeThemeColors = colorsForThemeMode(selectedThemeMode)
     val currentLevel = LevelSystem.levelForScore(gameState.score)
@@ -104,6 +109,44 @@ fun GameScreen(modifier: Modifier = Modifier) {
     DisposableEffect(soundManager) {
         onDispose {
             soundManager.release()
+        }
+    }
+
+    DisposableEffect(lifecycleOwner, soundManager) {
+        val owner = lifecycleOwner
+        if (owner == null) {
+            onDispose { soundManager.stopBackgroundMusic() }
+        } else {
+            isAppInForeground = owner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
+            val observer = LifecycleEventObserver { _, event ->
+                when (event) {
+                    Lifecycle.Event.ON_RESUME -> isAppInForeground = true
+                    Lifecycle.Event.ON_PAUSE,
+                    Lifecycle.Event.ON_STOP,
+                    Lifecycle.Event.ON_DESTROY -> {
+                        isAppInForeground = false
+                        soundManager.stopBackgroundMusic()
+                    }
+                    else -> Unit
+                }
+            }
+            owner.lifecycle.addObserver(observer)
+            onDispose {
+                owner.lifecycle.removeObserver(observer)
+                soundManager.stopBackgroundMusic()
+            }
+        }
+    }
+
+    LaunchedEffect(selectedThemeMode, showSettingsScreen, soundEnabled, isAppInForeground) {
+        if (isAppInForeground) {
+            soundManager.playBackgroundMusic(
+                themeMode = selectedThemeMode,
+                isMenu = showSettingsScreen,
+                soundEnabled = soundEnabled
+            )
+        } else {
+            soundManager.stopBackgroundMusic()
         }
     }
 
