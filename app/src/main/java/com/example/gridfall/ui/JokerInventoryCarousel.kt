@@ -1,5 +1,6 @@
 package com.example.gridfall.ui
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -25,6 +26,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
@@ -32,7 +37,7 @@ import androidx.compose.ui.unit.dp
 import com.example.gridfall.game.JokerType
 import com.example.gridfall.game.Piece
 import com.example.gridfall.game.RiskSpinState
-import com.example.gridfall.ui.theme.PremiumTacticalColors
+import com.example.gridfall.ui.theme.LocalGridfallColors
 
 @Composable
 fun JokerInventoryCarousel(
@@ -46,13 +51,15 @@ fun JokerInventoryCarousel(
     onRevertClicked: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val colors = PremiumTacticalColors
+    val colors = LocalGridfallColors.current
     val shape = RoundedCornerShape(14.dp)
 
     Column(
         modifier = modifier
             .clip(shape)
             .background(colors.panelBackground.copy(alpha = 0.72f))
+            .infernoPanelTexture(colors)
+            .retroPanelTexture(colors)
             .border(1.dp, colors.panelBorder.copy(alpha = 0.55f), shape)
             .padding(horizontal = 10.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp)
@@ -65,13 +72,13 @@ fun JokerInventoryCarousel(
             Text(
                 text = "Jokers",
                 color = colors.textPrimary,
-                style = MaterialTheme.typography.labelMedium
+                style = MaterialTheme.typography.labelMedium.retroText(colors)
             )
             Spacer(modifier = Modifier.weight(1f))
             Text(
                 text = "${inventory.size}/${RiskSpinState.MAX_INVENTORY_SIZE}",
                 color = colors.textMuted,
-                style = MaterialTheme.typography.labelSmall
+                style = MaterialTheme.typography.labelSmall.retroText(colors)
             )
         }
 
@@ -79,7 +86,7 @@ fun JokerInventoryCarousel(
             Text(
                 text = "No jokers yet",
                 color = colors.textMuted,
-                style = MaterialTheme.typography.bodySmall
+                style = MaterialTheme.typography.bodySmall.retroText(colors)
             )
         } else {
             Row(
@@ -117,9 +124,9 @@ private fun JokerChip(
     onJokerDragCancelled: () -> Unit,
     onRevertClicked: () -> Unit
 ) {
-    val colors = PremiumTacticalColors
+    val colors = LocalGridfallColors.current
     val piece = jokerType.toPiece()
-    val shape = RoundedCornerShape(12.dp)
+    val shape = RoundedCornerShape(retroCorner(colors, infernoCorner(colors, 12.dp)))
     var chipTopLeft by remember { mutableStateOf(Offset.Zero) }
     val enabled = piece != null || canUseRevert
 
@@ -128,9 +135,15 @@ private fun JokerChip(
             .size(width = 58.dp, height = 54.dp)
             .clip(shape)
             .background(colors.chipBackground.copy(alpha = if (enabled) 0.82f else 0.42f))
+            .infernoPanelTexture(colors)
+            .retroPanelTexture(colors)
             .border(
-                width = 1.dp,
-                color = colors.panelBorder.copy(alpha = if (enabled) 0.72f else 0.34f),
+                width = if (colors.isRetroTheme() || colors.isInfernoTheme()) 2.dp else 1.dp,
+                color = if (enabled) {
+                    colors.accentStrong.copy(alpha = if (colors.isRetroTheme() || colors.isInfernoTheme()) 0.82f else 0.62f)
+                } else {
+                    colors.panelBorder.copy(alpha = 0.34f)
+                },
                 shape = shape
             )
             .onGloballyPositioned { coordinates ->
@@ -181,18 +194,70 @@ private fun JokerChip(
                     .alpha(if (isDragging) 0.35f else 1f)
             )
         } else {
-            Text(
-                text = "UNDO",
-                color = if (canUseRevert) colors.warning else colors.textMuted,
-                style = MaterialTheme.typography.labelMedium
+            UndoJokerIcon(
+                enabled = canUseRevert,
+                modifier = Modifier.size(30.dp)
             )
         }
 
         Text(
             text = shortJokerLabel(jokerType),
             color = colors.textSecondary,
-            style = MaterialTheme.typography.labelSmall,
+            style = MaterialTheme.typography.labelSmall.retroText(colors),
             modifier = Modifier.align(Alignment.BottomCenter)
+        )
+    }
+}
+
+@Composable
+private fun UndoJokerIcon(
+    enabled: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val colors = LocalGridfallColors.current
+    val iconColor = if (enabled) colors.warning else colors.textMuted
+
+    Canvas(modifier = modifier) {
+        val strokeWidth = size.minDimension * 0.13f
+        val path = Path().apply {
+            moveTo(size.width * 0.70f, size.height * 0.24f)
+            quadraticTo(
+                size.width * 0.30f,
+                size.height * 0.12f,
+                size.width * 0.28f,
+                size.height * 0.48f
+            )
+            quadraticTo(
+                size.width * 0.28f,
+                size.height * 0.80f,
+                size.width * 0.70f,
+                size.height * 0.72f
+            )
+        }
+        val arrowHead = Path().apply {
+            moveTo(size.width * 0.28f, size.height * 0.48f)
+            lineTo(size.width * 0.44f, size.height * 0.34f)
+            moveTo(size.width * 0.28f, size.height * 0.48f)
+            lineTo(size.width * 0.43f, size.height * 0.62f)
+        }
+
+        drawPath(
+            path = path,
+            color = iconColor.copy(alpha = if (enabled) 0.95f else 0.52f),
+            style = Stroke(
+                width = strokeWidth,
+                cap = StrokeCap.Round,
+                join = StrokeJoin.Round
+            )
+        )
+        drawPath(
+            path = arrowHead,
+            color = iconColor.copy(alpha = if (enabled) 0.95f else 0.52f),
+            style = Stroke(
+                width = strokeWidth,
+                cap = StrokeCap.Round,
+                join = StrokeJoin.Round
+            )
         )
     }
 }

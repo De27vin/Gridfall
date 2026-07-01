@@ -476,19 +476,32 @@ fun GameScreen(modifier: Modifier = Modifier) {
                     },
                     enabled = riskSpinAvailability.isAvailable,
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = PremiumTacticalColors.button,
-                        contentColor = PremiumTacticalColors.textPrimary,
-                        disabledContainerColor = PremiumTacticalColors.chipBackground.copy(alpha = 0.48f),
-                        disabledContentColor = PremiumTacticalColors.textMuted
+                        containerColor = activeThemeColors.button,
+                        contentColor = activeThemeColors.textPrimary,
+                        disabledContainerColor = activeThemeColors.chipBackground.copy(alpha = 0.48f),
+                        disabledContentColor = activeThemeColors.textMuted
                     ),
-                    shape = RoundedCornerShape(16.dp),
+                    shape = restartShape,
                     modifier = Modifier
                         .weight(1f)
                         .height(44.dp)
+                        .infernoPanelTexture(activeThemeColors)
+                        .retroPanelTexture(activeThemeColors)
+                        .border(
+                            width = if (activeThemeColors.isRetroTheme() || activeThemeColors.isInfernoTheme()) 1.dp else 0.dp,
+                            color = activeThemeColors.accentStrong.copy(
+                                alpha = if (riskSpinAvailability.isAvailable) {
+                                    if (activeThemeColors.isRetroTheme() || activeThemeColors.isInfernoTheme()) 0.82f else 0f
+                                } else {
+                                    0.20f
+                                }
+                            ),
+                            shape = restartShape
+                        )
                 ) {
                     Text(
-                        text = "Risk Spin",
-                        style = MaterialTheme.typography.labelLarge
+                        text = if (activeThemeColors.isRetroTheme()) "RISK SPIN" else "Risk Spin",
+                        style = MaterialTheme.typography.labelLarge.retroText(activeThemeColors)
                     )
                 }
             }
@@ -497,8 +510,8 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = riskSpinAvailability.reason,
-                    color = PremiumTacticalColors.textMuted,
-                    style = MaterialTheme.typography.labelSmall
+                    color = activeThemeColors.textMuted,
+                    style = MaterialTheme.typography.labelSmall.retroText(activeThemeColors)
                 )
             }
 

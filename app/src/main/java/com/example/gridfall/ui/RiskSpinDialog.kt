@@ -27,7 +27,7 @@ import com.example.gridfall.game.GameState
 import com.example.gridfall.game.RiskSpinOption
 import com.example.gridfall.game.RiskSpinResult
 import com.example.gridfall.game.RiskSpinState
-import com.example.gridfall.ui.theme.PremiumTacticalColors
+import com.example.gridfall.ui.theme.LocalGridfallColors
 
 @Composable
 fun RiskSpinDialog(
@@ -35,12 +35,15 @@ fun RiskSpinDialog(
     onOptionSelected: (RiskSpinOption) -> Unit,
     onDismiss: () -> Unit
 ) {
-    val colors = PremiumTacticalColors
-    val dialogShape = RoundedCornerShape(22.dp)
-    val buttonShape = RoundedCornerShape(12.dp)
+    val colors = LocalGridfallColors.current
+    val dialogShape = RoundedCornerShape(retroCorner(colors, infernoCorner(colors, 22.dp)))
+    val buttonShape = RoundedCornerShape(retroCorner(colors, infernoCorner(colors, 12.dp)))
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        modifier = Modifier
+            .infernoPanelTexture(colors)
+            .retroPanelTexture(colors),
         containerColor = colors.dialogBackground,
         shape = dialogShape,
         tonalElevation = 0.dp,
@@ -48,7 +51,7 @@ fun RiskSpinDialog(
             Text(
                 text = "Risk Spin",
                 color = colors.textPrimary,
-                style = MaterialTheme.typography.headlineSmall
+                style = MaterialTheme.typography.headlineSmall.retroText(colors)
             )
         },
         text = {
@@ -56,7 +59,7 @@ fun RiskSpinDialog(
                 Text(
                     text = "Pay score now for a chance at joker tools. Misses give nothing. Inventory max is ${RiskSpinState.MAX_INVENTORY_SIZE}.",
                     color = colors.textSecondary,
-                    style = MaterialTheme.typography.bodyMedium
+                    style = MaterialTheme.typography.bodyMedium.retroText(colors)
                 )
                 RiskSpinOption.entries.forEach { option ->
                     val cost = option.cost(gameState.score)
@@ -71,7 +74,19 @@ fun RiskSpinDialog(
                             disabledContentColor = colors.textMuted
                         ),
                         shape = buttonShape,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .infernoPanelTexture(colors)
+                            .retroPanelTexture(colors)
+                            .border(
+                                width = if (colors.isRetroTheme() || colors.isInfernoTheme()) 2.dp else 1.dp,
+                                color = if (canSelect) {
+                                    colors.accentStrong.copy(alpha = if (colors.isRetroTheme() || colors.isInfernoTheme()) 0.82f else 0.48f)
+                                } else {
+                                    colors.panelBorder.copy(alpha = 0.28f)
+                                },
+                                shape = buttonShape
+                            )
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -81,25 +96,25 @@ fun RiskSpinDialog(
                             Column {
                                 Text(
                                     text = option.title,
-                                    style = MaterialTheme.typography.labelLarge
+                                    style = MaterialTheme.typography.labelLarge.retroText(colors)
                                 )
                                 Text(
                                     text = "${option.spinCount} spin${if (option.spinCount == 1) "" else "s"}",
                                     color = if (canSelect) colors.textSecondary else colors.textMuted,
-                                    style = MaterialTheme.typography.bodySmall
+                                    style = MaterialTheme.typography.bodySmall.retroText(colors)
                                 )
                                 if (!canSelect) {
                                     Text(
                                         text = "Would drop below Level 3",
                                         color = colors.textMuted,
-                                        style = MaterialTheme.typography.labelSmall
+                                        style = MaterialTheme.typography.labelSmall.retroText(colors)
                                     )
                                 }
                             }
                             Text(
                                 text = "-$cost",
                                 color = if (canSelect) colors.warning else colors.textMuted,
-                                style = MaterialTheme.typography.labelLarge
+                                style = MaterialTheme.typography.labelLarge.retroText(colors)
                             )
                         }
                     }
@@ -113,7 +128,10 @@ fun RiskSpinDialog(
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
                 shape = buttonShape
             ) {
-                Text(text = "Cancel")
+                Text(
+                    text = if (colors.isRetroTheme()) "CANCEL" else "Cancel",
+                    style = MaterialTheme.typography.labelLarge.retroText(colors)
+                )
             }
         },
         confirmButton = {}
@@ -125,12 +143,15 @@ fun RiskSpinResultDialog(
     result: RiskSpinResult,
     onDismiss: () -> Unit
 ) {
-    val colors = PremiumTacticalColors
-    val dialogShape = RoundedCornerShape(22.dp)
-    val buttonShape = RoundedCornerShape(12.dp)
+    val colors = LocalGridfallColors.current
+    val dialogShape = RoundedCornerShape(retroCorner(colors, infernoCorner(colors, 22.dp)))
+    val buttonShape = RoundedCornerShape(retroCorner(colors, infernoCorner(colors, 12.dp)))
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        modifier = Modifier
+            .infernoPanelTexture(colors)
+            .retroPanelTexture(colors),
         containerColor = colors.dialogBackground,
         shape = dialogShape,
         tonalElevation = 0.dp,
@@ -138,7 +159,7 @@ fun RiskSpinResultDialog(
             Text(
                 text = "Spin Result",
                 color = colors.textPrimary,
-                style = MaterialTheme.typography.headlineSmall
+                style = MaterialTheme.typography.headlineSmall.retroText(colors)
             )
         },
         text = {
@@ -146,7 +167,7 @@ fun RiskSpinResultDialog(
                 Text(
                     text = "${result.option.title} paid ${result.cost} score.",
                     color = colors.textSecondary,
-                    style = MaterialTheme.typography.bodyMedium
+                    style = MaterialTheme.typography.bodyMedium.retroText(colors)
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 result.entries.forEachIndexed { index, entry ->
@@ -165,9 +186,15 @@ fun RiskSpinResultDialog(
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(10.dp))
                             .background(colors.chipBackground.copy(alpha = 0.72f))
+                            .infernoPanelTexture(colors)
+                            .retroPanelTexture(colors)
                             .border(
-                                width = 1.dp,
-                                color = colors.panelBorder.copy(alpha = 0.42f),
+                                width = if (colors.isRetroTheme() || colors.isInfernoTheme()) 2.dp else 1.dp,
+                                color = if (entry.jokerAdded != null) {
+                                    colors.warning.copy(alpha = if (colors.isInfernoTheme()) 0.82f else 0.68f)
+                                } else {
+                                    colors.danger.copy(alpha = 0.50f)
+                                },
                                 shape = RoundedCornerShape(10.dp)
                             )
                             .padding(horizontal = 12.dp, vertical = 8.dp),
@@ -177,12 +204,12 @@ fun RiskSpinResultDialog(
                         Text(
                             text = "${index + 1}. $label",
                             color = colors.textPrimary,
-                            style = MaterialTheme.typography.bodyMedium
+                            style = MaterialTheme.typography.bodyMedium.retroText(colors)
                         )
                         Text(
                             text = detail,
                             color = if (entry.jokerAdded != null) colors.success else colors.textMuted,
-                            style = MaterialTheme.typography.labelSmall
+                            style = MaterialTheme.typography.labelSmall.retroText(colors)
                         )
                     }
                 }
@@ -197,7 +224,10 @@ fun RiskSpinResultDialog(
                 ),
                 shape = buttonShape
             ) {
-                Text(text = "Close")
+                Text(
+                    text = if (colors.isRetroTheme()) "CLOSE" else "Close",
+                    style = MaterialTheme.typography.labelLarge.retroText(colors)
+                )
             }
         },
         dismissButton = {}
