@@ -255,6 +255,36 @@ class GameEngineTest {
     }
 
     @Test
+    fun calculateComboBonusUsesStreakTableWithCap() {
+        assertEquals(0, ScoreSystem.calculateComboBonus(1))
+        assertEquals(10, ScoreSystem.calculateComboBonus(2))
+        assertEquals(20, ScoreSystem.calculateComboBonus(3))
+        assertEquals(40, ScoreSystem.calculateComboBonus(4))
+        assertEquals(80, ScoreSystem.calculateComboBonus(5))
+        assertEquals(160, ScoreSystem.calculateComboBonus(6))
+        assertEquals(160, ScoreSystem.calculateComboBonus(7))
+    }
+
+    @Test
+    fun calculateMoveScoreAppliesComboBonusFromNextStreak() {
+        assertEquals(11, ScoreSystem.calculateMoveScore(placedCellCount = 1, clearedLineCount = 1, previousCombo = 0))
+        assertEquals(21, ScoreSystem.calculateMoveScore(placedCellCount = 1, clearedLineCount = 1, previousCombo = 1))
+        assertEquals(31, ScoreSystem.calculateMoveScore(placedCellCount = 1, clearedLineCount = 1, previousCombo = 2))
+        assertEquals(51, ScoreSystem.calculateMoveScore(placedCellCount = 1, clearedLineCount = 1, previousCombo = 3))
+        assertEquals(91, ScoreSystem.calculateMoveScore(placedCellCount = 1, clearedLineCount = 1, previousCombo = 4))
+        assertEquals(171, ScoreSystem.calculateMoveScore(placedCellCount = 1, clearedLineCount = 1, previousCombo = 5))
+        assertEquals(171, ScoreSystem.calculateMoveScore(placedCellCount = 1, clearedLineCount = 1, previousCombo = 6))
+    }
+
+    @Test
+    fun calculateMultiLineBonusScalesByTotalClearedLines() {
+        assertEquals(0, ScoreSystem.calculateMultiLineBonus(1))
+        assertEquals(20, ScoreSystem.calculateMultiLineBonus(2))
+        assertEquals(40, ScoreSystem.calculateMultiLineBonus(3))
+        assertEquals(60, ScoreSystem.calculateMultiLineBonus(4))
+    }
+
+    @Test
     fun calculateMoveScoreAddsPerfectClearBonus() {
         val score = ScoreSystem.calculateMoveScore(
             placedCellCount = 1,
@@ -308,11 +338,11 @@ class GameEngineTest {
         val nextState = GameEngine.placePiece(state, pieceIndex = 0, startRow = 0, startCol = 0)
 
         assertTrue(nextState.board.isEmpty())
-        assertEquals(266, nextState.score)
+        assertEquals(241, nextState.score)
     }
 
     @Test
-    fun multipleRowsAndOneColumnClearAddsOneCrossClearBonus() {
+    fun multipleRowsAndOneColumnClearScalesMultiLineBonus() {
         val piece = Piece("vertical_two", listOf(Cell(0, 0), Cell(1, 0)))
         val rowZeroReady = (1 until Board.SIZE).fold(Board.empty()) { currentBoard, col ->
             currentBoard.fill(0, col)
@@ -327,11 +357,11 @@ class GameEngineTest {
 
         val nextState = GameEngine.placePiece(state, pieceIndex = 0, startRow = 0, startCol = 0)
 
-        assertEquals(277, nextState.score)
+        assertEquals(272, nextState.score)
     }
 
     @Test
-    fun oneRowAndMultipleColumnsClearAddsOneCrossClearBonus() {
+    fun oneRowAndMultipleColumnsClearScalesMultiLineBonus() {
         val piece = Piece("horizontal_two", listOf(Cell(0, 0), Cell(0, 1)))
         val rowReady = (2 until Board.SIZE).fold(Board.empty()) { currentBoard, col ->
             currentBoard.fill(0, col)
@@ -346,7 +376,7 @@ class GameEngineTest {
 
         val nextState = GameEngine.placePiece(state, pieceIndex = 0, startRow = 0, startCol = 0)
 
-        assertEquals(277, nextState.score)
+        assertEquals(272, nextState.score)
     }
 
     @Test
@@ -473,7 +503,21 @@ class GameEngineTest {
         val nextState = GameEngine.placePiece(state, pieceIndex = 0, startRow = 0, startCol = 7)
 
         assertEquals(2, nextState.combo)
-        assertEquals(16, nextState.score)
+        assertEquals(21, nextState.score)
+    }
+
+    @Test
+    fun placePieceResetsComboAfterNonClearingMove() {
+        val piece = Piece("test", listOf(Cell(0, 0)))
+        val state = testState(
+            currentPieces = listOf(piece),
+            combo = 4
+        )
+
+        val nextState = GameEngine.placePiece(state, pieceIndex = 0, startRow = 2, startCol = 2)
+
+        assertEquals(0, nextState.combo)
+        assertEquals(1, nextState.score)
     }
 
     @Test
@@ -721,7 +765,7 @@ class GameEngineTest {
 
         assertTrue(afterThird.contractState.isCompleted)
         assertEquals(contract, afterThird.contractState.resolvedContract)
-        assertEquals(103, afterThird.score)
+        assertEquals(78, afterThird.score)
     }
 
     @Test
@@ -882,7 +926,7 @@ class GameEngineTest {
         val afterThird = GameEngine.placePiece(afterSecond, pieceIndex = 2, startRow = 1, startCol = 2)
 
         assertTrue(afterThird.contractState.isCompleted)
-        assertEquals(93, afterThird.score)
+        assertEquals(68, afterThird.score)
         assertEquals(0, afterThird.contractState.batchScoreGained)
     }
 

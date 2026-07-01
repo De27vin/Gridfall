@@ -842,26 +842,6 @@ private fun createScoreEventFeedback(
     clearResult: ClearResult?,
     nextState: com.example.gridfall.game.GameState
 ): ScoreEventFeedback? {
-    if (nextState.board.isEmpty()) {
-        return ScoreEventFeedback(
-            text = "Perfect Clear +${ScoreSystem.PERFECT_CLEAR_BONUS}",
-            tone = FeedbackTone.Success,
-            token = 0
-        )
-    }
-
-    if (
-        clearResult != null &&
-        clearResult.clearedRows.isNotEmpty() &&
-        clearResult.clearedColumns.isNotEmpty()
-    ) {
-        return ScoreEventFeedback(
-            text = "Cross Clear +${ScoreSystem.CROSS_CLEAR_BONUS}",
-            tone = FeedbackTone.Accent,
-            token = 0
-        )
-    }
-
     if (piece.effect == PieceEffect.Bomb) {
         val clearedCells = previewBombClearedCellCount(
             board = board,
@@ -873,6 +853,41 @@ private fun createScoreEventFeedback(
             return ScoreEventFeedback(
                 text = "Bomb Clear +${clearedCells * ScoreSystem.BOMB_CLEAR_POINTS_PER_CELL}",
                 tone = FeedbackTone.Bomb,
+                token = 0
+            )
+        }
+    }
+
+    val lineCount = clearResult?.clearedLineCount ?: 0
+    if (lineCount > 0) {
+        val feedbackParts = mutableListOf<String>()
+        val multiLineBonus = ScoreSystem.calculateMultiLineBonus(lineCount)
+        val comboBonus = ScoreSystem.calculateComboBonus(nextState.combo)
+
+        if (nextState.board.isEmpty()) {
+            feedbackParts += "Perfect Clear +${ScoreSystem.PERFECT_CLEAR_BONUS}"
+        }
+
+        if (multiLineBonus > 0 && clearResult != null) {
+            val label = if (
+                clearResult.clearedRows.isNotEmpty() &&
+                clearResult.clearedColumns.isNotEmpty()
+            ) {
+                "Cross Clear"
+            } else {
+                "Multi Clear"
+            }
+            feedbackParts += "$label +$multiLineBonus"
+        }
+
+        if (comboBonus > 0) {
+            feedbackParts += "Combo x${nextState.combo} +$comboBonus"
+        }
+
+        if (feedbackParts.isNotEmpty()) {
+            return ScoreEventFeedback(
+                text = feedbackParts.joinToString("  "),
+                tone = if (nextState.board.isEmpty()) FeedbackTone.Success else FeedbackTone.Accent,
                 token = 0
             )
         }
