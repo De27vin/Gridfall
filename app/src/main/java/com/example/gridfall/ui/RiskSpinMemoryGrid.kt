@@ -267,6 +267,7 @@ private fun rewardLabel(
         RiskSpinOutcome.HorizontalTwo -> "2x1"
         RiskSpinOutcome.VerticalTwo -> "1x2"
         RiskSpinOutcome.Bomb -> "BOMB"
+        RiskSpinOutcome.MegaBomb -> "MEGA"
         RiskSpinOutcome.Revert -> "UNDO"
     }
 }

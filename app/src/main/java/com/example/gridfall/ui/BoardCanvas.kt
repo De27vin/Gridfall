@@ -148,10 +148,25 @@ fun BoardCanvas(
                     cornerRadius
                 }
 
-                if (preview.piece.effect == PieceEffect.Bomb && preview.isValid) {
-                    // Bomb preview (3x3 area)
-                    for (row in preview.originRow - 1..preview.originRow + 1) {
-                        for (col in preview.originCol - 1..preview.originCol + 1) {
+                if (
+                    (preview.piece.effect == PieceEffect.Bomb || preview.piece.effect == PieceEffect.MegaBomb) &&
+                    preview.isValid
+                ) {
+                    val affectedRows = if (preview.piece.effect == PieceEffect.MegaBomb) {
+                        val originRow = preview.originRow.coerceAtMost(Board.SIZE - MEGA_BOMB_PREVIEW_SIZE)
+                        originRow until originRow + MEGA_BOMB_PREVIEW_SIZE
+                    } else {
+                        preview.originRow - 1..preview.originRow + 1
+                    }
+                    val affectedCols = if (preview.piece.effect == PieceEffect.MegaBomb) {
+                        val originCol = preview.originCol.coerceAtMost(Board.SIZE - MEGA_BOMB_PREVIEW_SIZE)
+                        originCol until originCol + MEGA_BOMB_PREVIEW_SIZE
+                    } else {
+                        preview.originCol - 1..preview.originCol + 1
+                    }
+
+                    for (row in affectedRows) {
+                        for (col in affectedCols) {
                             if (row in 0 until Board.SIZE && col in 0 until Board.SIZE) {
                                 val topLeft = Offset(
                                     x = spacing + col * (cellSize + spacing),
@@ -318,8 +333,21 @@ fun BoardCanvas(
                 val affectedFill = theme.bombInner.copy(alpha = 0.20f * fade)
                 val affectedStroke = theme.warning.copy(alpha = 0.48f * fade)
 
-                for (row in feedback.centerRow - 1..feedback.centerRow + 1) {
-                    for (col in feedback.centerCol - 1..feedback.centerCol + 1) {
+                val affectedRows = if (feedback.isMega) {
+                    val originRow = feedback.centerRow.coerceAtMost(Board.SIZE - MEGA_BOMB_PREVIEW_SIZE)
+                    originRow until originRow + MEGA_BOMB_PREVIEW_SIZE
+                } else {
+                    feedback.centerRow - 1..feedback.centerRow + 1
+                }
+                val affectedCols = if (feedback.isMega) {
+                    val originCol = feedback.centerCol.coerceAtMost(Board.SIZE - MEGA_BOMB_PREVIEW_SIZE)
+                    originCol until originCol + MEGA_BOMB_PREVIEW_SIZE
+                } else {
+                    feedback.centerCol - 1..feedback.centerCol + 1
+                }
+
+                for (row in affectedRows) {
+                    for (col in affectedCols) {
                         if (row in 0 until Board.SIZE && col in 0 until Board.SIZE) {
                             val topLeft = Offset(
                                 x = spacing + col * (cellSize + spacing),
@@ -344,7 +372,7 @@ fun BoardCanvas(
 
                 drawCircle(
                     color = theme.bombInner.copy(alpha = 0.20f * fade),
-                    radius = cellSize * (0.65f + progress * 1.75f),
+                    radius = cellSize * ((if (feedback.isMega) 1.05f else 0.65f) + progress * (if (feedback.isMega) 2.20f else 1.75f)),
                     center = center,
                     style = Stroke(width = (4.dp.toPx() * fade).coerceAtLeast(1.dp.toPx()))
                 )
@@ -415,6 +443,8 @@ private fun DrawScope.drawEmptyCell(
         style = Stroke(width = 1.dp.toPx())
     )
 }
+
+private const val MEGA_BOMB_PREVIEW_SIZE = 4
 
 private fun DrawScope.drawFilledCell(
     topLeft: Offset,

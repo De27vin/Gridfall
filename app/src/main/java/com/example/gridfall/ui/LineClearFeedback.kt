@@ -25,6 +25,7 @@ data class LineClearFeedback(
 data class BombPulseFeedback(
     val centerRow: Int,
     val centerCol: Int,
+    val isMega: Boolean = false,
     val token: Int
 )
 

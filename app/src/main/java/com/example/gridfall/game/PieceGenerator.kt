@@ -14,7 +14,7 @@ object PieceGenerator {
         random: Random = Random.Default
     ): List<Piece> {
         if (count <= 0) return emptyList()
-        val normalPieces = availablePieces.filter { it.effect != PieceEffect.Bomb }
+        val normalPieces = availablePieces.filter { it.effect == PieceEffect.Normal }
         if (normalPieces.isEmpty()) return emptyList()
 
         val batch = List(count) {

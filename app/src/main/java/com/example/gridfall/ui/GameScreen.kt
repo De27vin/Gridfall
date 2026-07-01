@@ -794,7 +794,7 @@ private fun playMoveSound(
     clearedLineCount: Int
 ) {
     val event = when {
-        piece.effect == PieceEffect.Bomb -> ThemeSoundEvent.Bomb
+        piece.effect == PieceEffect.Bomb || piece.effect == PieceEffect.MegaBomb -> ThemeSoundEvent.Bomb
         clearedLineCount >= 2 -> ThemeSoundEvent.MultiLineClear
         clearedLineCount == 1 -> ThemeSoundEvent.LineClear
         else -> ThemeSoundEvent.Place
@@ -852,7 +852,7 @@ private fun previewClearResult(
     startCol: Int
 ): ClearResult? {
     if (!GameEngine.canPlace(board, piece, startRow, startCol)) return null
-    if (piece.effect == PieceEffect.Bomb) return null
+    if (piece.effect == PieceEffect.Bomb || piece.effect == PieceEffect.MegaBomb) return null
 
     val placedBoard = piece.cells.fold(board) { currentBoard, cell ->
         currentBoard.fill(
@@ -873,7 +873,7 @@ private fun createScoreEventFeedback(
     clearResult: ClearResult?,
     nextState: com.example.gridfall.game.GameState
 ): ScoreEventFeedback? {
-    if (piece.effect == PieceEffect.Bomb) {
+    if (piece.effect == PieceEffect.Bomb || piece.effect == PieceEffect.MegaBomb) {
         val clearedCells = previewBombClearedCellCount(
             board = board,
             piece = piece,
@@ -932,12 +932,13 @@ private fun createBombPulseFeedback(
     startRow: Int,
     startCol: Int
 ): BombPulseFeedback? {
-    if (piece.effect != PieceEffect.Bomb) return null
+    if (piece.effect != PieceEffect.Bomb && piece.effect != PieceEffect.MegaBomb) return null
     val bombCell = piece.cells.singleOrNull() ?: return null
 
     return BombPulseFeedback(
         centerRow = startRow + bombCell.row,
         centerCol = startCol + bombCell.col,
+        isMega = piece.effect == PieceEffect.MegaBomb,
         token = 0
     )
 }
@@ -948,14 +949,27 @@ private fun previewBombClearedCellCount(
     startRow: Int,
     startCol: Int
 ): Int {
-    if (piece.effect != PieceEffect.Bomb) return 0
+    if (piece.effect != PieceEffect.Bomb && piece.effect != PieceEffect.MegaBomb) return 0
     val bombCell = piece.cells.singleOrNull() ?: return 0
     val centerRow = startRow + bombCell.row
     val centerCol = startCol + bombCell.col
     var clearedCells = 0
 
-    for (row in centerRow - 1..centerRow + 1) {
-        for (col in centerCol - 1..centerCol + 1) {
+    val affectedRows = if (piece.effect == PieceEffect.MegaBomb) {
+        val originRow = centerRow.coerceAtMost(Board.SIZE - MEGA_BOMB_UI_SIZE)
+        originRow until originRow + MEGA_BOMB_UI_SIZE
+    } else {
+        centerRow - 1..centerRow + 1
+    }
+    val affectedCols = if (piece.effect == PieceEffect.MegaBomb) {
+        val originCol = centerCol.coerceAtMost(Board.SIZE - MEGA_BOMB_UI_SIZE)
+        originCol until originCol + MEGA_BOMB_UI_SIZE
+    } else {
+        centerCol - 1..centerCol + 1
+    }
+
+    for (row in affectedRows) {
+        for (col in affectedCols) {
             if (board.isInside(row, col) && board.get(row, col) != 0) {
                 clearedCells += 1
             }
@@ -964,3 +978,5 @@ private fun previewBombClearedCellCount(
 
     return clearedCells
 }
+
+private const val MEGA_BOMB_UI_SIZE = 4

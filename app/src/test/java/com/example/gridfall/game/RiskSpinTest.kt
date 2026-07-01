@@ -47,11 +47,12 @@ class RiskSpinTest {
     }
 
     @Test
-    fun riskSpinRewardPoolContainsTwoMissesAndTwoReverts() {
+    fun riskSpinRewardPoolContainsMegaBombAsRareReward() {
         val pool = RiskSpin.rewardPool()
 
-        assertEquals(2, pool.count { it == RiskSpinOutcome.Miss })
+        assertEquals(3, pool.count { it == RiskSpinOutcome.Miss })
         assertEquals(2, pool.count { it == RiskSpinOutcome.Revert })
+        assertEquals(1, pool.count { it == RiskSpinOutcome.MegaBomb })
         assertTrue(RiskSpinOutcome.Single in pool)
         assertTrue(RiskSpinOutcome.HorizontalTwo in pool)
         assertTrue(RiskSpinOutcome.VerticalTwo in pool)
@@ -260,6 +261,21 @@ class RiskSpinTest {
     }
 
     @Test
+    fun memoryMegaBombRewardAddsMegaBombJokerWhenInventoryHasSpace() {
+        val state = testState(score = 200)
+        val session = memorySession(
+            revealsLeft = 1,
+            outcomes = listOf(RiskSpinOutcome.MegaBomb)
+        )
+
+        val afterReveal = GameEngine.revealRiskSpinMemoryField(state, session, fieldId = 0)
+
+        assertNotNull(afterReveal)
+        assertEquals(listOf(JokerType.MegaBomb), afterReveal!!.state.riskSpinState.inventory)
+        assertEquals(JokerType.MegaBomb, afterReveal.entry.jokerAdded)
+    }
+
+    @Test
     fun memoryJokerRewardIsLostWhenInventoryIsFull() {
         val state = testState(
             score = 200,
@@ -270,6 +286,27 @@ class RiskSpinTest {
         val session = memorySession(
             revealsLeft = 1,
             outcomes = listOf(RiskSpinOutcome.Bomb)
+        )
+
+        val afterReveal = GameEngine.revealRiskSpinMemoryField(state, session, fieldId = 0)
+
+        assertNotNull(afterReveal)
+        assertEquals(RiskSpinState.MAX_INVENTORY_SIZE, afterReveal!!.state.riskSpinState.inventory.size)
+        assertTrue(afterReveal.entry.lostBecauseInventoryFull)
+        assertTrue(afterReveal.session.fields.first().lostBecauseInventoryFull)
+    }
+
+    @Test
+    fun memoryMegaBombRewardIsLostWhenInventoryIsFull() {
+        val state = testState(
+            score = 200,
+            riskSpinState = RiskSpinState(
+                inventory = List(RiskSpinState.MAX_INVENTORY_SIZE) { JokerType.Single }
+            )
+        )
+        val session = memorySession(
+            revealsLeft = 1,
+            outcomes = listOf(RiskSpinOutcome.MegaBomb)
         )
 
         val afterReveal = GameEngine.revealRiskSpinMemoryField(state, session, fieldId = 0)
@@ -385,6 +422,80 @@ class RiskSpinTest {
         assertEquals(0, nextState.board.get(3, 2))
         assertEquals(emptyList<JokerType>(), nextState.riskSpinState.inventory)
         assertTrue(nextState.score > state.score)
+    }
+
+    @Test
+    fun megaBombJokerClearsFourByFourAreaAndConsumes() {
+        val board = (0 until 4).fold(Board.empty()) { currentBoard, row ->
+            (0 until 4).fold(currentBoard) { rowBoard, col ->
+                if (row == 0 && col == 0) rowBoard else rowBoard.fill(row, col)
+            }
+        }.fill(5, 5)
+        val state = testState(
+            board = board,
+            riskSpinState = RiskSpinState(inventory = listOf(JokerType.MegaBomb))
+        )
+
+        val nextState = GameEngine.placeJoker(
+            state = state,
+            jokerType = JokerType.MegaBomb,
+            startRow = 0,
+            startCol = 0
+        )
+
+        for (row in 0 until 4) {
+            for (col in 0 until 4) {
+                assertEquals(0, nextState.board.get(row, col))
+            }
+        }
+        assertEquals(1, nextState.board.get(5, 5))
+        assertEquals(emptyList<JokerType>(), nextState.riskSpinState.inventory)
+        assertEquals(ScoreSystem.BOMB_PLACE_POINTS + 15 * ScoreSystem.BOMB_CLEAR_POINTS_PER_CELL, nextState.score)
+    }
+
+    @Test
+    fun megaBombNearEdgesClampsToFullFourByFourWhenPossible() {
+        val board = (4 until 8).fold(Board.empty()) { currentBoard, row ->
+            (4 until 8).fold(currentBoard) { rowBoard, col ->
+                if (row == 6 && col == 6) rowBoard else rowBoard.fill(row, col)
+            }
+        }.fill(3, 3)
+        val state = testState(
+            board = board,
+            riskSpinState = RiskSpinState(inventory = listOf(JokerType.MegaBomb))
+        )
+
+        val nextState = GameEngine.placeJoker(
+            state = state,
+            jokerType = JokerType.MegaBomb,
+            startRow = 6,
+            startCol = 6
+        )
+
+        for (row in 4 until 8) {
+            for (col in 4 until 8) {
+                assertEquals(0, nextState.board.get(row, col))
+            }
+        }
+        assertEquals(1, nextState.board.get(3, 3))
+    }
+
+    @Test
+    fun invalidMegaBombPlacementDoesNotConsumeJoker() {
+        val state = testState(
+            board = Board.empty().fill(2, 2),
+            riskSpinState = RiskSpinState(inventory = listOf(JokerType.MegaBomb))
+        )
+
+        val nextState = GameEngine.placeJoker(
+            state = state,
+            jokerType = JokerType.MegaBomb,
+            startRow = 2,
+            startCol = 2
+        )
+
+        assertEquals(state, nextState)
+        assertEquals(listOf(JokerType.MegaBomb), nextState.riskSpinState.inventory)
     }
 
     @Test

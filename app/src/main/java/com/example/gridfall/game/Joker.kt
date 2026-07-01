@@ -5,6 +5,7 @@ enum class JokerType(val title: String) {
     HorizontalTwo("2x1 Joker"),
     VerticalTwo("1x2 Joker"),
     Bomb("Bomb Joker"),
+    MegaBomb("Mega Bomb Joker"),
     Revert("Revert Joker");
 
     fun toPiece(): Piece? {
@@ -25,6 +26,13 @@ enum class JokerType(val title: String) {
                 colorVariant = 2
             )
             Bomb -> PieceLibrary.bombPiece.copy(id = "joker_bomb")
+            MegaBomb -> Piece(
+                id = "joker_mega_bomb",
+                cells = listOf(Cell(0, 0)),
+                effect = PieceEffect.MegaBomb,
+                rarity = PieceRarity.Epic,
+                colorVariant = 0
+            )
             Revert -> null
         }
     }

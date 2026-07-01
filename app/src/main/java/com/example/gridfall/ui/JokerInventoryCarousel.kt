@@ -268,6 +268,7 @@ private fun shortJokerLabel(jokerType: JokerType): String {
         JokerType.HorizontalTwo -> "2x1"
         JokerType.VerticalTwo -> "1x2"
         JokerType.Bomb -> "BOMB"
+        JokerType.MegaBomb -> "MEGA"
         JokerType.Revert -> "UNDO"
     }
 }

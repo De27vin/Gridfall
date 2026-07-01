@@ -63,7 +63,7 @@ object GameEngine {
         startRow: Int,
         startCol: Int
     ): Boolean {
-        if (piece.effect == PieceEffect.Bomb) {
+        if (piece.effect == PieceEffect.Bomb || piece.effect == PieceEffect.MegaBomb) {
             val cell = piece.cells.singleOrNull() ?: return false
             return board.isEmpty(
                 row = startRow + cell.row,
@@ -223,8 +223,8 @@ object GameEngine {
         val joker = field.outcome.toJokerType()
         val canAddJoker = joker != null &&
             state.riskSpinState.inventory.size < RiskSpinState.MAX_INVENTORY_SIZE
-        val nextInventory = if (canAddJoker && joker != null) {
-            state.riskSpinState.inventory + joker
+        val nextInventory = if (canAddJoker) {
+            state.riskSpinState.inventory + requireNotNull(joker)
         } else {
             state.riskSpinState.inventory
         }
@@ -428,13 +428,22 @@ object GameEngine {
         startRow: Int,
         startCol: Int
     ): PlacementResult {
-        if (piece.effect == PieceEffect.Bomb) {
-            val bombResult = explodeBomb(
-                board = state.board,
-                piece = piece,
-                startRow = startRow,
-                startCol = startCol
-            )
+        if (piece.effect == PieceEffect.Bomb || piece.effect == PieceEffect.MegaBomb) {
+            val bombResult = if (piece.effect == PieceEffect.MegaBomb) {
+                explodeMegaBomb(
+                    board = state.board,
+                    piece = piece,
+                    startRow = startRow,
+                    startCol = startCol
+                )
+            } else {
+                explodeBomb(
+                    board = state.board,
+                    piece = piece,
+                    startRow = startRow,
+                    startCol = startCol
+                )
+            }
 
             return PlacementResult(
                 board = bombResult.board,
@@ -489,6 +498,37 @@ object GameEngine {
         }
 
         updatedBoard = updatedBoard.set(centerRow, centerCol, 0)
+
+        return BombResult(
+            board = updatedBoard,
+            clearedCellCount = clearedCellCount
+        )
+    }
+
+    private fun explodeMegaBomb(
+        board: Board,
+        piece: Piece,
+        startRow: Int,
+        startCol: Int
+    ): BombResult {
+        val bombCell = piece.cells.single()
+        val placedRow = startRow + bombCell.row
+        val placedCol = startCol + bombCell.col
+        val originRow = placedRow.coerceAtMost(Board.SIZE - MEGA_BOMB_SIZE)
+        val originCol = placedCol.coerceAtMost(Board.SIZE - MEGA_BOMB_SIZE)
+        var updatedBoard = board
+        var clearedCellCount = 0
+
+        for (row in originRow until originRow + MEGA_BOMB_SIZE) {
+            for (col in originCol until originCol + MEGA_BOMB_SIZE) {
+                if (board.isInside(row, col) && board.get(row, col) != 0) {
+                    updatedBoard = updatedBoard.set(row, col, 0)
+                    clearedCellCount += 1
+                }
+            }
+        }
+
+        updatedBoard = updatedBoard.set(placedRow, placedCol, 0)
 
         return BombResult(
             board = updatedBoard,
@@ -727,4 +767,6 @@ object GameEngine {
         val scoreGained: Int,
         val nextCombo: Int
     )
+
+    private const val MEGA_BOMB_SIZE = 4
 }

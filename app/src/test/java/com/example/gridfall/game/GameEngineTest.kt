@@ -1053,6 +1053,20 @@ class GameEngineTest {
     }
 
     @Test
+    fun normalBatchGenerationNeverProducesMegaBomb() {
+        val megaBombPiece = JokerType.MegaBomb.toPiece() ?: error("Mega Bomb should create a piece")
+        repeat(100) { seed ->
+            val batch = PieceGenerator.generateBatch(
+                availablePieces = PieceLibrary.starterPieces + megaBombPiece,
+                bombChance = 0f,
+                random = Random(seed)
+            )
+
+            assertTrue(batch.none { it.effect == PieceEffect.MegaBomb })
+        }
+    }
+
+    @Test
     fun pieceRarityDefaultsToCommon() {
         val piece = Piece("default", listOf(Cell(0, 0)))
 

@@ -24,6 +24,7 @@ enum class RiskSpinOutcome(val title: String) {
     HorizontalTwo("2x1 Joker"),
     VerticalTwo("1x2 Joker"),
     Bomb("Bomb Joker"),
+    MegaBomb("Mega Bomb Joker"),
     Revert("Revert Joker");
 
     fun toJokerType(): JokerType? {
@@ -33,6 +34,7 @@ enum class RiskSpinOutcome(val title: String) {
             HorizontalTwo -> JokerType.HorizontalTwo
             VerticalTwo -> JokerType.VerticalTwo
             Bomb -> JokerType.Bomb
+            MegaBomb -> JokerType.MegaBomb
             Revert -> JokerType.Revert
         }
     }
@@ -66,12 +68,14 @@ object RiskSpin {
         return listOf(
             RiskSpinOutcome.Miss,
             RiskSpinOutcome.Miss,
+            RiskSpinOutcome.Miss,
             RiskSpinOutcome.Single,
             RiskSpinOutcome.HorizontalTwo,
             RiskSpinOutcome.VerticalTwo,
             RiskSpinOutcome.Bomb,
             RiskSpinOutcome.Revert,
-            RiskSpinOutcome.Revert
+            RiskSpinOutcome.Revert,
+            RiskSpinOutcome.MegaBomb
         )
     }
 
