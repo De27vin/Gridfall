@@ -12,6 +12,7 @@ class GridfallSoundManager(context: Context) {
     private val loadedSoundIds = mutableSetOf<Int>()
     private var musicPlayer: MediaPlayer? = null
     private var currentMusicTrack: MusicTrack? = null
+    private var currentMusicVolume: Float = 0f
     private val soundPool = SoundPool.Builder()
         .setMaxStreams(4)
         .setAudioAttributes(
@@ -55,9 +56,10 @@ class GridfallSoundManager(context: Context) {
     fun playBackgroundMusic(
         themeMode: GridfallThemeMode,
         isMenu: Boolean,
-        soundEnabled: Boolean
+        musicVolume: Float
     ) {
-        if (!soundEnabled) {
+        val targetVolume = musicVolume.coerceIn(0f, 1f)
+        if (targetVolume <= 0f) {
             stopBackgroundMusic()
             return
         }
@@ -70,6 +72,8 @@ class GridfallSoundManager(context: Context) {
 
         val player = musicPlayer
         if (currentMusicTrack == targetTrack && player != null) {
+            currentMusicVolume = targetVolume
+            player.setVolume(targetVolume, targetVolume)
             if (!player.isPlaying) {
                 runCatching { player.start() }
             }
@@ -78,31 +82,30 @@ class GridfallSoundManager(context: Context) {
 
         stopBackgroundMusic()
         currentMusicTrack = targetTrack
+        currentMusicVolume = targetVolume
         musicPlayer = createMusicPlayer(targetTrack)
     }
 
     fun playThemeEvent(
         themeMode: GridfallThemeMode,
         event: ThemeSoundEvent,
-        soundEnabled: Boolean
+        effectsVolume: Float
     ) {
-        if (!soundEnabled) return
-        sounds[SoundKey(themeMode, event)]?.let(::play)
+        sounds[SoundKey(themeMode, event)]?.let { soundId ->
+            play(soundId, effectsVolume)
+        }
     }
 
-    fun playContractPopup(soundEnabled: Boolean) {
-        if (!soundEnabled) return
-        play(contractPopup)
+    fun playContractPopup(effectsVolume: Float) {
+        play(contractPopup, effectsVolume)
     }
 
-    fun playContractSuccess(soundEnabled: Boolean) {
-        if (!soundEnabled) return
-        play(contractSuccess)
+    fun playContractSuccess(effectsVolume: Float) {
+        play(contractSuccess, effectsVolume)
     }
 
-    fun playContractFailed(soundEnabled: Boolean) {
-        if (!soundEnabled) return
-        play(contractFailed.random(Random.Default))
+    fun playContractFailed(effectsVolume: Float) {
+        play(contractFailed.random(Random.Default), effectsVolume)
     }
 
     fun release() {
@@ -119,6 +122,7 @@ class GridfallSoundManager(context: Context) {
         }
         musicPlayer = null
         currentMusicTrack = null
+        currentMusicVolume = 0f
     }
 
     private fun createMusicPlayer(track: MusicTrack): MediaPlayer? {
@@ -138,10 +142,10 @@ class GridfallSoundManager(context: Context) {
                     )
                 }
                 isLooping = true
-                val volume = if (track == MusicTrack.Menu) 0.38f else 0.42f
-                setVolume(volume, volume)
+                setVolume(currentMusicVolume, currentMusicVolume)
                 setOnPreparedListener { preparedPlayer ->
                     if (musicPlayer === preparedPlayer) {
+                        preparedPlayer.setVolume(currentMusicVolume, currentMusicVolume)
                         preparedPlayer.start()
                     }
                 }
@@ -166,9 +170,11 @@ class GridfallSoundManager(context: Context) {
         }.getOrDefault(0)
     }
 
-    private fun play(soundId: Int) {
+    private fun play(soundId: Int, effectsVolume: Float) {
+        val targetVolume = effectsVolume.coerceIn(0f, 1f)
+        if (targetVolume <= 0f) return
         if (soundId !in loadedSoundIds) return
-        soundPool.play(soundId, 1f, 1f, 1, 0, 1f)
+        soundPool.play(soundId, targetVolume, targetVolume, 1, 0, 1f)
     }
 
     private data class SoundKey(

@@ -80,7 +80,8 @@ fun GameScreen(modifier: Modifier = Modifier) {
     var showRestartConfirmDialog by remember { mutableStateOf(false) }
     var showSettingsScreen by remember { mutableStateOf(false) }
     var selectedThemeMode by remember { mutableStateOf(ThemePreferenceStore.load(context)) }
-    var soundEnabled by remember { mutableStateOf(SoundPreferenceStore.load(context)) }
+    var soundEffectsVolume by remember { mutableStateOf(SoundPreferenceStore.loadSoundEffectsVolume(context)) }
+    var backgroundMusicVolume by remember { mutableStateOf(SoundPreferenceStore.loadBackgroundMusicVolume(context)) }
     var isAppInForeground by remember { mutableStateOf(true) }
     val soundManager = remember { GridfallSoundManager(context) }
     val activeThemeColors = colorsForThemeMode(selectedThemeMode)
@@ -138,12 +139,12 @@ fun GameScreen(modifier: Modifier = Modifier) {
         }
     }
 
-    LaunchedEffect(selectedThemeMode, showSettingsScreen, soundEnabled, isAppInForeground) {
+    LaunchedEffect(selectedThemeMode, showSettingsScreen, backgroundMusicVolume, isAppInForeground) {
         if (isAppInForeground) {
             soundManager.playBackgroundMusic(
                 themeMode = selectedThemeMode,
                 isMenu = showSettingsScreen,
-                soundEnabled = soundEnabled
+                musicVolume = backgroundMusicVolume
             )
         } else {
             soundManager.stopBackgroundMusic()
@@ -182,9 +183,9 @@ fun GameScreen(modifier: Modifier = Modifier) {
             (gameState.contractState.isCompleted || gameState.contractState.isFailed)
         ) {
             if (gameState.contractState.isCompleted) {
-                soundManager.playContractSuccess(soundEnabled)
+                soundManager.playContractSuccess(soundEffectsVolume)
             } else {
-                soundManager.playContractFailed(soundEnabled)
+                soundManager.playContractFailed(soundEffectsVolume)
             }
             showContractResult = true
             delay(1200)
@@ -197,7 +198,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
     }
     LaunchedEffect(contractOfferSoundKey) {
         if (contractOfferSoundKey != null) {
-            soundManager.playContractPopup(soundEnabled)
+            soundManager.playContractPopup(soundEffectsVolume)
         }
     }
 
@@ -276,7 +277,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 playMoveSound(
                     soundManager = soundManager,
                     themeMode = selectedThemeMode,
-                    soundEnabled = soundEnabled,
+                    effectsVolume = soundEffectsVolume,
                     piece = piece,
                     clearedLineCount = clearResult?.clearedLineCount ?: 0
                 )
@@ -285,7 +286,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                     soundManager.playThemeEvent(
                         themeMode = selectedThemeMode,
                         event = ThemeSoundEvent.GameOver,
-                        soundEnabled = soundEnabled
+                        effectsVolume = soundEffectsVolume
                     )
                     view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                 }
@@ -303,14 +304,19 @@ fun GameScreen(modifier: Modifier = Modifier) {
         if (showSettingsScreen) {
             SettingsScreen(
                 selectedThemeMode = selectedThemeMode,
-                soundEnabled = soundEnabled,
+                soundEffectsVolume = soundEffectsVolume,
+                backgroundMusicVolume = backgroundMusicVolume,
                 onThemeSelected = { theme ->
                     selectedThemeMode = theme
                     ThemePreferenceStore.save(context, theme)
                 },
-                onSoundEnabledChange = { enabled ->
-                    soundEnabled = enabled
-                    SoundPreferenceStore.save(context, enabled)
+                onSoundEffectsVolumeChange = { volume ->
+                    soundEffectsVolume = volume
+                    SoundPreferenceStore.saveSoundEffectsVolume(context, volume)
+                },
+                onBackgroundMusicVolumeChange = { volume ->
+                    backgroundMusicVolume = volume
+                    SoundPreferenceStore.saveBackgroundMusicVolume(context, volume)
                 },
                 onReturnToGame = {
                     showSettingsScreen = false
@@ -600,7 +606,7 @@ private fun DrawScope.drawDraggedCell(
 private fun playMoveSound(
     soundManager: GridfallSoundManager,
     themeMode: GridfallThemeMode,
-    soundEnabled: Boolean,
+    effectsVolume: Float,
     piece: Piece,
     clearedLineCount: Int
 ) {
@@ -614,7 +620,7 @@ private fun playMoveSound(
     soundManager.playThemeEvent(
         themeMode = themeMode,
         event = event,
-        soundEnabled = soundEnabled
+        effectsVolume = effectsVolume
     )
 }
 

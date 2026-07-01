@@ -20,8 +20,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -39,6 +39,7 @@ import com.example.gridfall.ui.theme.SlateButton
 import com.example.gridfall.ui.theme.SoftCyanBorder
 import com.example.gridfall.ui.theme.SoftIce
 import com.example.gridfall.ui.theme.LocalGridfallColors
+import kotlin.math.roundToInt
 
 private val themeOptions = listOf(
     GridfallThemeMode.PremiumTactical,
@@ -49,9 +50,11 @@ private val themeOptions = listOf(
 @Composable
 fun SettingsScreen(
     selectedThemeMode: GridfallThemeMode,
-    soundEnabled: Boolean,
+    soundEffectsVolume: Float,
+    backgroundMusicVolume: Float,
     onThemeSelected: (GridfallThemeMode) -> Unit,
-    onSoundEnabledChange: (Boolean) -> Unit,
+    onSoundEffectsVolumeChange: (Float) -> Unit,
+    onBackgroundMusicVolumeChange: (Float) -> Unit,
     onReturnToGame: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -91,34 +94,16 @@ fun SettingsScreen(
             }
 
             SettingsPanel(title = "Sound") {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text(
-                            text = if (soundEnabled) "Sound On" else "Sound Off",
-                            color = theme.textPrimary,
-                            style = MaterialTheme.typography.titleSmall.retroText(theme)
-                        )
-                        Text(
-                            text = "Game sound effects.",
-                            color = theme.textMuted,
-                            style = MaterialTheme.typography.bodyMedium.retroText(theme)
-                        )
-                    }
-
-                    Switch(
-                        checked = soundEnabled,
-                        onCheckedChange = onSoundEnabledChange,
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = theme.chipBackground,
-                            checkedTrackColor = theme.accentStrong,
-                            uncheckedThumbColor = theme.textSecondary,
-                            uncheckedTrackColor = theme.button,
-                            uncheckedBorderColor = theme.panelBorder
-                        )
+                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    VolumeSliderRow(
+                        label = "Sound Effects",
+                        value = soundEffectsVolume,
+                        onValueChange = onSoundEffectsVolumeChange
+                    )
+                    VolumeSliderRow(
+                        label = "Background Music",
+                        value = backgroundMusicVolume,
+                        onValueChange = onBackgroundMusicVolumeChange
                     )
                 }
             }
@@ -149,6 +134,53 @@ fun SettingsScreen(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun VolumeSliderRow(
+    label: String,
+    value: Float,
+    onValueChange: (Float) -> Unit
+) {
+    val theme = LocalGridfallColors.current
+    val clampedValue = value.coerceIn(0f, 1f)
+    val percentage = (clampedValue * 100).roundToInt()
+
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = label,
+                color = theme.textPrimary,
+                style = MaterialTheme.typography.titleSmall.retroText(theme)
+            )
+            Text(
+                text = "$percentage%",
+                color = theme.accentStrong,
+                style = MaterialTheme.typography.labelLarge.retroText(theme)
+            )
+        }
+
+        Slider(
+            value = clampedValue,
+            onValueChange = { rawValue ->
+                val steppedValue = (rawValue.coerceIn(0f, 1f) * 20).roundToInt() / 20f
+                onValueChange(steppedValue.coerceIn(0f, 1f))
+            },
+            valueRange = 0f..1f,
+            steps = 19,
+            colors = SliderDefaults.colors(
+                thumbColor = theme.accentStrong,
+                activeTrackColor = theme.accent,
+                inactiveTrackColor = theme.button.copy(alpha = 0.70f),
+                activeTickColor = theme.textPrimary.copy(alpha = 0.46f),
+                inactiveTickColor = theme.panelBorder.copy(alpha = 0.58f)
+            )
+        )
     }
 }
 
