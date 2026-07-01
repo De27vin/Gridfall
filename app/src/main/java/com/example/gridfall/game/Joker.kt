@@ -39,6 +39,6 @@ data class RiskSpinState(
         get() = inventory.size >= MAX_INVENTORY_SIZE
 
     companion object {
-        const val MAX_INVENTORY_SIZE = 8
+        const val MAX_INVENTORY_SIZE = 5
     }
 }

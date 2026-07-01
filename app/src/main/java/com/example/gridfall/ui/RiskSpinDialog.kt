@@ -22,9 +22,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import com.example.gridfall.game.GameEngine
 import com.example.gridfall.game.GameState
 import com.example.gridfall.game.RiskSpinOption
 import com.example.gridfall.game.RiskSpinResult
+import com.example.gridfall.game.RiskSpinState
 import com.example.gridfall.ui.theme.PremiumTacticalColors
 
 @Composable
@@ -52,16 +54,16 @@ fun RiskSpinDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
-                    text = "Pay score now for a chance at joker tools. Misses give nothing.",
+                    text = "Pay score now for a chance at joker tools. Misses give nothing. Inventory max is ${RiskSpinState.MAX_INVENTORY_SIZE}.",
                     color = colors.textSecondary,
                     style = MaterialTheme.typography.bodyMedium
                 )
                 RiskSpinOption.entries.forEach { option ->
                     val cost = option.cost(gameState.score)
-                    val canAfford = cost <= gameState.score
+                    val canSelect = GameEngine.canSelectRiskSpinOption(gameState, option)
                     Button(
                         onClick = { onOptionSelected(option) },
-                        enabled = canAfford,
+                        enabled = canSelect,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = colors.button,
                             contentColor = colors.textPrimary,
@@ -83,13 +85,20 @@ fun RiskSpinDialog(
                                 )
                                 Text(
                                     text = "${option.spinCount} spin${if (option.spinCount == 1) "" else "s"}",
-                                    color = if (canAfford) colors.textSecondary else colors.textMuted,
+                                    color = if (canSelect) colors.textSecondary else colors.textMuted,
                                     style = MaterialTheme.typography.bodySmall
                                 )
+                                if (!canSelect) {
+                                    Text(
+                                        text = "Would drop below Level 3",
+                                        color = colors.textMuted,
+                                        style = MaterialTheme.typography.labelSmall
+                                    )
+                                }
                             }
                             Text(
                                 text = "-$cost",
-                                color = if (canAfford) colors.warning else colors.textMuted,
+                                color = if (canSelect) colors.warning else colors.textMuted,
                                 style = MaterialTheme.typography.labelLarge
                             )
                         }

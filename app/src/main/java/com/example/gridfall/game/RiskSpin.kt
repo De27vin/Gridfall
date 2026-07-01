@@ -57,6 +57,9 @@ data class RiskSpinResult(
 )
 
 object RiskSpin {
+    const val COOLDOWN_MIN_BATCHES = 10
+    const val COOLDOWN_MAX_BATCHES = 15
+
     fun rewardPool(): List<RiskSpinOutcome> {
         return listOf(
             RiskSpinOutcome.Miss,
@@ -71,7 +74,10 @@ object RiskSpin {
     }
 
     fun randomCooldown(random: Random = Random.Default): Int {
-        return random.nextInt(from = 3, until = 6)
+        return random.nextInt(
+            from = COOLDOWN_MIN_BATCHES,
+            until = COOLDOWN_MAX_BATCHES + 1
+        )
     }
 
     fun spinEntries(

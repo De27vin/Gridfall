@@ -21,7 +21,7 @@ class RiskSpinTest {
 
     @Test
     fun riskSpinIsAvailableAtLevelThreeWhenReady() {
-        val state = testState(score = 150)
+        val state = testState(score = 170)
 
         val availability = GameEngine.riskSpinAvailability(state)
 
@@ -73,7 +73,10 @@ class RiskSpinTest {
         assertEquals(180, nextState.score)
         assertEquals(20, result.cost)
         assertEquals(1, result.entries.size)
-        assertTrue(nextState.riskSpinState.cooldownBatchesRemaining in 3..5)
+        assertTrue(
+            nextState.riskSpinState.cooldownBatchesRemaining in
+                RiskSpin.COOLDOWN_MIN_BATCHES..RiskSpin.COOLDOWN_MAX_BATCHES
+        )
     }
 
     @Test
@@ -85,6 +88,29 @@ class RiskSpinTest {
         assertEquals(35, RiskSpinOption.Desperate.cost(50))
         assertEquals(87, RiskSpinOption.Desperate.cost(250))
         assertFalse(GameEngine.canSelectRiskSpinOption(testState(score = 5), RiskSpinOption.Safe))
+    }
+
+    @Test
+    fun spinOptionIsDisabledIfPaymentWouldDropBelowLevelThree() {
+        assertFalse(GameEngine.canSelectRiskSpinOption(testState(score = 150), RiskSpinOption.Safe))
+        assertTrue(GameEngine.canSelectRiskSpinOption(testState(score = 167), RiskSpinOption.Safe))
+    }
+
+    @Test
+    fun riskSpinUnavailableIfNoOptionKeepsLevelThree() {
+        val state = testState(score = 150)
+
+        val availability = GameEngine.riskSpinAvailability(state)
+
+        assertFalse(availability.isAvailable)
+        assertEquals("Need enough score to stay Level 3", availability.reason)
+        assertNull(
+            GameEngine.performRiskSpin(
+                state = state,
+                option = RiskSpinOption.Safe,
+                random = Random(1)
+            )
+        )
     }
 
     @Test
@@ -116,6 +142,24 @@ class RiskSpinTest {
     }
 
     @Test
+    fun riskSpinInventoryMaxIsFive() {
+        assertEquals(5, RiskSpinState.MAX_INVENTORY_SIZE)
+    }
+
+    @Test
+    fun partialInventoryCannotGrowBeyondFive() {
+        val nearlyFullInventory = List(4) { JokerType.Single }
+
+        val (nextInventory, _) = RiskSpin.spinEntries(
+            spinCount = 5,
+            startingInventory = nearlyFullInventory,
+            random = Random(12)
+        )
+
+        assertTrue(nextInventory.size <= RiskSpinState.MAX_INVENTORY_SIZE)
+    }
+
+    @Test
     fun missOutcomeDoesNotCreateJoker() {
         assertNull(RiskSpinOutcome.Miss.toJokerType())
     }
@@ -125,14 +169,14 @@ class RiskSpinTest {
         val state = testState(
             score = 200,
             currentPieces = listOf(singlePiece(), singlePiece(), singlePiece()),
-            riskSpinState = RiskSpinState(cooldownBatchesRemaining = 4)
+            riskSpinState = RiskSpinState(cooldownBatchesRemaining = 12)
         )
 
         val afterFirst = GameEngine.placePiece(state, pieceIndex = 0, startRow = 0, startCol = 0)
         val afterSecond = GameEngine.placePiece(afterFirst, pieceIndex = 1, startRow = 0, startCol = 1)
         val afterThird = GameEngine.placePiece(afterSecond, pieceIndex = 2, startRow = 0, startCol = 2)
 
-        assertEquals(3, afterThird.riskSpinState.cooldownBatchesRemaining)
+        assertEquals(11, afterThird.riskSpinState.cooldownBatchesRemaining)
     }
 
     @Test

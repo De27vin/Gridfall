@@ -4,18 +4,14 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -69,7 +65,7 @@ fun JokerInventoryCarousel(
             Text(
                 text = "Jokers",
                 color = colors.textPrimary,
-                style = MaterialTheme.typography.labelLarge
+                style = MaterialTheme.typography.labelMedium
             )
             Spacer(modifier = Modifier.weight(1f))
             Text(
@@ -87,8 +83,8 @@ fun JokerInventoryCarousel(
             )
         } else {
             Row(
-                modifier = Modifier.horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 inventory.forEachIndexed { index, jokerType ->
@@ -129,7 +125,7 @@ private fun JokerChip(
 
     Box(
         modifier = Modifier
-            .size(width = 76.dp, height = 82.dp)
+            .size(width = 58.dp, height = 54.dp)
             .clip(shape)
             .background(colors.chipBackground.copy(alpha = if (enabled) 0.82f else 0.42f))
             .border(
@@ -173,7 +169,7 @@ private fun JokerChip(
                     }
                 }
             )
-            .padding(7.dp),
+            .padding(5.dp),
         contentAlignment = Alignment.Center
     ) {
         if (piece != null) {
@@ -181,14 +177,14 @@ private fun JokerChip(
                 piece = piece,
                 colors = colors,
                 modifier = Modifier
-                    .size(46.dp)
+                    .size(30.dp)
                     .alpha(if (isDragging) 0.35f else 1f)
             )
         } else {
             Text(
-                text = "REV",
+                text = "UNDO",
                 color = if (canUseRevert) colors.warning else colors.textMuted,
-                style = MaterialTheme.typography.labelLarge
+                style = MaterialTheme.typography.labelMedium
             )
         }
 
@@ -206,7 +202,7 @@ private fun shortJokerLabel(jokerType: JokerType): String {
         JokerType.Single -> "1x1"
         JokerType.HorizontalTwo -> "2x1"
         JokerType.VerticalTwo -> "1x2"
-        JokerType.Bomb -> "Bomb"
-        JokerType.Revert -> "Revert"
+        JokerType.Bomb -> "BOMB"
+        JokerType.Revert -> "UNDO"
     }
 }

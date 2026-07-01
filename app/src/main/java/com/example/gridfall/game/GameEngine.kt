@@ -137,7 +137,10 @@ object GameEngine {
                 "Available in ${state.riskSpinState.cooldownBatchesRemaining} batches"
             )
             state.riskSpinState.isInventoryFull -> RiskSpinAvailability(false, "Inventory full")
-            RiskSpinOption.entries.none { canSelectRiskSpinOption(state, it) } -> RiskSpinAvailability(false, "Not enough score")
+            RiskSpinOption.entries.none { canSelectRiskSpinOption(state, it) } -> RiskSpinAvailability(
+                false,
+                "Need enough score to stay Level 3"
+            )
             else -> RiskSpinAvailability(true)
         }
     }
@@ -147,7 +150,9 @@ object GameEngine {
     }
 
     fun canSelectRiskSpinOption(state: GameState, option: RiskSpinOption): Boolean {
-        return riskSpinCost(state, option) <= state.score
+        val scoreAfterPayment = state.score - riskSpinCost(state, option)
+        return scoreAfterPayment >= 0 &&
+            LevelSystem.levelForScore(scoreAfterPayment) >= 3
     }
 
     fun performRiskSpin(
