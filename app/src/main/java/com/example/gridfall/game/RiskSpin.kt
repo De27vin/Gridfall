@@ -59,6 +59,8 @@ data class RiskSpinResult(
 object RiskSpin {
     const val COOLDOWN_MIN_BATCHES = 10
     const val COOLDOWN_MAX_BATCHES = 15
+    const val MEMORY_GRID_SIZE = 9
+    const val MEMORY_FIELD_COUNT = MEMORY_GRID_SIZE * MEMORY_GRID_SIZE
 
     fun rewardPool(): List<RiskSpinOutcome> {
         return listOf(
@@ -105,5 +107,26 @@ object RiskSpin {
         }
 
         return inventory.toList() to entries
+    }
+
+    fun generateMemoryFields(random: Random = Random.Default): List<RiskSpinMemoryField> {
+        val pool = rewardPool()
+        return List(MEMORY_FIELD_COUNT) { index ->
+            RiskSpinMemoryField(
+                id = index,
+                outcome = pool[random.nextInt(pool.size)]
+            )
+        }
+    }
+
+    fun createMemorySession(
+        option: RiskSpinOption,
+        random: Random = Random.Default
+    ): RiskSpinMemorySession {
+        return RiskSpinMemorySession(
+            option = option,
+            revealsLeft = option.spinCount,
+            fields = generateMemoryFields(random)
+        )
     }
 }

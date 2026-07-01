@@ -185,6 +185,75 @@ object GameEngine {
         )
     }
 
+    fun startRiskSpinMemorySession(
+        state: GameState,
+        option: RiskSpinOption,
+        random: Random = Random.Default
+    ): RiskSpinMemoryStartResult? {
+        if (!riskSpinAvailability(state).isAvailable) return null
+        if (!canSelectRiskSpinOption(state, option)) return null
+
+        val cost = riskSpinCost(state, option)
+        val nextState = state.copy(
+            score = (state.score - cost).coerceAtLeast(0),
+            riskSpinState = state.riskSpinState.copy(
+                cooldownBatchesRemaining = RiskSpin.randomCooldown(random)
+            )
+        )
+
+        return RiskSpinMemoryStartResult(
+            state = nextState,
+            session = RiskSpin.createMemorySession(
+                option = option,
+                random = random
+            ),
+            cost = cost
+        )
+    }
+
+    fun revealRiskSpinMemoryField(
+        state: GameState,
+        session: RiskSpinMemorySession,
+        fieldId: Int
+    ): RiskSpinMemoryRevealResult? {
+        if (session.revealsLeft <= 0) return null
+        val field = session.fields.firstOrNull { it.id == fieldId } ?: return null
+        if (field.isRevealed) return null
+
+        val joker = field.outcome.toJokerType()
+        val canAddJoker = joker != null &&
+            state.riskSpinState.inventory.size < RiskSpinState.MAX_INVENTORY_SIZE
+        val nextInventory = if (canAddJoker && joker != null) {
+            state.riskSpinState.inventory + joker
+        } else {
+            state.riskSpinState.inventory
+        }
+        val revealedField = field.copy(
+            isRevealed = true,
+            jokerAdded = if (canAddJoker) joker else null,
+            lostBecauseInventoryFull = joker != null && !canAddJoker
+        )
+        val nextFields = session.fields.map { existingField ->
+            if (existingField.id == fieldId) revealedField else existingField
+        }
+        val entry = RiskSpinResultEntry(
+            outcome = field.outcome,
+            jokerAdded = revealedField.jokerAdded,
+            lostBecauseInventoryFull = revealedField.lostBecauseInventoryFull
+        )
+
+        return RiskSpinMemoryRevealResult(
+            state = state.copy(
+                riskSpinState = state.riskSpinState.copy(inventory = nextInventory)
+            ),
+            session = session.copy(
+                revealsLeft = (session.revealsLeft - 1).coerceAtLeast(0),
+                fields = nextFields
+            ),
+            entry = entry
+        )
+    }
+
     fun hasAnyValidMove(
         board: Board,
         pieces: List<Piece>

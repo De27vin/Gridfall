@@ -210,7 +210,7 @@ private fun JokerChip(
 }
 
 @Composable
-private fun UndoJokerIcon(
+internal fun UndoJokerIcon(
     enabled: Boolean,
     modifier: Modifier = Modifier
 ) {

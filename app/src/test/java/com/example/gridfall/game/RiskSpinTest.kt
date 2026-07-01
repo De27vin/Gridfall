@@ -80,6 +80,49 @@ class RiskSpinTest {
     }
 
     @Test
+    fun memorySessionStartsWithSafeRiskAndDesperateRevealCounts() {
+        val state = testState(score = 500)
+
+        val safe = GameEngine.startRiskSpinMemorySession(state, RiskSpinOption.Safe, Random(1))
+        val risk = GameEngine.startRiskSpinMemorySession(state, RiskSpinOption.Risk, Random(1))
+        val desperate = GameEngine.startRiskSpinMemorySession(state, RiskSpinOption.Desperate, Random(1))
+
+        assertEquals(1, safe!!.session.revealsLeft)
+        assertEquals(3, risk!!.session.revealsLeft)
+        assertEquals(5, desperate!!.session.revealsLeft)
+    }
+
+    @Test
+    fun memorySessionStartPaysCostOnceStartsCooldownAndDoesNotAddInventory() {
+        val state = testState(score = 200)
+
+        val result = GameEngine.startRiskSpinMemorySession(
+            state = state,
+            option = RiskSpinOption.Safe,
+            random = Random(4)
+        )
+
+        assertNotNull(result)
+        assertEquals(180, result!!.state.score)
+        assertEquals(20, result.cost)
+        assertEquals(emptyList<JokerType>(), result.state.riskSpinState.inventory)
+        assertTrue(
+            result.state.riskSpinState.cooldownBatchesRemaining in
+                RiskSpin.COOLDOWN_MIN_BATCHES..RiskSpin.COOLDOWN_MAX_BATCHES
+        )
+        assertFalse(GameEngine.riskSpinAvailability(result.state).isAvailable)
+    }
+
+    @Test
+    fun memorySessionGeneratedBoardHasEightyOneWeightedFields() {
+        val fields = RiskSpin.generateMemoryFields(Random(2))
+        val pool = RiskSpin.rewardPool().toSet()
+
+        assertEquals(81, fields.size)
+        assertTrue(fields.all { it.outcome in pool })
+    }
+
+    @Test
     fun spinOptionCostsUseMinimumOrScorePercentage() {
         assertEquals(10, RiskSpinOption.Safe.cost(50))
         assertEquals(25, RiskSpinOption.Safe.cost(250))
@@ -162,6 +205,90 @@ class RiskSpinTest {
     @Test
     fun missOutcomeDoesNotCreateJoker() {
         assertNull(RiskSpinOutcome.Miss.toJokerType())
+    }
+
+    @Test
+    fun memoryRevealDecrementsRevealsLeftAndRevealedFieldCannotRevealAgain() {
+        val state = testState(score = 200)
+        val session = memorySession(
+            revealsLeft = 1,
+            outcomes = listOf(RiskSpinOutcome.Single)
+        )
+
+        val afterReveal = GameEngine.revealRiskSpinMemoryField(state, session, fieldId = 0)
+
+        assertNotNull(afterReveal)
+        assertEquals(0, afterReveal!!.session.revealsLeft)
+        assertTrue(afterReveal.session.fields.first().isRevealed)
+        assertNull(
+            GameEngine.revealRiskSpinMemoryField(
+                state = afterReveal.state,
+                session = afterReveal.session,
+                fieldId = 0
+            )
+        )
+    }
+
+    @Test
+    fun memoryMissAddsNoJoker() {
+        val state = testState(score = 200)
+        val session = memorySession(
+            revealsLeft = 1,
+            outcomes = listOf(RiskSpinOutcome.Miss)
+        )
+
+        val afterReveal = GameEngine.revealRiskSpinMemoryField(state, session, fieldId = 0)
+
+        assertNotNull(afterReveal)
+        assertEquals(emptyList<JokerType>(), afterReveal!!.state.riskSpinState.inventory)
+        assertNull(afterReveal.entry.jokerAdded)
+    }
+
+    @Test
+    fun memoryJokerRewardAddsOneJokerWhenInventoryHasSpace() {
+        val state = testState(score = 200)
+        val session = memorySession(
+            revealsLeft = 1,
+            outcomes = listOf(RiskSpinOutcome.Revert)
+        )
+
+        val afterReveal = GameEngine.revealRiskSpinMemoryField(state, session, fieldId = 0)
+
+        assertNotNull(afterReveal)
+        assertEquals(listOf(JokerType.Revert), afterReveal!!.state.riskSpinState.inventory)
+        assertEquals(JokerType.Revert, afterReveal.entry.jokerAdded)
+    }
+
+    @Test
+    fun memoryJokerRewardIsLostWhenInventoryIsFull() {
+        val state = testState(
+            score = 200,
+            riskSpinState = RiskSpinState(
+                inventory = List(RiskSpinState.MAX_INVENTORY_SIZE) { JokerType.Single }
+            )
+        )
+        val session = memorySession(
+            revealsLeft = 1,
+            outcomes = listOf(RiskSpinOutcome.Bomb)
+        )
+
+        val afterReveal = GameEngine.revealRiskSpinMemoryField(state, session, fieldId = 0)
+
+        assertNotNull(afterReveal)
+        assertEquals(RiskSpinState.MAX_INVENTORY_SIZE, afterReveal!!.state.riskSpinState.inventory.size)
+        assertTrue(afterReveal.entry.lostBecauseInventoryFull)
+        assertTrue(afterReveal.session.fields.first().lostBecauseInventoryFull)
+    }
+
+    @Test
+    fun memoryCannotRevealAfterRevealsLeftIsZero() {
+        val state = testState(score = 200)
+        val session = memorySession(
+            revealsLeft = 0,
+            outcomes = listOf(RiskSpinOutcome.Single)
+        )
+
+        assertNull(GameEngine.revealRiskSpinMemoryField(state, session, fieldId = 0))
     }
 
     @Test
@@ -350,6 +477,22 @@ class RiskSpinTest {
             id = "single",
             cells = listOf(Cell(0, 0)),
             colorVariant = 1
+        )
+    }
+
+    private fun memorySession(
+        revealsLeft: Int,
+        outcomes: List<RiskSpinOutcome>
+    ): RiskSpinMemorySession {
+        return RiskSpinMemorySession(
+            option = RiskSpinOption.Safe,
+            revealsLeft = revealsLeft,
+            fields = outcomes.mapIndexed { index, outcome ->
+                RiskSpinMemoryField(
+                    id = index,
+                    outcome = outcome
+                )
+            }
         )
     }
 }

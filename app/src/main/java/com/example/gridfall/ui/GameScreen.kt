@@ -56,7 +56,7 @@ import com.example.gridfall.game.JokerType
 import com.example.gridfall.game.LevelSystem
 import com.example.gridfall.game.Piece
 import com.example.gridfall.game.PieceEffect
-import com.example.gridfall.game.RiskSpinResult
+import com.example.gridfall.game.RiskSpinMemorySession
 import com.example.gridfall.game.ScoreSystem
 import com.example.gridfall.ui.theme.*
 import kotlinx.coroutines.delay
@@ -79,8 +79,10 @@ fun GameScreen(modifier: Modifier = Modifier) {
     var scoreEventFeedback by remember { mutableStateOf<ScoreEventFeedback?>(null) }
     var scoreEventFeedbackToken by remember { mutableStateOf(0) }
     var showRestartConfirmDialog by remember { mutableStateOf(false) }
-    var showRiskSpinDialog by remember { mutableStateOf(false) }
-    var riskSpinResult by remember { mutableStateOf<RiskSpinResult?>(null) }
+    var showRiskSpinOverlay by remember { mutableStateOf(false) }
+    var showRiskSpinOptions by remember { mutableStateOf(false) }
+    var riskSpinMemorySession by remember { mutableStateOf<RiskSpinMemorySession?>(null) }
+    var riskSpinPaidCost by remember { mutableStateOf<Int?>(null) }
     var showSettingsScreen by remember { mutableStateOf(false) }
     var selectedThemeMode by remember { mutableStateOf(ThemePreferenceStore.load(context)) }
     var soundEffectsVolume by remember { mutableStateOf(SoundPreferenceStore.loadSoundEffectsVolume(context)) }
@@ -207,8 +209,10 @@ fun GameScreen(modifier: Modifier = Modifier) {
 
     fun restartGame() {
         showRestartConfirmDialog = false
-        showRiskSpinDialog = false
-        riskSpinResult = null
+        showRiskSpinOverlay = false
+        showRiskSpinOptions = false
+        riskSpinMemorySession = null
+        riskSpinPaidCost = null
         showSettingsScreen = false
         gameState = GameEngine.createInitialState()
         dragState = DragState()
@@ -472,7 +476,10 @@ fun GameScreen(modifier: Modifier = Modifier) {
 
                 Button(
                     onClick = {
-                        showRiskSpinDialog = true
+                        showRiskSpinOverlay = true
+                        showRiskSpinOptions = true
+                        riskSpinMemorySession = null
+                        riskSpinPaidCost = null
                     },
                     enabled = riskSpinAvailability.isAvailable,
                     colors = ButtonDefaults.buttonColors(
@@ -645,6 +652,35 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 )
             }
         }
+
+        if (showRiskSpinOverlay) {
+            RiskSpinMemoryOverlay(
+                session = riskSpinMemorySession,
+                paidCost = riskSpinPaidCost,
+                inventoryCount = gameState.riskSpinState.inventory.size,
+                isGridActive = !showRiskSpinOptions,
+                onFieldClick = { fieldId ->
+                    val session = riskSpinMemorySession ?: return@RiskSpinMemoryOverlay
+                    val result = GameEngine.revealRiskSpinMemoryField(
+                        state = gameState,
+                        session = session,
+                        fieldId = fieldId
+                    )
+                    if (result != null) {
+                        gameState = result.state
+                        riskSpinMemorySession = result.session
+                        view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                    }
+                },
+                onClose = {
+                    showRiskSpinOverlay = false
+                    showRiskSpinOptions = false
+                    riskSpinMemorySession = null
+                    riskSpinPaidCost = null
+                },
+                modifier = Modifier.align(Alignment.Center)
+            )
+        }
     }
 
     if (gameState.isGameOver) {
@@ -654,20 +690,24 @@ fun GameScreen(modifier: Modifier = Modifier) {
             isNewBest = isNewBestThisGame,
             onRestart = ::restartGame
         )
-    } else if (showRiskSpinDialog) {
+    } else if (showRiskSpinOverlay && showRiskSpinOptions) {
         RiskSpinDialog(
             gameState = gameState,
             onOptionSelected = { option ->
-                val result = GameEngine.performRiskSpin(gameState, option)
+                val result = GameEngine.startRiskSpinMemorySession(gameState, option)
                 if (result != null) {
                     gameState = result.state
-                    riskSpinResult = result
-                    showRiskSpinDialog = false
+                    riskSpinMemorySession = result.session
+                    riskSpinPaidCost = result.cost
+                    showRiskSpinOptions = false
                     view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
                 }
             },
             onDismiss = {
-                showRiskSpinDialog = false
+                showRiskSpinOverlay = false
+                showRiskSpinOptions = false
+                riskSpinMemorySession = null
+                riskSpinPaidCost = null
             }
         )
     } else if (showRestartConfirmDialog) {
@@ -676,15 +716,6 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 showRestartConfirmDialog = false
             },
             onConfirmRestart = ::restartGame
-        )
-    }
-
-    riskSpinResult?.let { result ->
-        RiskSpinResultDialog(
-            result = result,
-            onDismiss = {
-                riskSpinResult = null
-            }
         )
     }
         }
