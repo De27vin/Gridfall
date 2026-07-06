@@ -44,6 +44,12 @@ fun GameTopBar(
             else -> 999.dp
         }
     )
+    val effectiveNextLevelScore = nextLevelScore ?: LevelSystem.nextLevelScore(level)
+    val currentLevelMin = LevelSystem.thresholdForLevel(level)
+    val levelProgress = (
+        (score - currentLevelMin).toFloat() /
+            (effectiveNextLevelScore - currentLevelMin)
+        ).coerceIn(0f, 1f)
     val scoreText = if (theme.isRetroTheme()) String.format(Locale.US, "%06d", score) else String.format(Locale.US, "%,d", score)
     val bestText = if (theme.isRetroTheme()) String.format(Locale.US, "%06d", highScore) else String.format(Locale.US, "%,d", highScore)
 
@@ -132,16 +138,8 @@ fun GameTopBar(
                         style = MaterialTheme.typography.labelLarge.retroText(theme)
                     )
 
-                    val progressText = if (nextLevelScore == null) {
-                        "MAX"
-                    } else {
-                        val currentLevelMin = if (level > 1) LevelSystem.nextLevelScore(level - 1) ?: 0 else 0
-                        val progress = (score - currentLevelMin).toFloat() / (nextLevelScore - currentLevelMin)
-                        String.format(Locale.US, "%d%%", (progress * 100).toInt().coerceIn(0, 100))
-                    }
-
                     Text(
-                        text = progressText,
+                        text = String.format(Locale.US, "%d%%", (levelProgress * 100).toInt().coerceIn(0, 100)),
                         color = theme.textMuted,
                         style = MaterialTheme.typography.labelSmall.retroText(theme)
                     )
@@ -150,13 +148,6 @@ fun GameTopBar(
                 Spacer(modifier = Modifier.height(4.dp))
 
                 // Progress Bar
-                val progress = if (nextLevelScore == null) {
-                    1f
-                } else {
-                    val currentLevelMin = if (level > 1) LevelSystem.nextLevelScore(level - 1) ?: 0 else 0
-                    ((score - currentLevelMin).toFloat() / (nextLevelScore - currentLevelMin)).coerceIn(0f, 1f)
-                }
-
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -166,7 +157,7 @@ fun GameTopBar(
                 ) {
                     Box(
                         modifier = Modifier
-                            .fillMaxWidth(progress)
+                            .fillMaxWidth(levelProgress)
                             .height(6.dp)
                             .clip(RoundedCornerShape(if (theme.isRetroTheme() || theme.isInfernoTheme()) 2.dp else 999.dp))
                             .background(theme.accent)

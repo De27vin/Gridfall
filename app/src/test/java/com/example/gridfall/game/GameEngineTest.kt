@@ -465,6 +465,11 @@ class GameEngineTest {
         assertEquals(6, LevelSystem.levelForScore(900))
         assertEquals(7, LevelSystem.levelForScore(1400))
         assertEquals(8, LevelSystem.levelForScore(2000))
+        assertEquals(8, LevelSystem.levelForScore(2749))
+        assertEquals(9, LevelSystem.levelForScore(2750))
+        assertEquals(10, LevelSystem.levelForScore(3650))
+        assertEquals(11, LevelSystem.levelForScore(4700))
+        assertEquals(12, LevelSystem.levelForScore(5900))
     }
 
     @Test
@@ -476,7 +481,38 @@ class GameEngineTest {
         assertEquals(900, LevelSystem.nextLevelScore(5))
         assertEquals(1400, LevelSystem.nextLevelScore(6))
         assertEquals(2000, LevelSystem.nextLevelScore(7))
-        assertNull(LevelSystem.nextLevelScore(8))
+        assertEquals(2750, LevelSystem.nextLevelScore(8))
+        assertEquals(3650, LevelSystem.nextLevelScore(9))
+        assertEquals(4700, LevelSystem.nextLevelScore(10))
+        assertEquals(5900, LevelSystem.nextLevelScore(11))
+    }
+
+    @Test
+    fun thresholdForLevelSupportsEndlessLevelsAfterLevelEight() {
+        assertEquals(2000, LevelSystem.thresholdForLevel(8))
+        assertEquals(2750, LevelSystem.thresholdForLevel(9))
+        assertEquals(3650, LevelSystem.thresholdForLevel(10))
+        assertEquals(4700, LevelSystem.thresholdForLevel(11))
+        assertEquals(5900, LevelSystem.thresholdForLevel(12))
+        assertTrue(LevelSystem.thresholdForLevel(30) > LevelSystem.thresholdForLevel(29))
+    }
+
+    @Test
+    fun levelProgressAfterLevelEightStaysBelowFullUntilNextThreshold() {
+        val level = LevelSystem.levelForScore(3200)
+        val currentLevelStart = LevelSystem.thresholdForLevel(level)
+        val nextLevelScore = LevelSystem.nextLevelScore(level)
+        val progress = (3200 - currentLevelStart).toFloat() / (nextLevelScore - currentLevelStart)
+
+        assertEquals(9, level)
+        assertTrue(progress > 0f)
+        assertTrue(progress < 1f)
+    }
+
+    @Test
+    fun levelEightHasNoMaxLevelState() {
+        assertEquals(2750, LevelSystem.nextLevelScore(8))
+        assertTrue(LevelSystem.nextLevelScore(8) > LevelSystem.thresholdForLevel(8))
     }
 
     @Test
@@ -1194,6 +1230,77 @@ class GameEngineTest {
     }
 
     @Test
+    fun rarityWeightsKeepEarlyLevelBalance() {
+        assertEquals(
+            mapOf(
+                PieceRarity.Common to 75,
+                PieceRarity.Uncommon to 22,
+                PieceRarity.Rare to 3,
+                PieceRarity.Epic to 0
+            ),
+            PieceGenerator.rarityWeightsForLevel(1)
+        )
+        assertEquals(
+            mapOf(
+                PieceRarity.Common to 60,
+                PieceRarity.Uncommon to 28,
+                PieceRarity.Rare to 10,
+                PieceRarity.Epic to 2
+            ),
+            PieceGenerator.rarityWeightsForLevel(3)
+        )
+        assertEquals(
+            mapOf(
+                PieceRarity.Common to 48,
+                PieceRarity.Uncommon to 32,
+                PieceRarity.Rare to 15,
+                PieceRarity.Epic to 5
+            ),
+            PieceGenerator.rarityWeightsForLevel(6)
+        )
+    }
+
+    @Test
+    fun rarityWeightsScaleProgressivelyAfterLevelEight() {
+        val levelSix = PieceGenerator.rarityWeightsForLevel(6)
+        val levelEight = PieceGenerator.rarityWeightsForLevel(8)
+        val levelTen = PieceGenerator.rarityWeightsForLevel(10)
+        val levelTwelve = PieceGenerator.rarityWeightsForLevel(12)
+
+        assertEquals(45, levelEight.getValue(PieceRarity.Common))
+        assertEquals(32, levelEight.getValue(PieceRarity.Uncommon))
+        assertEquals(17, levelEight.getValue(PieceRarity.Rare))
+        assertEquals(6, levelEight.getValue(PieceRarity.Epic))
+
+        assertEquals(40, levelTen.getValue(PieceRarity.Common))
+        assertEquals(20, levelTen.getValue(PieceRarity.Rare))
+        assertEquals(8, levelTen.getValue(PieceRarity.Epic))
+
+        assertEquals(35, levelTwelve.getValue(PieceRarity.Common))
+        assertEquals(23, levelTwelve.getValue(PieceRarity.Rare))
+        assertEquals(11, levelTwelve.getValue(PieceRarity.Epic))
+
+        assertTrue(levelEight.getValue(PieceRarity.Rare) > levelSix.getValue(PieceRarity.Rare))
+        assertTrue(levelEight.getValue(PieceRarity.Epic) > levelSix.getValue(PieceRarity.Epic))
+        assertTrue(levelTen.getValue(PieceRarity.Rare) > levelEight.getValue(PieceRarity.Rare))
+        assertTrue(levelTen.getValue(PieceRarity.Epic) > levelEight.getValue(PieceRarity.Epic))
+        assertTrue(levelTwelve.getValue(PieceRarity.Rare) > levelTen.getValue(PieceRarity.Rare))
+        assertTrue(levelTwelve.getValue(PieceRarity.Epic) > levelTen.getValue(PieceRarity.Epic))
+    }
+
+    @Test
+    fun highLevelRarityWeightsAreCappedAndPositive() {
+        val highLevelWeights = PieceGenerator.rarityWeightsForLevel(40)
+
+        assertTrue(highLevelWeights.values.all { it >= 0 })
+        assertTrue(highLevelWeights.values.sum() > 0)
+        assertTrue(highLevelWeights.getValue(PieceRarity.Common) >= 25)
+        assertTrue(highLevelWeights.getValue(PieceRarity.Uncommon) in 28..32)
+        assertTrue(highLevelWeights.getValue(PieceRarity.Rare) <= 30)
+        assertTrue(highLevelWeights.getValue(PieceRarity.Epic) <= 17)
+    }
+
+    @Test
     fun generateBatchReturnsThreePiecesByDefault() {
         val batch = PieceGenerator.generateBatch(random = Random(7), bombChance = 0f)
 
@@ -1212,6 +1319,17 @@ class GameEngineTest {
         }.map { it.id }.toSet()
 
         assertTrue(generatedIds.intersect(removedIds).isEmpty())
+    }
+
+    @Test
+    fun normalPieceLibraryExcludesRemovedPiecesAndMegaBomb() {
+        val ids = PieceLibrary.starterPieces.map { it.id }.toSet()
+
+        assertFalse(ids.contains("horizontal_5"))
+        assertFalse(ids.contains("vertical_5"))
+        assertFalse(ids.contains("square_3x3"))
+        assertFalse(ids.contains(JokerType.MegaBomb.toPiece()?.id))
+        assertTrue(PieceLibrary.starterPieces.none { it.effect == PieceEffect.MegaBomb })
     }
 
     @Test

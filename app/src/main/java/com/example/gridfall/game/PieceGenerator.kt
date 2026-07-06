@@ -55,26 +55,40 @@ object PieceGenerator {
         rarity: PieceRarity,
         level: Int
     ): Int {
+        return rarityWeightsForLevel(level).getValue(rarity)
+    }
+
+    internal fun rarityWeightsForLevel(level: Int): Map<PieceRarity, Int> {
         return when {
-            level <= 2 -> when (rarity) {
-                PieceRarity.Common -> 75
-                PieceRarity.Uncommon -> 22
-                PieceRarity.Rare -> 3
-                PieceRarity.Epic -> 0
-            }
+            level <= 2 -> mapOf(
+                PieceRarity.Common to 75,
+                PieceRarity.Uncommon to 22,
+                PieceRarity.Rare to 3,
+                PieceRarity.Epic to 0
+            )
 
-            level <= 5 -> when (rarity) {
-                PieceRarity.Common -> 60
-                PieceRarity.Uncommon -> 28
-                PieceRarity.Rare -> 10
-                PieceRarity.Epic -> 2
-            }
+            level <= 5 -> mapOf(
+                PieceRarity.Common to 60,
+                PieceRarity.Uncommon to 28,
+                PieceRarity.Rare to 10,
+                PieceRarity.Epic to 2
+            )
 
-            else -> when (rarity) {
-                PieceRarity.Common -> 48
-                PieceRarity.Uncommon -> 32
-                PieceRarity.Rare -> 15
-                PieceRarity.Epic -> 5
+            level <= 7 -> mapOf(
+                PieceRarity.Common to 48,
+                PieceRarity.Uncommon to 32,
+                PieceRarity.Rare to 15,
+                PieceRarity.Epic to 5
+            )
+
+            else -> {
+                val extraLevels = (level - 8).coerceAtLeast(0)
+                mapOf(
+                    PieceRarity.Common to (45 - (extraLevels * 5 / 2)).coerceAtLeast(25),
+                    PieceRarity.Uncommon to (32 - (extraLevels * 2 / 7)).coerceIn(28, 32),
+                    PieceRarity.Rare to (17 + (extraLevels * 3 / 2)).coerceAtMost(30),
+                    PieceRarity.Epic to (6 + (extraLevels * 9 / 7)).coerceAtMost(17)
+                )
             }
         }
     }
