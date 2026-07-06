@@ -955,28 +955,21 @@ private fun previewBombClearedCellCount(
     val centerCol = startCol + bombCell.col
     var clearedCells = 0
 
-    val affectedRows = if (piece.effect == PieceEffect.MegaBomb) {
-        val originRow = centerRow.coerceAtMost(Board.SIZE - MEGA_BOMB_UI_SIZE)
-        originRow until originRow + MEGA_BOMB_UI_SIZE
+    val affectedCells = if (piece.effect == PieceEffect.MegaBomb) {
+        GameEngine.megaBombAffectedCells(centerRow, centerCol)
     } else {
-        centerRow - 1..centerRow + 1
-    }
-    val affectedCols = if (piece.effect == PieceEffect.MegaBomb) {
-        val originCol = centerCol.coerceAtMost(Board.SIZE - MEGA_BOMB_UI_SIZE)
-        originCol until originCol + MEGA_BOMB_UI_SIZE
-    } else {
-        centerCol - 1..centerCol + 1
+        (centerRow - 1..centerRow + 1).flatMap { row ->
+            (centerCol - 1..centerCol + 1).map { col ->
+                com.example.gridfall.game.Cell(row, col)
+            }
+        }
     }
 
-    for (row in affectedRows) {
-        for (col in affectedCols) {
-            if (board.isInside(row, col) && board.get(row, col) != 0) {
-                clearedCells += 1
-            }
+    affectedCells.forEach { cell ->
+        if (board.isInside(cell.row, cell.col) && board.get(cell.row, cell.col) != 0) {
+            clearedCells += 1
         }
     }
 
     return clearedCells
 }
-
-private const val MEGA_BOMB_UI_SIZE = 4

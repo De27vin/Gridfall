@@ -167,6 +167,46 @@ class GameEngineTest {
     }
 
     @Test
+    fun megaBombAffectedCellsCenterAroundMiddleHover() {
+        assertEquals(
+            expectedSquareCells(rowRange = 3..6, colRange = 3..6),
+            GameEngine.megaBombAffectedCells(row = 4, col = 4)
+        )
+    }
+
+    @Test
+    fun megaBombAffectedCellsClampAtTopLeftCorner() {
+        assertEquals(
+            expectedSquareCells(rowRange = 0..3, colRange = 0..3),
+            GameEngine.megaBombAffectedCells(row = 0, col = 0)
+        )
+    }
+
+    @Test
+    fun megaBombAffectedCellsClampAtBottomRightCorner() {
+        assertEquals(
+            expectedSquareCells(rowRange = 4..7, colRange = 4..7),
+            GameEngine.megaBombAffectedCells(row = 7, col = 7)
+        )
+    }
+
+    @Test
+    fun megaBombAffectedCellsClampNearTopLeftEdge() {
+        assertEquals(
+            expectedSquareCells(rowRange = 0..3, colRange = 0..3),
+            GameEngine.megaBombAffectedCells(row = 1, col = 1)
+        )
+    }
+
+    @Test
+    fun megaBombAffectedCellsClampNearBottomRightEdge() {
+        assertEquals(
+            expectedSquareCells(rowRange = 4..7, colRange = 4..7),
+            GameEngine.megaBombAffectedCells(row = 6, col = 6)
+        )
+    }
+
+    @Test
     fun bombDoesNotRemainOnBoardAfterExploding() {
         val bomb = bombPiece()
         val state = testState(currentPieces = listOf(bomb))
@@ -1511,5 +1551,16 @@ class GameEngineTest {
         }
 
         return Board(cells)
+    }
+
+    private fun expectedSquareCells(
+        rowRange: IntRange,
+        colRange: IntRange
+    ): Set<Cell> {
+        return rowRange.flatMap { row ->
+            colRange.map { col ->
+                Cell(row, col)
+            }
+        }.toSet()
     }
 }

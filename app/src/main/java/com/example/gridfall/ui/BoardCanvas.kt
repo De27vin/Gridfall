@@ -27,6 +27,7 @@ import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.unit.dp
 import com.example.gridfall.game.Board
 import com.example.gridfall.game.Cell
+import com.example.gridfall.game.GameEngine
 import com.example.gridfall.game.PieceEffect
 import com.example.gridfall.ui.theme.GridfallColors
 import com.example.gridfall.ui.theme.*
@@ -152,48 +153,43 @@ fun BoardCanvas(
                     (preview.piece.effect == PieceEffect.Bomb || preview.piece.effect == PieceEffect.MegaBomb) &&
                     preview.isValid
                 ) {
-                    val affectedRows = if (preview.piece.effect == PieceEffect.MegaBomb) {
-                        val originRow = preview.originRow.coerceAtMost(Board.SIZE - MEGA_BOMB_PREVIEW_SIZE)
-                        originRow until originRow + MEGA_BOMB_PREVIEW_SIZE
+                    val affectedCells = if (preview.piece.effect == PieceEffect.MegaBomb) {
+                        GameEngine.megaBombAffectedCells(preview.originRow, preview.originCol)
                     } else {
-                        preview.originRow - 1..preview.originRow + 1
-                    }
-                    val affectedCols = if (preview.piece.effect == PieceEffect.MegaBomb) {
-                        val originCol = preview.originCol.coerceAtMost(Board.SIZE - MEGA_BOMB_PREVIEW_SIZE)
-                        originCol until originCol + MEGA_BOMB_PREVIEW_SIZE
-                    } else {
-                        preview.originCol - 1..preview.originCol + 1
+                        (preview.originRow - 1..preview.originRow + 1).flatMap { row ->
+                            (preview.originCol - 1..preview.originCol + 1).map { col ->
+                                Cell(row, col)
+                            }
+                        }
                     }
 
-                    for (row in affectedRows) {
-                        for (col in affectedCols) {
-                            if (row in 0 until Board.SIZE && col in 0 until Board.SIZE) {
-                                val topLeft = Offset(
-                                    x = spacing + col * (cellSize + spacing),
-                                    y = spacing + row * (cellSize + spacing)
-                                )
+                    affectedCells.forEach { cell ->
+                        if (cell.row in 0 until Board.SIZE && cell.col in 0 until Board.SIZE) {
+                            val topLeft = Offset(
+                                x = spacing + cell.col * (cellSize + spacing),
+                                y = spacing + cell.row * (cellSize + spacing)
+                            )
+                            drawRoundRect(
+                                color = previewFill,
+                                topLeft = topLeft,
+                                size = Size(cellSize, cellSize),
+                                cornerRadius = previewCornerRadius
+                            )
+                            drawRoundRect(
+                                color = previewColor,
+                                topLeft = topLeft,
+                                size = Size(cellSize, cellSize),
+                                cornerRadius = previewCornerRadius,
+                                style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.dp.toPx())
+                            )
+                            if (theme.isInfernoTheme()) {
                                 drawRoundRect(
-                                    color = previewFill,
-                                    topLeft = topLeft,
-                                    size = Size(cellSize, cellSize),
-                                    cornerRadius = previewCornerRadius
-                                )
-                                drawRoundRect(
-                                    color = previewColor,
-                                    topLeft = topLeft,
-                                    size = Size(cellSize, cellSize),
+                                    color = previewColor.copy(alpha = if (preview.isValid) 0.30f else 0.42f),
+                                    topLeft = topLeft - Offset(1.dp.toPx(), 1.dp.toPx()),
+                                    size = Size(cellSize + 2.dp.toPx(), cellSize + 2.dp.toPx()),
                                     cornerRadius = previewCornerRadius,
-                                    style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.dp.toPx())
+                                    style = Stroke(width = 1.dp.toPx())
                                 )
-                                if (theme.isInfernoTheme()) {
-                                    drawRoundRect(
-                                        color = previewColor.copy(alpha = if (preview.isValid) 0.30f else 0.42f),
-                                        topLeft = topLeft - Offset(1.dp.toPx(), 1.dp.toPx()),
-                                        size = Size(cellSize + 2.dp.toPx(), cellSize + 2.dp.toPx()),
-                                        cornerRadius = previewCornerRadius,
-                                        style = Stroke(width = 1.dp.toPx())
-                                    )
-                                }
                             }
                         }
                     }
@@ -333,40 +329,35 @@ fun BoardCanvas(
                 val affectedFill = theme.bombInner.copy(alpha = 0.20f * fade)
                 val affectedStroke = theme.warning.copy(alpha = 0.48f * fade)
 
-                val affectedRows = if (feedback.isMega) {
-                    val originRow = feedback.centerRow.coerceAtMost(Board.SIZE - MEGA_BOMB_PREVIEW_SIZE)
-                    originRow until originRow + MEGA_BOMB_PREVIEW_SIZE
+                val affectedCells = if (feedback.isMega) {
+                    GameEngine.megaBombAffectedCells(feedback.centerRow, feedback.centerCol)
                 } else {
-                    feedback.centerRow - 1..feedback.centerRow + 1
-                }
-                val affectedCols = if (feedback.isMega) {
-                    val originCol = feedback.centerCol.coerceAtMost(Board.SIZE - MEGA_BOMB_PREVIEW_SIZE)
-                    originCol until originCol + MEGA_BOMB_PREVIEW_SIZE
-                } else {
-                    feedback.centerCol - 1..feedback.centerCol + 1
+                    (feedback.centerRow - 1..feedback.centerRow + 1).flatMap { row ->
+                        (feedback.centerCol - 1..feedback.centerCol + 1).map { col ->
+                            Cell(row, col)
+                        }
+                    }
                 }
 
-                for (row in affectedRows) {
-                    for (col in affectedCols) {
-                        if (row in 0 until Board.SIZE && col in 0 until Board.SIZE) {
-                            val topLeft = Offset(
-                                x = spacing + col * (cellSize + spacing),
-                                y = spacing + row * (cellSize + spacing)
-                            )
-                            drawRoundRect(
-                                color = affectedFill,
-                                topLeft = topLeft,
-                                size = Size(cellSize, cellSize),
-                                cornerRadius = cornerRadius
-                            )
-                            drawRoundRect(
-                                color = affectedStroke,
-                                topLeft = topLeft,
-                                size = Size(cellSize, cellSize),
-                                cornerRadius = cornerRadius,
-                                style = Stroke(width = 1.5.dp.toPx())
-                            )
-                        }
+                affectedCells.forEach { cell ->
+                    if (cell.row in 0 until Board.SIZE && cell.col in 0 until Board.SIZE) {
+                        val topLeft = Offset(
+                            x = spacing + cell.col * (cellSize + spacing),
+                            y = spacing + cell.row * (cellSize + spacing)
+                        )
+                        drawRoundRect(
+                            color = affectedFill,
+                            topLeft = topLeft,
+                            size = Size(cellSize, cellSize),
+                            cornerRadius = cornerRadius
+                        )
+                        drawRoundRect(
+                            color = affectedStroke,
+                            topLeft = topLeft,
+                            size = Size(cellSize, cellSize),
+                            cornerRadius = cornerRadius,
+                            style = Stroke(width = 1.5.dp.toPx())
+                        )
                     }
                 }
 
@@ -443,8 +434,6 @@ private fun DrawScope.drawEmptyCell(
         style = Stroke(width = 1.dp.toPx())
     )
 }
-
-private const val MEGA_BOMB_PREVIEW_SIZE = 4
 
 private fun DrawScope.drawFilledCell(
     topLeft: Offset,

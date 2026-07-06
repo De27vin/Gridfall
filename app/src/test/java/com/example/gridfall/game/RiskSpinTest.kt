@@ -454,6 +454,37 @@ class RiskSpinTest {
     }
 
     @Test
+    fun megaBombJokerClearsCenteredFourByFourArea() {
+        val board = (3..6).fold(Board.empty()) { currentBoard, row ->
+            (3..6).fold(currentBoard) { rowBoard, col ->
+                if (row == 4 && col == 4) rowBoard else rowBoard.fill(row, col)
+            }
+        }.fill(2, 2)
+            .fill(7, 7)
+        val state = testState(
+            board = board,
+            riskSpinState = RiskSpinState(inventory = listOf(JokerType.MegaBomb))
+        )
+
+        val nextState = GameEngine.placeJoker(
+            state = state,
+            jokerType = JokerType.MegaBomb,
+            startRow = 4,
+            startCol = 4
+        )
+
+        for (row in 3..6) {
+            for (col in 3..6) {
+                assertEquals(0, nextState.board.get(row, col))
+            }
+        }
+        assertEquals(1, nextState.board.get(2, 2))
+        assertEquals(1, nextState.board.get(7, 7))
+        assertEquals(emptyList<JokerType>(), nextState.riskSpinState.inventory)
+        assertEquals(ScoreSystem.BOMB_PLACE_POINTS + 15 * ScoreSystem.BOMB_CLEAR_POINTS_PER_CELL, nextState.score)
+    }
+
+    @Test
     fun megaBombNearEdgesClampsToFullFourByFourWhenPossible() {
         val board = (4 until 8).fold(Board.empty()) { currentBoard, row ->
             (4 until 8).fold(currentBoard) { rowBoard, col ->

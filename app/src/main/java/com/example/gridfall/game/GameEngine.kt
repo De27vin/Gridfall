@@ -267,6 +267,20 @@ object GameEngine {
         }
     }
 
+    fun megaBombAffectedCells(
+        row: Int,
+        col: Int
+    ): Set<Cell> {
+        val originRow = (row - 1).coerceIn(0, Board.SIZE - MEGA_BOMB_SIZE)
+        val originCol = (col - 1).coerceIn(0, Board.SIZE - MEGA_BOMB_SIZE)
+
+        return (originRow until originRow + MEGA_BOMB_SIZE).flatMap { affectedRow ->
+            (originCol until originCol + MEGA_BOMB_SIZE).map { affectedCol ->
+                Cell(affectedRow, affectedCol)
+            }
+        }.toSet()
+    }
+
     fun placePiece(
         state: GameState,
         pieceIndex: Int,
@@ -514,17 +528,13 @@ object GameEngine {
         val bombCell = piece.cells.single()
         val placedRow = startRow + bombCell.row
         val placedCol = startCol + bombCell.col
-        val originRow = placedRow.coerceAtMost(Board.SIZE - MEGA_BOMB_SIZE)
-        val originCol = placedCol.coerceAtMost(Board.SIZE - MEGA_BOMB_SIZE)
         var updatedBoard = board
         var clearedCellCount = 0
 
-        for (row in originRow until originRow + MEGA_BOMB_SIZE) {
-            for (col in originCol until originCol + MEGA_BOMB_SIZE) {
-                if (board.isInside(row, col) && board.get(row, col) != 0) {
-                    updatedBoard = updatedBoard.set(row, col, 0)
-                    clearedCellCount += 1
-                }
+        megaBombAffectedCells(placedRow, placedCol).forEach { cell ->
+            if (board.get(cell.row, cell.col) != 0) {
+                updatedBoard = updatedBoard.set(cell.row, cell.col, 0)
+                clearedCellCount += 1
             }
         }
 
