@@ -1,0 +1,37 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: gridfall
+      POSTGRES_USER: gridfall
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+    volumes:
+      - /volume1/docker/gridfall-db/postgres-data:/var/lib/postgresql/data
+    networks:
+      - gridfall-internal
+
+  api:
+    build:
+      context: .
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    environment:
+      NODE_ENV: production
+      PORT: 8080
+      DATABASE_URL: postgresql://gridfall:${POSTGRES_PASSWORD}@postgres:5432/gridfall?schema=public
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:?set FIREBASE_PROJECT_ID}
+      GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/firebase-service-account.json
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
+    volumes:
+      - /volume1/docker/gridfall/firebase/firebase-service-account.json:/run/secrets/firebase-service-account.json:ro
+    ports:
+      - "8080:8080"
+    networks:
+      - gridfall-internal
+
+networks:
+  gridfall-internal:
+    driver: bridge
+

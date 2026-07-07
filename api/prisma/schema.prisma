@@ -1,0 +1,74 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                 String            @id @default(uuid()) @db.Uuid
+  firebaseUid        String            @unique
+  email              String?
+  isAnonymous        Boolean           @default(false)
+  username           String?
+  usernameNormalized String?           @unique
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  lastSeenAt         DateTime?
+  mergedIntoUserId   String?           @db.Uuid
+  mergedIntoUser     User?             @relation("UserMerges", fields: [mergedIntoUserId], references: [id])
+  mergedUsers        User[]            @relation("UserMerges")
+  profile            PlayerProfile?
+  runs               Run[]
+  guestMergeTokens   GuestMergeToken[] @relation("GuestMergeTokenGuest")
+}
+
+model PlayerProfile {
+  id                       String   @id @default(uuid()) @db.Uuid
+  userId                   String   @unique @db.Uuid
+  bestScore                Int      @default(0)
+  bestLevel                Int      @default(1)
+  gamesPlayed              Int      @default(0)
+  totalLinesCleared        Int      @default(0)
+  totalContractsCompleted  Int      @default(0)
+  totalBombsUsed           Int      @default(0)
+  totalMegaBombsUsed       Int      @default(0)
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+  user                     User     @relation(fields: [userId], references: [id])
+}
+
+model Run {
+  id                 String   @id @default(uuid()) @db.Uuid
+  userId             String   @db.Uuid
+  score              Int
+  level              Int
+  linesCleared       Int      @default(0)
+  contractsCompleted Int      @default(0)
+  bombsUsed          Int      @default(0)
+  megaBombsUsed      Int      @default(0)
+  durationSeconds    Int?
+  appVersion         String?
+  validationStatus   String   @default("accepted")
+  createdAt          DateTime @default(now())
+  user               User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([score])
+}
+
+model GuestMergeToken {
+  id          String    @id @default(uuid()) @db.Uuid
+  tokenHash   String    @unique
+  guestUserId String    @db.Uuid
+  expiresAt   DateTime
+  usedAt      DateTime?
+  createdAt   DateTime  @default(now())
+  guestUser   User      @relation("GuestMergeTokenGuest", fields: [guestUserId], references: [id])
+
+  @@index([guestUserId])
+  @@index([expiresAt])
+}
+
