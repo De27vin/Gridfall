@@ -30,6 +30,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,7 +51,9 @@ import androidx.lifecycle.findViewTreeLifecycleOwner
 import com.example.gridfall.audio.GridfallSoundManager
 import com.example.gridfall.audio.SoundPreferenceStore
 import com.example.gridfall.audio.ThemeSoundEvent
+import com.example.gridfall.auth.AuthPromptStore
 import com.example.gridfall.auth.GridfallAuthManager
+import com.example.gridfall.auth.GridfallAuthSession
 import com.example.gridfall.game.Board
 import com.example.gridfall.game.ClearResult
 import com.example.gridfall.game.GameEngine
@@ -62,8 +65,12 @@ import com.example.gridfall.game.RiskSpinMemorySession
 import com.example.gridfall.game.ScoreSystem
 import com.example.gridfall.network.AccountConnectionState
 import com.example.gridfall.network.GridfallApiClient
+import com.example.gridfall.ui.auth.AuthDialog
+import com.example.gridfall.ui.auth.AuthDialogMode
+import com.example.gridfall.ui.auth.SaveProgressPrompt
 import com.example.gridfall.ui.theme.*
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 @Composable
@@ -93,9 +100,16 @@ fun GameScreen(modifier: Modifier = Modifier) {
     var backgroundMusicVolume by remember { mutableStateOf(SoundPreferenceStore.loadBackgroundMusicVolume(context)) }
     var isAppInForeground by remember { mutableStateOf(true) }
     var accountConnectionState by remember { mutableStateOf(AccountConnectionState()) }
+    var savePromptDismissed by remember { mutableStateOf(AuthPromptStore.isSavePromptDismissed(context)) }
+    var showSaveProgressPrompt by remember { mutableStateOf(false) }
+    var authDialogMode by remember { mutableStateOf<AuthDialogMode?>(null) }
+    var isAuthActionLoading by remember { mutableStateOf(false) }
+    var authUiError by remember { mutableStateOf<String?>(null) }
+    var authUiMessage by remember { mutableStateOf<String?>(null) }
     val soundManager = remember { GridfallSoundManager(context) }
     val authManager = remember { GridfallAuthManager() }
     val apiClient = remember { GridfallApiClient() }
+    val coroutineScope = rememberCoroutineScope()
     val activeThemeColors = colorsForThemeMode(selectedThemeMode)
     val currentLevel = LevelSystem.levelForScore(gameState.score)
     val nextLevelScore = LevelSystem.nextLevelScore(currentLevel)
@@ -119,42 +133,194 @@ fun GameScreen(modifier: Modifier = Modifier) {
         placementResolution = dragState.placementResolution
     )
 
-    LaunchedEffect(Unit) {
-        accountConnectionState = AccountConnectionState(isLoading = true)
+    fun markSavePromptDismissed() {
+        savePromptDismissed = true
+        showSaveProgressPrompt = false
+        AuthPromptStore.setSavePromptDismissed(context)
+    }
+
+    fun offerSavePromptIfNeeded() {
+        if (!savePromptDismissed && accountConnectionState.isAnonymous) {
+            showSaveProgressPrompt = true
+        }
+    }
+
+    fun openAuthDialog(mode: AuthDialogMode) {
+        authDialogMode = mode
+        authUiError = null
+        authUiMessage = null
+        showSaveProgressPrompt = false
+    }
+
+    suspend fun refreshAccountState(
+        authSession: GridfallAuthSession,
+        successMessage: String? = null
+    ) {
+        accountConnectionState = AccountConnectionState(
+            isLoading = false,
+            firebaseUid = authSession.firebaseUid,
+            isAnonymous = authSession.isAnonymous
+        )
 
         try {
-            val authSession = authManager.signInAnonymouslyIfNeeded()
+            val backendUser = apiClient.getMe(authSession.idToken)
             Log.i(
                 ACCOUNT_LOG_TAG,
-                "Firebase anonymous auth ready uid=${authSession.firebaseUid.take(8)}..."
+                "Backend /me connected user=${backendUser.id.take(8)}..."
             )
             accountConnectionState = AccountConnectionState(
                 isLoading = false,
                 firebaseUid = authSession.firebaseUid,
-                isAnonymous = authSession.isAnonymous
+                isAnonymous = authSession.isAnonymous,
+                backendUser = backendUser
             )
+            authUiMessage = successMessage
+        } catch (error: Exception) {
+            accountConnectionState = AccountConnectionState(
+                isLoading = false,
+                firebaseUid = authSession.firebaseUid,
+                isAnonymous = authSession.isAnonymous,
+                backendError = error.message ?: "Backend unavailable"
+            )
+            authUiError = error.message ?: "Backend unavailable"
+            Log.w(ACCOUNT_LOG_TAG, "Backend /me unavailable: ${error.message}")
+        }
+    }
 
+    fun registerAccount(
+        email: String,
+        password: String,
+        username: String
+    ) {
+        coroutineScope.launch {
+            isAuthActionLoading = true
+            authUiError = null
+            authUiMessage = null
             try {
-                val backendUser = apiClient.getMe(authSession.idToken)
-                Log.i(
-                    ACCOUNT_LOG_TAG,
-                    "Backend /me connected user=${backendUser.id.take(8)}..."
-                )
+                val authSession = authManager.registerWithEmailPasswordAndLinkAnonymous(email, password)
+                val token = authManager.getFreshIdToken()
+                val backendUser = apiClient.getMe(token)
                 accountConnectionState = AccountConnectionState(
                     isLoading = false,
                     firebaseUid = authSession.firebaseUid,
                     isAnonymous = authSession.isAnonymous,
                     backendUser = backendUser
                 )
+
+                val updatedUser = apiClient.setUsername(token, username)
+                accountConnectionState = accountConnectionState.copy(
+                    backendUser = updatedUser,
+                    backendError = null
+                )
+                markSavePromptDismissed()
+                authDialogMode = null
             } catch (error: Exception) {
+                if (!accountConnectionState.isAnonymous) {
+                    authDialogMode = AuthDialogMode.Username
+                }
+                authUiError = error.message ?: "Registration failed."
+            } finally {
+                isAuthActionLoading = false
+            }
+        }
+    }
+
+    fun loginAccount(
+        email: String,
+        password: String
+    ) {
+        coroutineScope.launch {
+            isAuthActionLoading = true
+            authUiError = null
+            authUiMessage = null
+            var mergeToken: String? = null
+
+            try {
+                if (accountConnectionState.isAnonymous) {
+                    mergeToken = runCatching {
+                        apiClient.createGuestMergeToken(authManager.getFreshIdToken())
+                    }.getOrNull()
+                }
+
+                val authSession = authManager.loginWithEmailPassword(email, password)
+                var token = authManager.getFreshIdToken()
+                var backendUser = apiClient.getMe(token)
+
+                if (mergeToken != null) {
+                    val merged = runCatching {
+                        apiClient.mergeGuest(token, mergeToken)
+                    }.getOrDefault(false)
+                    if (!merged) {
+                        authUiMessage = "Logged in. Guest progress merge was unavailable."
+                    }
+                    token = authManager.getFreshIdToken()
+                    backendUser = apiClient.getMe(token)
+                }
+
                 accountConnectionState = AccountConnectionState(
                     isLoading = false,
                     firebaseUid = authSession.firebaseUid,
                     isAnonymous = authSession.isAnonymous,
-                    backendError = error.message ?: "Backend unavailable"
+                    backendUser = backendUser
                 )
-                Log.w(ACCOUNT_LOG_TAG, "Backend /me unavailable: ${error.message}")
+                markSavePromptDismissed()
+                authDialogMode = if (backendUser.username == null) AuthDialogMode.Username else null
+            } catch (error: Exception) {
+                authUiError = error.message ?: "Login failed."
+            } finally {
+                isAuthActionLoading = false
             }
+        }
+    }
+
+    fun saveUsername(username: String) {
+        coroutineScope.launch {
+            isAuthActionLoading = true
+            authUiError = null
+            authUiMessage = null
+            try {
+                val token = authManager.getFreshIdToken()
+                val updatedUser = apiClient.setUsername(token, username)
+                accountConnectionState = accountConnectionState.copy(
+                    backendUser = updatedUser,
+                    isAnonymous = updatedUser.isAnonymous,
+                    backendError = null
+                )
+                markSavePromptDismissed()
+                authDialogMode = null
+            } catch (error: Exception) {
+                authUiError = error.message ?: "Username could not be saved."
+            } finally {
+                isAuthActionLoading = false
+            }
+        }
+    }
+
+    fun logoutToGuest() {
+        coroutineScope.launch {
+            isAuthActionLoading = true
+            authUiError = null
+            try {
+                val authSession = authManager.logoutToAnonymous()
+                refreshAccountState(authSession)
+            } catch (error: Exception) {
+                authUiError = error.message ?: "Logout failed."
+            } finally {
+                isAuthActionLoading = false
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        accountConnectionState = AccountConnectionState(isLoading = true)
+
+        try {
+            val authSession = authManager.ensureAnonymousUser()
+            Log.i(
+                ACCOUNT_LOG_TAG,
+                "Firebase anonymous auth ready uid=${authSession.firebaseUid.take(8)}..."
+            )
+            refreshAccountState(authSession)
         } catch (error: Exception) {
             accountConnectionState = AccountConnectionState(
                 isLoading = false,
@@ -390,6 +556,18 @@ fun GameScreen(modifier: Modifier = Modifier) {
                     SoundPreferenceStore.saveBackgroundMusicVolume(context, volume)
                 },
                 accountConnectionState = accountConnectionState,
+                onRegisterClick = {
+                    openAuthDialog(AuthDialogMode.Register)
+                },
+                onLoginClick = {
+                    openAuthDialog(AuthDialogMode.Login)
+                },
+                onChooseUsernameClick = {
+                    openAuthDialog(AuthDialogMode.Username)
+                },
+                onLogoutClick = {
+                    logoutToGuest()
+                },
                 onReturnToGame = {
                     showSettingsScreen = false
                 },
@@ -736,10 +914,13 @@ fun GameScreen(modifier: Modifier = Modifier) {
         }
     }
 
-    if (gameState.isGameOver) {
-        GameOverDialog(
-            finalScore = gameState.score,
-            highScore = highScore,
+        if (gameState.isGameOver) {
+            LaunchedEffect(gameState.isGameOver, savePromptDismissed, accountConnectionState.isAnonymous) {
+                offerSavePromptIfNeeded()
+            }
+            GameOverDialog(
+                finalScore = gameState.score,
+                highScore = highScore,
             isNewBest = isNewBestThisGame,
             onRestart = ::restartGame
         )
@@ -763,14 +944,59 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 riskSpinPaidCost = null
             }
         )
-    } else if (showRestartConfirmDialog) {
-        RestartConfirmDialog(
-            onCancel = {
-                showRestartConfirmDialog = false
-            },
-            onConfirmRestart = ::restartGame
-        )
-    }
+        } else if (showRestartConfirmDialog) {
+            RestartConfirmDialog(
+                onCancel = {
+                    showRestartConfirmDialog = false
+                },
+                onConfirmRestart = {
+                    restartGame()
+                    offerSavePromptIfNeeded()
+                }
+            )
+        }
+
+        if (showSaveProgressPrompt) {
+            SaveProgressPrompt(
+                onRegister = {
+                    markSavePromptDismissed()
+                    openAuthDialog(AuthDialogMode.Register)
+                },
+                onLogin = {
+                    markSavePromptDismissed()
+                    openAuthDialog(AuthDialogMode.Login)
+                },
+                onSkip = {
+                    markSavePromptDismissed()
+                }
+            )
+        }
+
+        authDialogMode?.let { mode ->
+            AuthDialog(
+                mode = mode,
+                isLoading = isAuthActionLoading,
+                message = authUiMessage,
+                error = authUiError,
+                initialUsername = accountConnectionState.backendUser?.username,
+                initialEmail = accountConnectionState.backendUser?.email,
+                onDismiss = {
+                    if (!isAuthActionLoading) {
+                        authDialogMode = null
+                        authUiError = null
+                        authUiMessage = null
+                    }
+                },
+                onSwitchMode = { nextMode ->
+                    authDialogMode = nextMode
+                    authUiError = null
+                    authUiMessage = null
+                },
+                onRegister = ::registerAccount,
+                onLogin = ::loginAccount,
+                onSaveUsername = ::saveUsername
+            )
+        }
         }
     }
 }

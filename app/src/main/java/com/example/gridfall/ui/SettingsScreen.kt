@@ -57,6 +57,10 @@ fun SettingsScreen(
     onSoundEffectsVolumeChange: (Float) -> Unit,
     onBackgroundMusicVolumeChange: (Float) -> Unit,
     accountConnectionState: AccountConnectionState,
+    onRegisterClick: () -> Unit,
+    onLoginClick: () -> Unit,
+    onChooseUsernameClick: () -> Unit,
+    onLogoutClick: () -> Unit,
     onReturnToGame: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -84,7 +88,13 @@ fun SettingsScreen(
             )
 
             SettingsPanel(title = "Account") {
-                AccountStatusSection(accountConnectionState)
+                AccountStatusSection(
+                    accountConnectionState = accountConnectionState,
+                    onRegisterClick = onRegisterClick,
+                    onLoginClick = onLoginClick,
+                    onChooseUsernameClick = onChooseUsernameClick,
+                    onLogoutClick = onLogoutClick
+                )
             }
 
             SettingsPanel(title = "Theme") {
@@ -144,12 +154,20 @@ fun SettingsScreen(
 }
 
 @Composable
-private fun AccountStatusSection(accountConnectionState: AccountConnectionState) {
+private fun AccountStatusSection(
+    accountConnectionState: AccountConnectionState,
+    onRegisterClick: () -> Unit,
+    onLoginClick: () -> Unit,
+    onChooseUsernameClick: () -> Unit,
+    onLogoutClick: () -> Unit
+) {
     val theme = LocalGridfallColors.current
+    val backendUser = accountConnectionState.backendUser
+    val isGuest = accountConnectionState.isAnonymous
     val accountText = when {
         accountConnectionState.isLoading -> "Connecting guest account..."
-        accountConnectionState.hasFirebaseUser && accountConnectionState.isAnonymous -> "Guest account active"
-        accountConnectionState.hasFirebaseUser -> "Account active"
+        accountConnectionState.hasFirebaseUser && isGuest -> "Guest account"
+        accountConnectionState.hasFirebaseUser -> "Signed in"
         else -> "Guest account unavailable"
     }
     val backendText = when {
@@ -162,12 +180,26 @@ private fun AccountStatusSection(accountConnectionState: AccountConnectionState)
         "Firebase UID: ${uid.take(8)}..."
     }
 
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
             text = accountText,
             color = if (accountConnectionState.hasFirebaseUser) theme.textPrimary else theme.warning,
             style = MaterialTheme.typography.bodyLarge.retroText(theme)
         )
+        if (!isGuest && backendUser?.email != null) {
+            Text(
+                text = "Email: ${backendUser.email}",
+                color = theme.textSecondary,
+                style = MaterialTheme.typography.bodyMedium.retroText(theme)
+            )
+        }
+        if (!isGuest && backendUser?.username != null) {
+            Text(
+                text = "Username: ${backendUser.username}",
+                color = theme.textSecondary,
+                style = MaterialTheme.typography.bodyMedium.retroText(theme)
+            )
+        }
         Text(
             text = backendText,
             color = if (accountConnectionState.isBackendConnected) theme.success else theme.textSecondary,
@@ -180,6 +212,47 @@ private fun AccountStatusSection(accountConnectionState: AccountConnectionState)
                 style = MaterialTheme.typography.labelMedium.retroText(theme)
             )
         }
+
+        if (isGuest) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                AccountActionButton(label = "Register", onClick = onRegisterClick, modifier = Modifier.weight(1f))
+                AccountActionButton(label = "Login", onClick = onLoginClick, modifier = Modifier.weight(1f))
+            }
+        } else {
+            if (backendUser?.username == null) {
+                AccountActionButton(label = "Choose username", onClick = onChooseUsernameClick)
+            } else {
+                AccountActionButton(label = "Change username", onClick = onChooseUsernameClick)
+            }
+            AccountActionButton(label = "Log out", onClick = onLogoutClick)
+        }
+    }
+}
+
+@Composable
+private fun AccountActionButton(
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val theme = LocalGridfallColors.current
+    val shape = RoundedCornerShape(retroCorner(theme, infernoCorner(theme, 14.dp)))
+
+    Button(
+        onClick = onClick,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = theme.button,
+            contentColor = theme.textPrimary
+        ),
+        shape = shape,
+        modifier = modifier
+            .infernoPanelTexture(theme)
+            .retroPanelTexture(theme)
+    ) {
+        Text(
+            text = if (theme.isRetroTheme()) label.uppercase() else label,
+            style = MaterialTheme.typography.labelLarge.retroText(theme)
+        )
     }
 }
 
