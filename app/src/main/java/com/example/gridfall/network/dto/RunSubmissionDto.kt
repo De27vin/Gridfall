@@ -12,16 +12,23 @@ data class RunSubmissionRequest(
     val durationSeconds: Int,
     val appVersion: String
 ) {
+    fun toPayloadMap(): Map<String, Any> {
+        return mapOf(
+            "score" to score,
+            "level" to level,
+            "linesCleared" to linesCleared,
+            "contractsCompleted" to contractsCompleted,
+            "bombsUsed" to bombsUsed,
+            "megaBombsUsed" to megaBombsUsed,
+            "durationSeconds" to durationSeconds,
+            "appVersion" to appVersion
+        )
+    }
+
     fun toJson(): JSONObject {
-        return JSONObject()
-            .put("score", score)
-            .put("level", level)
-            .put("linesCleared", linesCleared)
-            .put("contractsCompleted", contractsCompleted)
-            .put("bombsUsed", bombsUsed)
-            .put("megaBombsUsed", megaBombsUsed)
-            .put("durationSeconds", durationSeconds)
-            .put("appVersion", appVersion)
+        return toPayloadMap().entries.fold(JSONObject()) { json, entry ->
+            json.put(entry.key, entry.value)
+        }
     }
 }
 

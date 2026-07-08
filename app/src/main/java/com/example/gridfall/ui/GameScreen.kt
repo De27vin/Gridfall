@@ -68,6 +68,8 @@ import com.example.gridfall.game.ScoreSystem
 import com.example.gridfall.network.AccountConnectionState
 import com.example.gridfall.network.GridfallApiClient
 import com.example.gridfall.network.dto.RunSubmissionRequest
+import com.example.gridfall.sync.RunSubmissionPolicy
+import com.example.gridfall.sync.RunSubmissionRegistry
 import com.example.gridfall.sync.RunSyncState
 import com.example.gridfall.sync.RunSyncStatus
 import com.example.gridfall.ui.auth.AuthDialog
@@ -114,7 +116,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
     var authUiError by remember { mutableStateOf<String?>(null) }
     var authUiMessage by remember { mutableStateOf<String?>(null) }
     var runSyncState by remember { mutableStateOf(RunSyncState()) }
-    var submittedRunIds by remember { mutableStateOf(emptySet<String>()) }
+    var runSubmissionRegistry by remember { mutableStateOf(RunSubmissionRegistry()) }
     var showLeaderboardDialog by remember { mutableStateOf(false) }
     var leaderboardUiState by remember { mutableStateOf(LeaderboardUiState()) }
     val soundManager = remember { GridfallSoundManager(context) }
@@ -337,9 +339,10 @@ fun GameScreen(modifier: Modifier = Modifier) {
 
     fun submitEndedRunOnce(endedState: GameState) {
         val runId = endedState.runStats.runId
-        if (runId in submittedRunIds) return
+        val decision = runSubmissionRegistry.markSubmittedOnce(runId)
+        runSubmissionRegistry = decision.registry
+        if (!decision.shouldSubmit) return
 
-        submittedRunIds = submittedRunIds + runId
         runSyncState = RunSyncState(
             runId = runId,
             status = RunSyncStatus.Submitting,
@@ -412,7 +415,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
     }
 
     LaunchedEffect(gameState.isGameOver, gameState.runStats.runId) {
-        if (gameState.isGameOver) {
+        if (RunSubmissionPolicy.shouldSubmitGameOverRun(gameState)) {
             submitEndedRunOnce(gameState)
         }
     }
@@ -1045,7 +1048,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                     showRestartConfirmDialog = false
                 },
                 onConfirmRestart = {
-                    if (gameState.score > 0) {
+                    if (RunSubmissionPolicy.shouldSubmitConfirmedRestartRun(gameState)) {
                         submitEndedRunOnce(gameState)
                     }
                     restartGame()
