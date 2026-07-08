@@ -1,6 +1,7 @@
 package com.example.gridfall.ui.auth
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -19,7 +20,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -120,76 +123,112 @@ fun AuthDialog(
                     )
                 }
 
-                if (mode != AuthDialogMode.Username) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        OutlinedButton(
-                            onClick = {
-                                localError = null
-                                onSwitchMode(if (mode == AuthDialogMode.Login) AuthDialogMode.Register else AuthDialogMode.Login)
-                            },
-                            enabled = !isLoading,
-                            border = BorderStroke(1.dp, theme.panelBorder.copy(alpha = 0.72f)),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = theme.textSecondary),
-                            shape = buttonShape,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text(
-                                text = if (mode == AuthDialogMode.Login) "Register" else "Login",
-                                style = MaterialTheme.typography.labelLarge.retroText(theme)
-                            )
-                        }
-                    }
-                }
-            }
-        },
-        dismissButton = {
-            OutlinedButton(
-                onClick = onDismiss,
-                enabled = !isLoading,
-                border = BorderStroke(1.dp, theme.panelBorder.copy(alpha = 0.72f)),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = theme.textSecondary),
-                shape = buttonShape
-            ) {
-                Text(text = "Cancel", style = MaterialTheme.typography.labelLarge.retroText(theme))
             }
         },
         confirmButton = {
-            Button(
-                onClick = {
-                    localError = validateInput(mode, email, password, username)
-                    if (localError == null) {
-                        when (mode) {
-                            AuthDialogMode.Register -> onRegister(email.trim(), password, username.trim())
-                            AuthDialogMode.Login -> onLogin(email.trim(), password)
-                            AuthDialogMode.Username -> onSaveUsername(username.trim())
-                        }
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)
+                ) {
+                    Button(
+                        onClick = {
+                            localError = validateInput(mode, email, password, username)
+                            if (localError == null) {
+                                when (mode) {
+                                    AuthDialogMode.Register -> onRegister(email.trim(), password, username.trim())
+                                    AuthDialogMode.Login -> onLogin(email.trim(), password)
+                                    AuthDialogMode.Username -> onSaveUsername(username.trim())
+                                }
+                            }
+                        },
+                        enabled = !isLoading,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = theme.accentStrong,
+                            contentColor = theme.chipBackground
+                        ),
+                        shape = buttonShape
+                    ) {
+                        Text(
+                            text = if (isLoading) {
+                                "Working..."
+                            } else {
+                                when (mode) {
+                                    AuthDialogMode.Register -> "Register"
+                                    AuthDialogMode.Login -> "Login"
+                                    AuthDialogMode.Username -> "Save Username"
+                                }
+                            },
+                            style = MaterialTheme.typography.labelLarge.retroText(theme)
+                        )
                     }
-                },
-                enabled = !isLoading,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = theme.accentStrong,
-                    contentColor = theme.chipBackground
-                ),
-                shape = buttonShape
-            ) {
-                Text(
-                    text = if (isLoading) {
-                        "Working..."
-                    } else {
-                        when (mode) {
-                            AuthDialogMode.Register -> "Register"
-                            AuthDialogMode.Login -> "Login"
-                            AuthDialogMode.Username -> "Save Username"
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        enabled = !isLoading,
+                        border = BorderStroke(1.dp, theme.panelBorder.copy(alpha = 0.72f)),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = theme.textSecondary),
+                        shape = buttonShape
+                    ) {
+                        Text(text = "Cancel", style = MaterialTheme.typography.labelLarge.retroText(theme))
+                    }
+                }
+                if (mode != AuthDialogMode.Username) {
+                    AuthModeSwitchLink(
+                        mode = mode,
+                        enabled = !isLoading,
+                        onSwitch = {
+                            localError = null
+                            onSwitchMode(
+                                if (mode == AuthDialogMode.Login) {
+                                    AuthDialogMode.Register
+                                } else {
+                                    AuthDialogMode.Login
+                                }
+                            )
                         }
-                    },
-                    style = MaterialTheme.typography.labelLarge.retroText(theme)
-                )
+                    )
+                }
             }
         }
     )
+}
+
+@Composable
+private fun AuthModeSwitchLink(
+    mode: AuthDialogMode,
+    enabled: Boolean,
+    onSwitch: () -> Unit
+) {
+    val theme = LocalGridfallColors.current
+    val prompt = if (mode == AuthDialogMode.Login) {
+        "Don't have an account? "
+    } else {
+        "Already have an account? "
+    }
+    val link = if (mode == AuthDialogMode.Login) {
+        "Create an account"
+    } else {
+        "Log in"
+    }
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = prompt,
+            color = theme.textMuted,
+            style = MaterialTheme.typography.bodySmall.retroText(theme)
+        )
+        Text(
+            text = link,
+            color = if (enabled) theme.accentStrong else theme.textMuted,
+            style = MaterialTheme.typography.bodySmall
+                .retroText(theme)
+                .copy(textDecoration = TextDecoration.Underline),
+            modifier = Modifier.clickable(enabled = enabled, onClick = onSwitch)
+        )
+    }
 }
 
 @Composable

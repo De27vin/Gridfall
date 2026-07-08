@@ -238,8 +238,6 @@ private fun AccountStatusSection(
         } else {
             if (backendUser?.username == null) {
                 AccountActionButton(label = "Choose username", onClick = onChooseUsernameClick)
-            } else {
-                AccountActionButton(label = "Change username", onClick = onChooseUsernameClick)
             }
             AccountActionButton(label = "Log out", onClick = onLogoutClick)
         }

@@ -77,6 +77,7 @@ import com.example.gridfall.sync.RunSyncState
 import com.example.gridfall.sync.RunSyncStatus
 import com.example.gridfall.ui.auth.AuthDialog
 import com.example.gridfall.ui.auth.AuthDialogMode
+import com.example.gridfall.ui.auth.LogoutConfirmDialog
 import com.example.gridfall.ui.auth.SaveProgressPrompt
 import com.example.gridfall.ui.leaderboard.LeaderboardDialog
 import com.example.gridfall.ui.leaderboard.LeaderboardUiState
@@ -115,6 +116,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
     var savePromptDismissed by remember { mutableStateOf(AuthPromptStore.isSavePromptDismissed(context)) }
     var showSaveProgressPrompt by remember { mutableStateOf(false) }
     var authDialogMode by remember { mutableStateOf<AuthDialogMode?>(null) }
+    var showLogoutConfirmDialog by remember { mutableStateOf(false) }
     var isAuthActionLoading by remember { mutableStateOf(false) }
     var authUiError by remember { mutableStateOf<String?>(null) }
     var authUiMessage by remember { mutableStateOf<String?>(null) }
@@ -390,6 +392,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
             try {
                 val authSession = authManager.logoutToAnonymous()
                 refreshAccountState(authSession)
+                showLogoutConfirmDialog = false
             } catch (error: Exception) {
                 authUiError = error.message ?: "Logout failed."
             } finally {
@@ -736,19 +739,22 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 accountConnectionState = accountConnectionState,
                 runSyncMessage = runSyncState.message,
                 onRegisterClick = {
+                    showSettingsScreen = false
                     openAuthDialog(AuthDialogMode.Register)
                 },
                 onLoginClick = {
+                    showSettingsScreen = false
                     openAuthDialog(AuthDialogMode.Login)
                 },
                 onChooseUsernameClick = {
+                    showSettingsScreen = false
                     openAuthDialog(AuthDialogMode.Username)
                 },
                 onLeaderboardClick = {
                     openLeaderboard()
                 },
                 onLogoutClick = {
-                    logoutToGuest()
+                    showLogoutConfirmDialog = true
                 },
                 onReturnToGame = {
                     showSettingsScreen = false
@@ -1096,7 +1102,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
         }
     }
 
-        if (gameState.isGameOver) {
+        if (!showSettingsScreen && gameState.isGameOver) {
             LaunchedEffect(gameState.isGameOver, savePromptDismissed, accountConnectionState.isAnonymous) {
                 offerSavePromptIfNeeded()
             }
@@ -1110,7 +1116,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 },
                 onRestart = ::restartGame
         )
-    } else if (showRiskSpinOverlay && showRiskSpinOptions) {
+    } else if (!showSettingsScreen && showRiskSpinOverlay && showRiskSpinOptions) {
         RiskSpinDialog(
             gameState = gameState,
             onOptionSelected = { option ->
@@ -1130,7 +1136,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 riskSpinPaidCost = null
             }
         )
-        } else if (showRestartConfirmDialog) {
+        } else if (!showSettingsScreen && showRestartConfirmDialog) {
             RestartConfirmDialog(
                 onCancel = {
                     showRestartConfirmDialog = false
@@ -1170,6 +1176,20 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 },
                 onDismiss = {
                     showLeaderboardDialog = false
+                }
+            )
+        }
+
+        if (showLogoutConfirmDialog) {
+            LogoutConfirmDialog(
+                isLoading = isAuthActionLoading,
+                onCancel = {
+                    if (!isAuthActionLoading) {
+                        showLogoutConfirmDialog = false
+                    }
+                },
+                onConfirmLogout = {
+                    logoutToGuest()
                 }
             )
         }
