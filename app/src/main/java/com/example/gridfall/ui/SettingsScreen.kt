@@ -29,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.unit.dp
+import com.example.gridfall.network.AccountConnectionState
 import com.example.gridfall.ui.theme.ActionCyan
 import com.example.gridfall.ui.theme.BlueGray
 import com.example.gridfall.ui.theme.ContractChipNavy
@@ -55,6 +56,7 @@ fun SettingsScreen(
     onThemeSelected: (GridfallThemeMode) -> Unit,
     onSoundEffectsVolumeChange: (Float) -> Unit,
     onBackgroundMusicVolumeChange: (Float) -> Unit,
+    accountConnectionState: AccountConnectionState,
     onReturnToGame: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -80,6 +82,10 @@ fun SettingsScreen(
                 color = theme.textPrimary,
                 style = MaterialTheme.typography.headlineMedium.retroText(theme)
             )
+
+            SettingsPanel(title = "Account") {
+                AccountStatusSection(accountConnectionState)
+            }
 
             SettingsPanel(title = "Theme") {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -133,6 +139,46 @@ fun SettingsScreen(
                     style = MaterialTheme.typography.labelLarge.retroText(theme)
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun AccountStatusSection(accountConnectionState: AccountConnectionState) {
+    val theme = LocalGridfallColors.current
+    val accountText = when {
+        accountConnectionState.isLoading -> "Connecting guest account..."
+        accountConnectionState.hasFirebaseUser && accountConnectionState.isAnonymous -> "Guest account active"
+        accountConnectionState.hasFirebaseUser -> "Account active"
+        else -> "Guest account unavailable"
+    }
+    val backendText = when {
+        accountConnectionState.isBackendConnected -> "Backend connected"
+        accountConnectionState.backendError != null -> "Backend unavailable"
+        accountConnectionState.authError != null -> "Auth unavailable"
+        else -> "Backend pending"
+    }
+    val uidText = accountConnectionState.firebaseUid?.let { uid ->
+        "Firebase UID: ${uid.take(8)}..."
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(
+            text = accountText,
+            color = if (accountConnectionState.hasFirebaseUser) theme.textPrimary else theme.warning,
+            style = MaterialTheme.typography.bodyLarge.retroText(theme)
+        )
+        Text(
+            text = backendText,
+            color = if (accountConnectionState.isBackendConnected) theme.success else theme.textSecondary,
+            style = MaterialTheme.typography.bodyMedium.retroText(theme)
+        )
+        if (uidText != null) {
+            Text(
+                text = uidText,
+                color = theme.textMuted,
+                style = MaterialTheme.typography.labelMedium.retroText(theme)
+            )
         }
     }
 }

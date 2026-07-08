@@ -1,6 +1,7 @@
 package com.example.gridfall.ui
 
 import android.view.HapticFeedbackConstants
+import android.util.Log
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -49,6 +50,7 @@ import androidx.lifecycle.findViewTreeLifecycleOwner
 import com.example.gridfall.audio.GridfallSoundManager
 import com.example.gridfall.audio.SoundPreferenceStore
 import com.example.gridfall.audio.ThemeSoundEvent
+import com.example.gridfall.auth.GridfallAuthManager
 import com.example.gridfall.game.Board
 import com.example.gridfall.game.ClearResult
 import com.example.gridfall.game.GameEngine
@@ -58,6 +60,8 @@ import com.example.gridfall.game.Piece
 import com.example.gridfall.game.PieceEffect
 import com.example.gridfall.game.RiskSpinMemorySession
 import com.example.gridfall.game.ScoreSystem
+import com.example.gridfall.network.AccountConnectionState
+import com.example.gridfall.network.GridfallApiClient
 import com.example.gridfall.ui.theme.*
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
@@ -88,7 +92,10 @@ fun GameScreen(modifier: Modifier = Modifier) {
     var soundEffectsVolume by remember { mutableStateOf(SoundPreferenceStore.loadSoundEffectsVolume(context)) }
     var backgroundMusicVolume by remember { mutableStateOf(SoundPreferenceStore.loadBackgroundMusicVolume(context)) }
     var isAppInForeground by remember { mutableStateOf(true) }
+    var accountConnectionState by remember { mutableStateOf(AccountConnectionState()) }
     val soundManager = remember { GridfallSoundManager(context) }
+    val authManager = remember { GridfallAuthManager() }
+    val apiClient = remember { GridfallApiClient() }
     val activeThemeColors = colorsForThemeMode(selectedThemeMode)
     val currentLevel = LevelSystem.levelForScore(gameState.score)
     val nextLevelScore = LevelSystem.nextLevelScore(currentLevel)
@@ -111,6 +118,51 @@ fun GameScreen(modifier: Modifier = Modifier) {
         dragState = dragState,
         placementResolution = dragState.placementResolution
     )
+
+    LaunchedEffect(Unit) {
+        accountConnectionState = AccountConnectionState(isLoading = true)
+
+        try {
+            val authSession = authManager.signInAnonymouslyIfNeeded()
+            Log.i(
+                ACCOUNT_LOG_TAG,
+                "Firebase anonymous auth ready uid=${authSession.firebaseUid.take(8)}..."
+            )
+            accountConnectionState = AccountConnectionState(
+                isLoading = false,
+                firebaseUid = authSession.firebaseUid,
+                isAnonymous = authSession.isAnonymous
+            )
+
+            try {
+                val backendUser = apiClient.getMe(authSession.idToken)
+                Log.i(
+                    ACCOUNT_LOG_TAG,
+                    "Backend /me connected user=${backendUser.id.take(8)}..."
+                )
+                accountConnectionState = AccountConnectionState(
+                    isLoading = false,
+                    firebaseUid = authSession.firebaseUid,
+                    isAnonymous = authSession.isAnonymous,
+                    backendUser = backendUser
+                )
+            } catch (error: Exception) {
+                accountConnectionState = AccountConnectionState(
+                    isLoading = false,
+                    firebaseUid = authSession.firebaseUid,
+                    isAnonymous = authSession.isAnonymous,
+                    backendError = error.message ?: "Backend unavailable"
+                )
+                Log.w(ACCOUNT_LOG_TAG, "Backend /me unavailable: ${error.message}")
+            }
+        } catch (error: Exception) {
+            accountConnectionState = AccountConnectionState(
+                isLoading = false,
+                authError = error.message ?: "Firebase Auth unavailable"
+            )
+            Log.w(ACCOUNT_LOG_TAG, "Firebase anonymous auth unavailable: ${error.message}")
+        }
+    }
 
     DisposableEffect(soundManager) {
         onDispose {
@@ -337,6 +389,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                     backgroundMusicVolume = volume
                     SoundPreferenceStore.saveBackgroundMusicVolume(context, volume)
                 },
+                accountConnectionState = accountConnectionState,
                 onReturnToGame = {
                     showSettingsScreen = false
                 },
@@ -721,6 +774,8 @@ fun GameScreen(modifier: Modifier = Modifier) {
         }
     }
 }
+
+private const val ACCOUNT_LOG_TAG = "GridfallAccount"
 
 @Composable
 private fun DraggedPiece(
