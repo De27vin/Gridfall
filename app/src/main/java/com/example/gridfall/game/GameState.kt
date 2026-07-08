@@ -8,5 +8,6 @@ data class GameState(
     val combo: Int,
     val isGameOver: Boolean,
     val contractState: ContractState = ContractState(),
-    val riskSpinState: RiskSpinState = RiskSpinState()
+    val riskSpinState: RiskSpinState = RiskSpinState(),
+    val runStats: RunStats = RunStats.newRun()
 )

@@ -34,6 +34,8 @@ fun GameOverDialog(
     finalScore: Int,
     highScore: Int,
     isNewBest: Boolean,
+    runSyncMessage: String?,
+    onLeaderboard: () -> Unit,
     onRestart: () -> Unit
 ) {
     val theme = com.example.gridfall.ui.theme.LocalGridfallColors.current
@@ -83,6 +85,17 @@ fun GameOverDialog(
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 ScoreRow(label = "FINAL SCORE", value = finalScore, accent = theme.warning)
                 ScoreRow(label = "HIGH SCORE", value = highScore, accent = theme.accentStrong)
+                if (runSyncMessage != null) {
+                    Text(
+                        text = runSyncMessage,
+                        color = if (runSyncMessage.contains("failed", ignoreCase = true)) {
+                            theme.warning
+                        } else {
+                            theme.success
+                        },
+                        style = MaterialTheme.typography.bodySmall.retroText(theme)
+                    )
+                }
             }
         },
         confirmButton = {
@@ -95,6 +108,21 @@ fun GameOverDialog(
                 shape = RoundedCornerShape(retroCorner(theme, infernoCorner(theme, 14.dp)))
             ) {
                 Text(text = if (theme.isRetroTheme()) "RESTART" else "Restart", style = MaterialTheme.typography.labelLarge.retroText(theme))
+            }
+        },
+        dismissButton = {
+            Button(
+                onClick = onLeaderboard,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = theme.button,
+                    contentColor = theme.textPrimary
+                ),
+                shape = RoundedCornerShape(retroCorner(theme, infernoCorner(theme, 14.dp)))
+            ) {
+                Text(
+                    text = if (theme.isRetroTheme()) "LEADERBOARD" else "Leaderboard",
+                    style = MaterialTheme.typography.labelLarge.retroText(theme)
+                )
             }
         }
     )

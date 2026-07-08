@@ -1,7 +1,11 @@
 package com.example.gridfall.network
 
+import com.example.gridfall.network.dto.LeaderboardEntryDto
+import com.example.gridfall.network.dto.LeaderboardResponse
 import com.example.gridfall.network.dto.MeResponse
 import com.example.gridfall.network.dto.PlayerProfileDto
+import com.example.gridfall.network.dto.RunSubmissionRequest
+import com.example.gridfall.network.dto.RunSubmissionResponse
 import java.io.IOException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -94,6 +98,42 @@ class GridfallApiClient(
         }
     }
 
+    suspend fun submitRun(
+        firebaseIdToken: String,
+        request: RunSubmissionRequest
+    ): RunSubmissionResponse = withContext(Dispatchers.IO) {
+        val requestBody = request.toJson()
+            .toString()
+            .toRequestBody(jsonMediaType)
+        val httpRequest = authenticatedRequest(firebaseIdToken, "/runs")
+            .post(requestBody)
+            .build()
+
+        httpClient.newCall(httpRequest).execute().use { response ->
+            val body = response.body?.string().orEmpty()
+            if (!response.isSuccessful) {
+                throw IOException("POST /runs failed with HTTP ${response.code}")
+            }
+            parseRunSubmissionResponse(body)
+        }
+    }
+
+    suspend fun getLeaderboard(limit: Int = 50): LeaderboardResponse = withContext(Dispatchers.IO) {
+        val safeLimit = limit.coerceIn(1, 100)
+        val request = Request.Builder()
+            .url("$baseUrl/leaderboard?limit=$safeLimit")
+            .get()
+            .build()
+
+        httpClient.newCall(request).execute().use { response ->
+            val body = response.body?.string().orEmpty()
+            if (!response.isSuccessful) {
+                throw IOException("GET /leaderboard failed with HTTP ${response.code}")
+            }
+            parseLeaderboardResponse(body)
+        }
+    }
+
     private fun authenticatedRequest(
         firebaseIdToken: String,
         path: String
@@ -134,6 +174,37 @@ class GridfallApiClient(
                 totalMegaBombsUsed = profile.getInt("totalMegaBombsUsed")
             )
         )
+    }
+
+    private fun parseRunSubmissionResponse(rawJson: String): RunSubmissionResponse {
+        val json = JSONObject(rawJson)
+        val run = json.optJSONObject("run")
+        val profile = json.optJSONObject("profile")
+
+        return RunSubmissionResponse(
+            runId = run?.optString("id")?.takeIf { it.isNotBlank() },
+            bestScore = profile?.optInt("bestScore"),
+            bestLevel = profile?.optInt("bestLevel")
+        )
+    }
+
+    private fun parseLeaderboardResponse(rawJson: String): LeaderboardResponse {
+        val json = JSONObject(rawJson)
+        val entries = json.optJSONArray("entries")
+        val parsedEntries = (0 until (entries?.length() ?: 0)).mapNotNull { index ->
+            val entry = entries?.optJSONObject(index) ?: return@mapNotNull null
+            val username = entry.optString("username").takeIf { it.isNotBlank() }
+                ?: return@mapNotNull null
+
+            LeaderboardEntryDto(
+                rank = entry.optInt("rank", index + 1),
+                username = username,
+                bestScore = entry.optInt("bestScore"),
+                bestLevel = entry.optInt("bestLevel", 1)
+            )
+        }
+
+        return LeaderboardResponse(entries = parsedEntries)
     }
 
     companion object {

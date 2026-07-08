@@ -57,9 +57,11 @@ fun SettingsScreen(
     onSoundEffectsVolumeChange: (Float) -> Unit,
     onBackgroundMusicVolumeChange: (Float) -> Unit,
     accountConnectionState: AccountConnectionState,
+    runSyncMessage: String?,
     onRegisterClick: () -> Unit,
     onLoginClick: () -> Unit,
     onChooseUsernameClick: () -> Unit,
+    onLeaderboardClick: () -> Unit,
     onLogoutClick: () -> Unit,
     onReturnToGame: () -> Unit,
     modifier: Modifier = Modifier
@@ -90,9 +92,11 @@ fun SettingsScreen(
             SettingsPanel(title = "Account") {
                 AccountStatusSection(
                     accountConnectionState = accountConnectionState,
+                    runSyncMessage = runSyncMessage,
                     onRegisterClick = onRegisterClick,
                     onLoginClick = onLoginClick,
                     onChooseUsernameClick = onChooseUsernameClick,
+                    onLeaderboardClick = onLeaderboardClick,
                     onLogoutClick = onLogoutClick
                 )
             }
@@ -156,9 +160,11 @@ fun SettingsScreen(
 @Composable
 private fun AccountStatusSection(
     accountConnectionState: AccountConnectionState,
+    runSyncMessage: String?,
     onRegisterClick: () -> Unit,
     onLoginClick: () -> Unit,
     onChooseUsernameClick: () -> Unit,
+    onLeaderboardClick: () -> Unit,
     onLogoutClick: () -> Unit
 ) {
     val theme = LocalGridfallColors.current
@@ -212,6 +218,17 @@ private fun AccountStatusSection(
                 style = MaterialTheme.typography.labelMedium.retroText(theme)
             )
         }
+        if (runSyncMessage != null) {
+            Text(
+                text = runSyncMessage,
+                color = if (runSyncMessage.contains("failed", ignoreCase = true)) {
+                    theme.warning
+                } else {
+                    theme.success
+                },
+                style = MaterialTheme.typography.bodySmall.retroText(theme)
+            )
+        }
 
         if (isGuest) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -226,6 +243,7 @@ private fun AccountStatusSection(
             }
             AccountActionButton(label = "Log out", onClick = onLogoutClick)
         }
+        AccountActionButton(label = "Leaderboard", onClick = onLeaderboardClick)
     }
 }
 

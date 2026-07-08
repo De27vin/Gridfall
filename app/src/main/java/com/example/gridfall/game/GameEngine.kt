@@ -15,7 +15,8 @@ object GameEngine {
             isGameOver = false,
             contractState = ContractState(
                 batchesUntilNextOffer = ContractGenerator.initialOfferCooldown()
-            )
+            ),
+            runStats = RunStats.newRun()
         )
     }
 
@@ -317,6 +318,10 @@ object GameEngine {
                 placementResult.scoreGained +
                 immediateContractEvaluation.scoreDelta
             ).coerceAtLeast(0)
+        var finalRunStats = state.runStats.recordPlacement(
+            pieceEffect = piece.effect,
+            clearedLineCount = placementResult.clearedLineCount
+        )
 
         val nextPieces: List<Piece>
         val finalUsedPieceIndices: Set<Int>
@@ -334,6 +339,12 @@ object GameEngine {
                 contractState = evaluation.contractState,
                 level = nextLevel
             )
+            if (
+                evaluation.contractState.resolvedContract != null &&
+                evaluation.contractState.isCompleted
+            ) {
+                finalRunStats = finalRunStats.recordCompletedContract()
+            }
             advancedRiskSpinState = advanceRiskSpinBatch(state.riskSpinState)
         } else {
             nextPieces = state.currentPieces
@@ -360,7 +371,8 @@ object GameEngine {
             combo = placementResult.nextCombo,
             isGameOver = isGameOver,
             contractState = finalContractState,
-            riskSpinState = finalRiskSpinState
+            riskSpinState = finalRiskSpinState,
+            runStats = finalRunStats
         )
     }
 
@@ -401,6 +413,10 @@ object GameEngine {
             inventory = nextInventory,
             previousMoveSnapshot = previousSnapshot
         )
+        val nextRunStats = state.runStats.recordPlacement(
+            pieceEffect = piece.effect,
+            clearedLineCount = placementResult.clearedLineCount
+        )
         val availablePieces = state.currentPieces.filterIndexed { index, _ ->
             index !in state.usedPieceIndices
         }
@@ -415,7 +431,8 @@ object GameEngine {
             combo = placementResult.nextCombo,
             isGameOver = isGameOver,
             contractState = immediateContractEvaluation.contractState,
-            riskSpinState = nextRiskSpinState
+            riskSpinState = nextRiskSpinState,
+            runStats = nextRunStats
         )
     }
 

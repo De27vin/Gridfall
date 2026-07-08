@@ -1,7 +1,8 @@
 package com.example.gridfall.ui
 
-import android.view.HapticFeedbackConstants
+import android.content.Context
 import android.util.Log
+import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -57,6 +58,7 @@ import com.example.gridfall.auth.GridfallAuthSession
 import com.example.gridfall.game.Board
 import com.example.gridfall.game.ClearResult
 import com.example.gridfall.game.GameEngine
+import com.example.gridfall.game.GameState
 import com.example.gridfall.game.JokerType
 import com.example.gridfall.game.LevelSystem
 import com.example.gridfall.game.Piece
@@ -65,9 +67,14 @@ import com.example.gridfall.game.RiskSpinMemorySession
 import com.example.gridfall.game.ScoreSystem
 import com.example.gridfall.network.AccountConnectionState
 import com.example.gridfall.network.GridfallApiClient
+import com.example.gridfall.network.dto.RunSubmissionRequest
+import com.example.gridfall.sync.RunSyncState
+import com.example.gridfall.sync.RunSyncStatus
 import com.example.gridfall.ui.auth.AuthDialog
 import com.example.gridfall.ui.auth.AuthDialogMode
 import com.example.gridfall.ui.auth.SaveProgressPrompt
+import com.example.gridfall.ui.leaderboard.LeaderboardDialog
+import com.example.gridfall.ui.leaderboard.LeaderboardUiState
 import com.example.gridfall.ui.theme.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -106,6 +113,10 @@ fun GameScreen(modifier: Modifier = Modifier) {
     var isAuthActionLoading by remember { mutableStateOf(false) }
     var authUiError by remember { mutableStateOf<String?>(null) }
     var authUiMessage by remember { mutableStateOf<String?>(null) }
+    var runSyncState by remember { mutableStateOf(RunSyncState()) }
+    var submittedRunIds by remember { mutableStateOf(emptySet<String>()) }
+    var showLeaderboardDialog by remember { mutableStateOf(false) }
+    var leaderboardUiState by remember { mutableStateOf(LeaderboardUiState()) }
     val soundManager = remember { GridfallSoundManager(context) }
     val authManager = remember { GridfallAuthManager() }
     val apiClient = remember { GridfallApiClient() }
@@ -311,6 +322,76 @@ fun GameScreen(modifier: Modifier = Modifier) {
         }
     }
 
+    fun runSubmissionRequest(endedState: GameState): RunSubmissionRequest {
+        return RunSubmissionRequest(
+            score = endedState.score,
+            level = LevelSystem.levelForScore(endedState.score),
+            linesCleared = endedState.runStats.linesCleared,
+            contractsCompleted = endedState.runStats.contractsCompleted,
+            bombsUsed = endedState.runStats.bombsUsed,
+            megaBombsUsed = endedState.runStats.megaBombsUsed,
+            durationSeconds = endedState.runStats.durationSeconds(),
+            appVersion = appVersionName(context)
+        )
+    }
+
+    fun submitEndedRunOnce(endedState: GameState) {
+        val runId = endedState.runStats.runId
+        if (runId in submittedRunIds) return
+
+        submittedRunIds = submittedRunIds + runId
+        runSyncState = RunSyncState(
+            runId = runId,
+            status = RunSyncStatus.Submitting,
+            message = "Submitting..."
+        )
+
+        coroutineScope.launch {
+            try {
+                val token = authManager.getFreshIdToken()
+                apiClient.submitRun(token, runSubmissionRequest(endedState))
+                runSyncState = RunSyncState(
+                    runId = runId,
+                    status = RunSyncStatus.Synced,
+                    message = if (accountConnectionState.isAnonymous) "Guest run saved" else "Run synced"
+                )
+
+                runCatching { apiClient.getMe(token) }.getOrNull()?.let { backendUser ->
+                    accountConnectionState = accountConnectionState.copy(
+                        isLoading = false,
+                        firebaseUid = backendUser.firebaseUid,
+                        isAnonymous = backendUser.isAnonymous,
+                        backendUser = backendUser,
+                        backendError = null
+                    )
+                }
+            } catch (error: Exception) {
+                runSyncState = RunSyncState(
+                    runId = runId,
+                    status = RunSyncStatus.Failed,
+                    message = "Sync failed"
+                )
+                Log.w(ACCOUNT_LOG_TAG, "Run submission failed: ${error.message}")
+            }
+        }
+    }
+
+    fun loadLeaderboard() {
+        leaderboardUiState = LeaderboardUiState(isLoading = true)
+        coroutineScope.launch {
+            leaderboardUiState = try {
+                LeaderboardUiState(entries = apiClient.getLeaderboard(limit = 50).entries)
+            } catch (error: Exception) {
+                LeaderboardUiState(error = error.message ?: "Leaderboard unavailable.")
+            }
+        }
+    }
+
+    fun openLeaderboard() {
+        showLeaderboardDialog = true
+        loadLeaderboard()
+    }
+
     LaunchedEffect(Unit) {
         accountConnectionState = AccountConnectionState(isLoading = true)
 
@@ -327,6 +408,12 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 authError = error.message ?: "Firebase Auth unavailable"
             )
             Log.w(ACCOUNT_LOG_TAG, "Firebase anonymous auth unavailable: ${error.message}")
+        }
+    }
+
+    LaunchedEffect(gameState.isGameOver, gameState.runStats.runId) {
+        if (gameState.isGameOver) {
+            submitEndedRunOnce(gameState)
         }
     }
 
@@ -556,6 +643,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                     SoundPreferenceStore.saveBackgroundMusicVolume(context, volume)
                 },
                 accountConnectionState = accountConnectionState,
+                runSyncMessage = runSyncState.message,
                 onRegisterClick = {
                     openAuthDialog(AuthDialogMode.Register)
                 },
@@ -564,6 +652,9 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 },
                 onChooseUsernameClick = {
                     openAuthDialog(AuthDialogMode.Username)
+                },
+                onLeaderboardClick = {
+                    openLeaderboard()
                 },
                 onLogoutClick = {
                     logoutToGuest()
@@ -921,8 +1012,12 @@ fun GameScreen(modifier: Modifier = Modifier) {
             GameOverDialog(
                 finalScore = gameState.score,
                 highScore = highScore,
-            isNewBest = isNewBestThisGame,
-            onRestart = ::restartGame
+                isNewBest = isNewBestThisGame,
+                runSyncMessage = runSyncState.message,
+                onLeaderboard = {
+                    openLeaderboard()
+                },
+                onRestart = ::restartGame
         )
     } else if (showRiskSpinOverlay && showRiskSpinOptions) {
         RiskSpinDialog(
@@ -950,6 +1045,9 @@ fun GameScreen(modifier: Modifier = Modifier) {
                     showRestartConfirmDialog = false
                 },
                 onConfirmRestart = {
+                    if (gameState.score > 0) {
+                        submitEndedRunOnce(gameState)
+                    }
                     restartGame()
                     offerSavePromptIfNeeded()
                 }
@@ -968,6 +1066,19 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 },
                 onSkip = {
                     markSavePromptDismissed()
+                }
+            )
+        }
+
+        if (showLeaderboardDialog) {
+            LeaderboardDialog(
+                state = leaderboardUiState,
+                accountConnectionState = accountConnectionState,
+                onRefresh = {
+                    loadLeaderboard()
+                },
+                onDismiss = {
+                    showLeaderboardDialog = false
                 }
             )
         }
@@ -1002,6 +1113,13 @@ fun GameScreen(modifier: Modifier = Modifier) {
 }
 
 private const val ACCOUNT_LOG_TAG = "GridfallAccount"
+
+@Suppress("DEPRECATION")
+private fun appVersionName(context: Context): String {
+    return runCatching {
+        context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "1.0"
+    }.getOrDefault("1.0")
+}
 
 @Composable
 private fun DraggedPiece(
