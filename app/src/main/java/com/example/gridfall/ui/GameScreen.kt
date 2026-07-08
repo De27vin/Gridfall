@@ -67,6 +67,7 @@ import com.example.gridfall.game.RiskSpinMemorySession
 import com.example.gridfall.game.ScoreSystem
 import com.example.gridfall.network.AccountConnectionState
 import com.example.gridfall.network.GridfallApiClient
+import com.example.gridfall.network.dto.MeResponse
 import com.example.gridfall.network.dto.RunSubmissionRequest
 import com.example.gridfall.sync.PendingRunSubmission
 import com.example.gridfall.sync.PendingRunSubmissionStore
@@ -168,6 +169,17 @@ fun GameScreen(modifier: Modifier = Modifier) {
         showSaveProgressPrompt = false
     }
 
+    fun syncHighScoreFromBackend(backendUser: MeResponse) {
+        val mergedHighScore = HighScoreStore.mergedBestScore(
+            localBestScore = highScore,
+            backendBestScore = backendUser.profile.bestScore
+        )
+        if (mergedHighScore != highScore) {
+            highScore = mergedHighScore
+            HighScoreStore.save(context, mergedHighScore)
+        }
+    }
+
     suspend fun retryPendingRuns(firebaseIdToken: String): Int {
         var syncedCount = 0
         pendingRunStore.load().forEach { pendingSubmission ->
@@ -205,6 +217,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 isAnonymous = authSession.isAnonymous,
                 backendUser = backendUser
             )
+            syncHighScoreFromBackend(backendUser)
             val retriedCount = retryPendingRuns(authSession.idToken)
             if (retriedCount > 0) {
                 runSyncState = RunSyncState(
@@ -217,6 +230,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                         isAnonymous = refreshedUser.isAnonymous,
                         backendError = null
                     )
+                    syncHighScoreFromBackend(refreshedUser)
                 }
             }
             authUiMessage = successMessage
@@ -251,6 +265,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                     isAnonymous = authSession.isAnonymous,
                     backendUser = backendUser
                 )
+                syncHighScoreFromBackend(backendUser)
 
                 val updatedUser = apiClient.setUsername(token, username)
                 val retriedCount = retryPendingRuns(token)
@@ -258,6 +273,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                     backendUser = updatedUser,
                     backendError = null
                 )
+                syncHighScoreFromBackend(updatedUser)
                 if (retriedCount > 0) {
                     runSyncState = RunSyncState(
                         status = RunSyncStatus.Synced,
@@ -316,6 +332,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                     isAnonymous = authSession.isAnonymous,
                     backendUser = backendUser
                 )
+                syncHighScoreFromBackend(backendUser)
                 if (retriedCount > 0) {
                     runSyncState = RunSyncState(
                         status = RunSyncStatus.Synced,
@@ -323,6 +340,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                     )
                     backendUser = apiClient.getMe(token)
                     accountConnectionState = accountConnectionState.copy(backendUser = backendUser)
+                    syncHighScoreFromBackend(backendUser)
                 }
                 markSavePromptDismissed()
                 authDialogMode = if (backendUser.username == null) AuthDialogMode.Username else null
@@ -348,6 +366,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                     isAnonymous = updatedUser.isAnonymous,
                     backendError = null
                 )
+                syncHighScoreFromBackend(updatedUser)
                 if (retriedCount > 0) {
                     runSyncState = RunSyncState(
                         status = RunSyncStatus.Synced,
@@ -429,6 +448,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                         backendUser = backendUser,
                         backendError = null
                     )
+                    syncHighScoreFromBackend(backendUser)
                 }
             } catch (error: Exception) {
                 pendingRunStore.savePending(
