@@ -401,6 +401,25 @@ fun GameScreen(modifier: Modifier = Modifier) {
         }
     }
 
+    fun refreshAccountConnection() {
+        coroutineScope.launch {
+            authUiError = null
+            authUiMessage = null
+            accountConnectionState = accountConnectionState.copy(isLoading = true)
+            try {
+                val authSession = authManager.ensureAnonymousUser()
+                refreshAccountState(authSession)
+            } catch (error: Exception) {
+                accountConnectionState = AccountConnectionState(
+                    isLoading = false,
+                    authError = error.message ?: "Firebase Auth unavailable"
+                )
+                authUiError = error.message ?: "Firebase Auth unavailable"
+                Log.w(ACCOUNT_LOG_TAG, "Account refresh failed: ${error.message}")
+            }
+        }
+    }
+
     fun runSubmissionRequest(endedState: GameState): RunSubmissionRequest {
         return RunSubmissionRequest(
             score = endedState.score,
@@ -749,6 +768,9 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 onChooseUsernameClick = {
                     showSettingsScreen = false
                     openAuthDialog(AuthDialogMode.Username)
+                },
+                onRefreshAccountClick = {
+                    refreshAccountConnection()
                 },
                 onLeaderboardClick = {
                     openLeaderboard()

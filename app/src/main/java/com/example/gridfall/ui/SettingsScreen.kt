@@ -1,6 +1,7 @@
 package com.example.gridfall.ui
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -13,12 +14,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -27,6 +30,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.unit.dp
 import com.example.gridfall.network.AccountConnectionState
@@ -61,6 +67,7 @@ fun SettingsScreen(
     onRegisterClick: () -> Unit,
     onLoginClick: () -> Unit,
     onChooseUsernameClick: () -> Unit,
+    onRefreshAccountClick: () -> Unit,
     onLeaderboardClick: () -> Unit,
     onLogoutClick: () -> Unit,
     onReturnToGame: () -> Unit,
@@ -89,7 +96,15 @@ fun SettingsScreen(
                 style = MaterialTheme.typography.headlineMedium.retroText(theme)
             )
 
-            SettingsPanel(title = "Account") {
+            SettingsPanel(
+                title = "Account",
+                trailingContent = {
+                    AccountRefreshButton(
+                        enabled = !accountConnectionState.isLoading,
+                        onClick = onRefreshAccountClick
+                    )
+                }
+            ) {
                 AccountStatusSection(
                     accountConnectionState = accountConnectionState,
                     runSyncMessage = runSyncMessage,
@@ -322,6 +337,7 @@ private fun VolumeSliderRow(
 @Composable
 private fun SettingsPanel(
     title: String,
+    trailingContent: (@Composable () -> Unit)? = null,
     content: @Composable () -> Unit
 ) {
     val theme = LocalGridfallColors.current
@@ -342,12 +358,110 @@ private fun SettingsPanel(
             .padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text(
-            text = title,
-            color = theme.textSecondary,
-            style = MaterialTheme.typography.titleSmall.retroText(theme)
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = title,
+                color = theme.textSecondary,
+                style = MaterialTheme.typography.titleSmall.retroText(theme)
+            )
+            trailingContent?.invoke()
+        }
         content()
+    }
+}
+
+@Composable
+private fun AccountRefreshButton(
+    enabled: Boolean,
+    onClick: () -> Unit
+) {
+    val theme = LocalGridfallColors.current
+    val shape = RoundedCornerShape(retroCorner(theme, infernoCorner(theme, 12.dp)))
+
+    IconButton(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = Modifier
+            .size(34.dp)
+            .clip(shape)
+            .background(theme.chipBackground.copy(alpha = if (enabled) 0.72f else 0.36f))
+            .infernoPanelTexture(theme)
+            .retroPanelTexture(theme)
+            .border(
+                width = if (theme.isRetroTheme() || theme.isInfernoTheme()) 2.dp else 1.dp,
+                color = theme.panelBorder.copy(alpha = if (enabled) 0.62f else 0.30f),
+                shape = shape
+            )
+    ) {
+        ReloadArrowIcon(
+            enabled = enabled,
+            modifier = Modifier.size(18.dp)
+        )
+    }
+}
+
+@Composable
+private fun ReloadArrowIcon(
+    enabled: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val theme = LocalGridfallColors.current
+
+    ThemeIconAsset(
+        kind = ThemeIconKind.Reload,
+        colors = theme,
+        contentDescription = "Reload account connection",
+        enabled = enabled,
+        modifier = modifier
+    ) { fallbackModifier ->
+        DrawnReloadArrowIcon(
+            enabled = enabled,
+            modifier = fallbackModifier
+        )
+    }
+}
+
+@Composable
+private fun DrawnReloadArrowIcon(
+    enabled: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val theme = LocalGridfallColors.current
+    val iconColor = if (enabled) theme.accentStrong else theme.textMuted
+
+    Canvas(modifier = modifier) {
+        val strokeWidth = size.minDimension * 0.12f
+        val arcInset = size.minDimension * 0.14f
+        drawArc(
+            color = iconColor,
+            startAngle = 34f,
+            sweepAngle = 282f,
+            useCenter = false,
+            topLeft = Offset(arcInset, arcInset),
+            size = androidx.compose.ui.geometry.Size(
+                width = size.width - arcInset * 2f,
+                height = size.height - arcInset * 2f
+            ),
+            style = Stroke(width = strokeWidth)
+        )
+        rotate(degrees = 34f, pivot = Offset(size.width * 0.74f, size.height * 0.22f)) {
+            drawLine(
+                color = iconColor,
+                start = Offset(size.width * 0.74f, size.height * 0.22f),
+                end = Offset(size.width * 0.95f, size.height * 0.24f),
+                strokeWidth = strokeWidth
+            )
+            drawLine(
+                color = iconColor,
+                start = Offset(size.width * 0.74f, size.height * 0.22f),
+                end = Offset(size.width * 0.78f, size.height * 0.44f),
+                strokeWidth = strokeWidth
+            )
+        }
     }
 }
 

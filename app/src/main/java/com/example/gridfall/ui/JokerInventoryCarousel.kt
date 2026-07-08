@@ -215,6 +215,27 @@ internal fun UndoJokerIcon(
     modifier: Modifier = Modifier
 ) {
     val colors = LocalGridfallColors.current
+
+    ThemeIconAsset(
+        kind = ThemeIconKind.Undo,
+        colors = colors,
+        contentDescription = "Undo joker",
+        enabled = enabled,
+        modifier = modifier
+    ) { fallbackModifier ->
+        DrawnUndoJokerIcon(
+            enabled = enabled,
+            modifier = fallbackModifier
+        )
+    }
+}
+
+@Composable
+private fun DrawnUndoJokerIcon(
+    enabled: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val colors = LocalGridfallColors.current
     val iconColor = if (enabled) colors.warning else colors.textMuted
 
     Canvas(modifier = modifier) {
