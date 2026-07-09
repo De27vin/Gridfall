@@ -16,14 +16,14 @@ import okhttp3.Request
 import org.json.JSONObject
 
 class GridfallApiClient(
-    private val baseUrl: String = DEVELOPMENT_BASE_URL,
+    private val apiConfig: ApiConfig = ApiConfig,
     private val httpClient: OkHttpClient = OkHttpClient()
 ) {
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
 
     suspend fun getHealth(): Boolean = withContext(Dispatchers.IO) {
         val request = Request.Builder()
-            .url("$baseUrl/health")
+            .url(apiConfig.endpoint("/health"))
             .get()
             .build()
 
@@ -34,7 +34,7 @@ class GridfallApiClient(
 
     suspend fun getMe(firebaseIdToken: String): MeResponse = withContext(Dispatchers.IO) {
         val request = Request.Builder()
-            .url("$baseUrl/me")
+            .url(apiConfig.endpoint("/me"))
             .header("Authorization", "Bearer $firebaseIdToken")
             .get()
             .build()
@@ -121,7 +121,7 @@ class GridfallApiClient(
     suspend fun getLeaderboard(limit: Int = 50): LeaderboardResponse = withContext(Dispatchers.IO) {
         val safeLimit = limit.coerceIn(1, 100)
         val request = Request.Builder()
-            .url("$baseUrl/leaderboard?limit=$safeLimit")
+            .url(apiConfig.endpoint("/leaderboard?limit=$safeLimit"))
             .get()
             .build()
 
@@ -139,7 +139,7 @@ class GridfallApiClient(
         path: String
     ): Request.Builder {
         return Request.Builder()
-            .url("$baseUrl$path")
+            .url(apiConfig.endpoint(path))
             .header("Authorization", "Bearer $firebaseIdToken")
     }
 
@@ -205,9 +205,5 @@ class GridfallApiClient(
         }
 
         return LeaderboardResponse(entries = parsedEntries)
-    }
-
-    companion object {
-        const val DEVELOPMENT_BASE_URL = "http://192.168.222.172:8080"
     }
 }

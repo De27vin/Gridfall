@@ -66,6 +66,7 @@ import com.example.gridfall.game.PieceEffect
 import com.example.gridfall.game.RiskSpinMemorySession
 import com.example.gridfall.game.ScoreSystem
 import com.example.gridfall.network.AccountConnectionState
+import com.example.gridfall.network.ApiConfig
 import com.example.gridfall.network.GridfallApiClient
 import com.example.gridfall.network.dto.MeResponse
 import com.example.gridfall.network.dto.RunSubmissionRequest
@@ -241,9 +242,9 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 isLoading = false,
                 firebaseUid = authSession.firebaseUid,
                 isAnonymous = authSession.isAnonymous,
-                backendError = error.message ?: "Backend unavailable"
+                backendError = "Backend unavailable"
             )
-            authUiError = error.message ?: "Backend unavailable"
+            authUiError = "Backend unavailable"
             Log.w(ACCOUNT_LOG_TAG, "Backend /me unavailable: ${error.message}")
         }
     }
@@ -288,7 +289,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 if (!accountConnectionState.isAnonymous) {
                     authDialogMode = AuthDialogMode.Username
                 }
-                authUiError = error.message ?: "Registration failed."
+                authUiError = friendlyUiError(error, fallback = "Registration failed.")
             } finally {
                 isAuthActionLoading = false
             }
@@ -347,7 +348,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 markSavePromptDismissed()
                 authDialogMode = if (backendUser.username == null) AuthDialogMode.Username else null
             } catch (error: Exception) {
-                authUiError = error.message ?: "Login failed."
+                authUiError = friendlyUiError(error, fallback = "Login failed.")
             } finally {
                 isAuthActionLoading = false
             }
@@ -378,7 +379,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 markSavePromptDismissed()
                 authDialogMode = null
             } catch (error: Exception) {
-                authUiError = error.message ?: "Username could not be saved."
+                authUiError = friendlyUiError(error, fallback = "Username could not be saved.")
             } finally {
                 isAuthActionLoading = false
             }
@@ -394,7 +395,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 refreshAccountState(authSession)
                 showLogoutConfirmDialog = false
             } catch (error: Exception) {
-                authUiError = error.message ?: "Logout failed."
+                authUiError = friendlyUiError(error, fallback = "Logout failed.")
             } finally {
                 isAuthActionLoading = false
             }
@@ -412,9 +413,9 @@ fun GameScreen(modifier: Modifier = Modifier) {
             } catch (error: Exception) {
                 accountConnectionState = AccountConnectionState(
                     isLoading = false,
-                    authError = error.message ?: "Firebase Auth unavailable"
+                    authError = "Auth unavailable"
                 )
-                authUiError = error.message ?: "Firebase Auth unavailable"
+                authUiError = "Auth unavailable"
                 Log.w(ACCOUNT_LOG_TAG, "Account refresh failed: ${error.message}")
             }
         }
@@ -495,7 +496,8 @@ fun GameScreen(modifier: Modifier = Modifier) {
             leaderboardUiState = try {
                 LeaderboardUiState(entries = apiClient.getLeaderboard(limit = 50).entries)
             } catch (error: Exception) {
-                LeaderboardUiState(error = error.message ?: "Leaderboard unavailable.")
+                Log.w(ACCOUNT_LOG_TAG, "Leaderboard unavailable: ${error.message}")
+                LeaderboardUiState(error = "Could not load leaderboard")
             }
         }
     }
@@ -518,7 +520,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
         } catch (error: Exception) {
             accountConnectionState = AccountConnectionState(
                 isLoading = false,
-                authError = error.message ?: "Firebase Auth unavailable"
+                authError = "Auth unavailable"
             )
             Log.w(ACCOUNT_LOG_TAG, "Firebase anonymous auth unavailable: ${error.message}")
         }
@@ -756,6 +758,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                     SoundPreferenceStore.saveBackgroundMusicVolume(context, volume)
                 },
                 accountConnectionState = accountConnectionState,
+                debugApiBaseUrl = ApiConfig.debugBaseUrlLabel,
                 runSyncMessage = runSyncState.message,
                 onRegisterClick = {
                     showSettingsScreen = false
@@ -1252,6 +1255,28 @@ private fun appVersionName(context: Context): String {
     return runCatching {
         context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "1.0"
     }.getOrDefault("1.0")
+}
+
+private fun friendlyUiError(
+    error: Exception,
+    fallback: String
+): String {
+    val message = error.message.orEmpty()
+    return when {
+        message.equals("Username already taken.", ignoreCase = true) -> "Username already taken."
+        message.equals("Password is too weak.", ignoreCase = true) -> "Password is too weak."
+        message.equals("Please check the email and password.", ignoreCase = true) -> "Please check the email and password."
+        message.equals("No account was found for this email.", ignoreCase = true) -> "No account was found for this email."
+        message.equals("This email already has an account. Please log in instead.", ignoreCase = true) -> {
+            "This email already has an account. Please log in instead."
+        }
+        message.contains("backend", ignoreCase = true) ||
+            message.contains("failed with HTTP", ignoreCase = true) ||
+            message.contains("timeout", ignoreCase = true) ||
+            message.contains("unable to resolve", ignoreCase = true) ||
+            message.contains("failed to connect", ignoreCase = true) -> "Backend unavailable"
+        else -> fallback
+    }
 }
 
 @Composable

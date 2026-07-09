@@ -63,6 +63,7 @@ fun SettingsScreen(
     onSoundEffectsVolumeChange: (Float) -> Unit,
     onBackgroundMusicVolumeChange: (Float) -> Unit,
     accountConnectionState: AccountConnectionState,
+    debugApiBaseUrl: String?,
     runSyncMessage: String?,
     onRegisterClick: () -> Unit,
     onLoginClick: () -> Unit,
@@ -107,6 +108,7 @@ fun SettingsScreen(
             ) {
                 AccountStatusSection(
                     accountConnectionState = accountConnectionState,
+                    debugApiBaseUrl = debugApiBaseUrl,
                     runSyncMessage = runSyncMessage,
                     onRegisterClick = onRegisterClick,
                     onLoginClick = onLoginClick,
@@ -175,6 +177,7 @@ fun SettingsScreen(
 @Composable
 private fun AccountStatusSection(
     accountConnectionState: AccountConnectionState,
+    debugApiBaseUrl: String?,
     runSyncMessage: String?,
     onRegisterClick: () -> Unit,
     onLoginClick: () -> Unit,
@@ -229,6 +232,13 @@ private fun AccountStatusSection(
         if (uidText != null) {
             Text(
                 text = uidText,
+                color = theme.textMuted,
+                style = MaterialTheme.typography.labelMedium.retroText(theme)
+            )
+        }
+        if (debugApiBaseUrl != null) {
+            Text(
+                text = "API: $debugApiBaseUrl",
                 color = theme.textMuted,
                 style = MaterialTheme.typography.labelMedium.retroText(theme)
             )

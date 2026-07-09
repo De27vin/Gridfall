@@ -23,7 +23,19 @@ android {
     }
 
     buildTypes {
+        debug {
+            buildConfigField(
+                "String",
+                "GRIDFALL_API_BASE_URL",
+                "\"http://192.168.222.172:8080\""
+            )
+        }
         release {
+            buildConfigField(
+                "String",
+                "GRIDFALL_API_BASE_URL",
+                "\"https://api.your-domain.ch\""
+            )
             optimization {
                 enable = false
             }
@@ -35,6 +47,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
