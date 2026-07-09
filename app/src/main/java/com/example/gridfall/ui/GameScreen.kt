@@ -768,10 +768,6 @@ fun GameScreen(modifier: Modifier = Modifier) {
                     showSettingsScreen = false
                     openAuthDialog(AuthDialogMode.Login)
                 },
-                onChooseUsernameClick = {
-                    showSettingsScreen = false
-                    openAuthDialog(AuthDialogMode.Username)
-                },
                 onRefreshAccountClick = {
                     refreshAccountConnection()
                 },

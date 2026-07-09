@@ -67,7 +67,6 @@ fun SettingsScreen(
     runSyncMessage: String?,
     onRegisterClick: () -> Unit,
     onLoginClick: () -> Unit,
-    onChooseUsernameClick: () -> Unit,
     onRefreshAccountClick: () -> Unit,
     onLeaderboardClick: () -> Unit,
     onLogoutClick: () -> Unit,
@@ -112,7 +111,6 @@ fun SettingsScreen(
                     runSyncMessage = runSyncMessage,
                     onRegisterClick = onRegisterClick,
                     onLoginClick = onLoginClick,
-                    onChooseUsernameClick = onChooseUsernameClick,
                     onLeaderboardClick = onLeaderboardClick,
                     onLogoutClick = onLogoutClick
                 )
@@ -181,7 +179,6 @@ private fun AccountStatusSection(
     runSyncMessage: String?,
     onRegisterClick: () -> Unit,
     onLoginClick: () -> Unit,
-    onChooseUsernameClick: () -> Unit,
     onLeaderboardClick: () -> Unit,
     onLogoutClick: () -> Unit
 ) {
@@ -261,9 +258,6 @@ private fun AccountStatusSection(
                 AccountActionButton(label = "Login", onClick = onLoginClick, modifier = Modifier.weight(1f))
             }
         } else {
-            if (backendUser?.username == null) {
-                AccountActionButton(label = "Choose username", onClick = onChooseUsernameClick)
-            }
             AccountActionButton(label = "Log out", onClick = onLogoutClick)
         }
         AccountActionButton(label = "Leaderboard", onClick = onLeaderboardClick)
