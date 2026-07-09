@@ -54,6 +54,10 @@ private val themeOptions = listOf(
     GridfallThemeMode.RetroArcade
 )
 
+private fun pendingRunsLabel(count: Int): String {
+    return if (count == 1) "1 run pending" else "$count runs pending"
+}
+
 @Composable
 fun SettingsScreen(
     selectedThemeMode: GridfallThemeMode,
@@ -65,9 +69,12 @@ fun SettingsScreen(
     accountConnectionState: AccountConnectionState,
     debugApiBaseUrl: String?,
     runSyncMessage: String?,
+    pendingRunCount: Int,
+    isRetryingPendingRuns: Boolean,
     onRegisterClick: () -> Unit,
     onLoginClick: () -> Unit,
     onRefreshAccountClick: () -> Unit,
+    onRetrySyncClick: () -> Unit,
     onLeaderboardClick: () -> Unit,
     onLogoutClick: () -> Unit,
     onReturnToGame: () -> Unit,
@@ -109,8 +116,11 @@ fun SettingsScreen(
                     accountConnectionState = accountConnectionState,
                     debugApiBaseUrl = debugApiBaseUrl,
                     runSyncMessage = runSyncMessage,
+                    pendingRunCount = pendingRunCount,
+                    isRetryingPendingRuns = isRetryingPendingRuns,
                     onRegisterClick = onRegisterClick,
                     onLoginClick = onLoginClick,
+                    onRetrySyncClick = onRetrySyncClick,
                     onLeaderboardClick = onLeaderboardClick,
                     onLogoutClick = onLogoutClick
                 )
@@ -177,8 +187,11 @@ private fun AccountStatusSection(
     accountConnectionState: AccountConnectionState,
     debugApiBaseUrl: String?,
     runSyncMessage: String?,
+    pendingRunCount: Int,
+    isRetryingPendingRuns: Boolean,
     onRegisterClick: () -> Unit,
     onLoginClick: () -> Unit,
+    onRetrySyncClick: () -> Unit,
     onLeaderboardClick: () -> Unit,
     onLogoutClick: () -> Unit
 ) {
@@ -200,6 +213,13 @@ private fun AccountStatusSection(
     val uidText = accountConnectionState.firebaseUid?.let { uid ->
         "Firebase UID: ${uid.take(8)}..."
     }
+    val syncText = when {
+        isRetryingPendingRuns -> "Syncing pending runs..."
+        pendingRunCount > 0 -> pendingRunsLabel(pendingRunCount)
+        runSyncMessage?.contains("failed", ignoreCase = true) == true -> "Last sync failed"
+        else -> "All runs synced"
+    }
+    val showRetrySync = pendingRunCount > 0 || runSyncMessage?.contains("failed", ignoreCase = true) == true
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
@@ -240,17 +260,15 @@ private fun AccountStatusSection(
                 style = MaterialTheme.typography.labelMedium.retroText(theme)
             )
         }
-        if (runSyncMessage != null) {
-            Text(
-                text = runSyncMessage,
-                color = if (runSyncMessage.contains("failed", ignoreCase = true)) {
-                    theme.warning
-                } else {
-                    theme.success
-                },
-                style = MaterialTheme.typography.bodySmall.retroText(theme)
-            )
-        }
+        Text(
+            text = syncText,
+            color = if (pendingRunCount > 0 || syncText.contains("failed", ignoreCase = true)) {
+                theme.warning
+            } else {
+                theme.success
+            },
+            style = MaterialTheme.typography.bodySmall.retroText(theme)
+        )
 
         if (isGuest) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -259,6 +277,12 @@ private fun AccountStatusSection(
             }
         } else {
             AccountActionButton(label = "Log out", onClick = onLogoutClick)
+        }
+        if (showRetrySync) {
+            AccountActionButton(
+                label = if (isRetryingPendingRuns) "Syncing..." else "Retry sync",
+                onClick = onRetrySyncClick
+            )
         }
         AccountActionButton(label = "Leaderboard", onClick = onLeaderboardClick)
     }

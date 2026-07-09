@@ -112,7 +112,7 @@ class GridfallApiClient(
         httpClient.newCall(httpRequest).execute().use { response ->
             val body = response.body?.string().orEmpty()
             if (!response.isSuccessful) {
-                throw IOException("POST /runs failed with HTTP ${response.code}")
+                throw HttpStatusException(response.code, "POST", "/runs")
             }
             parseRunSubmissionResponse(body)
         }

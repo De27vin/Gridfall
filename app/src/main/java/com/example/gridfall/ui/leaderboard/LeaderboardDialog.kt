@@ -46,6 +46,7 @@ data class LeaderboardUiState(
 fun LeaderboardDialog(
     state: LeaderboardUiState,
     accountConnectionState: AccountConnectionState,
+    pendingRunCount: Int,
     onRefresh: () -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -71,6 +72,13 @@ fun LeaderboardDialog(
                     Text(
                         text = "Register and choose a username to appear on the leaderboard.",
                         color = theme.textSecondary,
+                        style = MaterialTheme.typography.bodySmall.retroText(theme)
+                    )
+                }
+                if (pendingRunCount > 0) {
+                    Text(
+                        text = "Some runs are still pending sync.",
+                        color = theme.warning,
                         style = MaterialTheme.typography.bodySmall.retroText(theme)
                     )
                 }

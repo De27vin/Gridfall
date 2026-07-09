@@ -74,6 +74,9 @@ import com.example.gridfall.sync.PendingRunSubmission
 import com.example.gridfall.sync.PendingRunSubmissionStore
 import com.example.gridfall.sync.RunSubmissionPolicy
 import com.example.gridfall.sync.RunSubmissionRegistry
+import com.example.gridfall.sync.RunFailureKind
+import com.example.gridfall.sync.RunRetryPolicy
+import com.example.gridfall.sync.RunSyncManager
 import com.example.gridfall.sync.RunSyncState
 import com.example.gridfall.sync.RunSyncStatus
 import com.example.gridfall.ui.auth.AuthDialog
@@ -129,6 +132,8 @@ fun GameScreen(modifier: Modifier = Modifier) {
     val authManager = remember { GridfallAuthManager() }
     val apiClient = remember { GridfallApiClient() }
     val pendingRunStore = remember { PendingRunSubmissionStore(context) }
+    var pendingRunCount by remember { mutableStateOf(pendingRunStore.pendingCount()) }
+    var isRetryingPendingRuns by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     val activeThemeColors = colorsForThemeMode(selectedThemeMode)
     val currentLevel = LevelSystem.levelForScore(gameState.score)
@@ -183,19 +188,102 @@ fun GameScreen(modifier: Modifier = Modifier) {
         }
     }
 
+    fun refreshPendingRunCount() {
+        pendingRunCount = pendingRunStore.pendingCount()
+    }
+
     suspend fun retryPendingRuns(firebaseIdToken: String): Int {
-        var syncedCount = 0
-        pendingRunStore.load().forEach { pendingSubmission ->
-            try {
+        if (isRetryingPendingRuns || pendingRunStore.pendingCount() == 0) {
+            refreshPendingRunCount()
+            return 0
+        }
+
+        isRetryingPendingRuns = true
+        runSyncState = RunSyncState(
+            status = RunSyncStatus.Submitting,
+            message = "Syncing pending runs..."
+        )
+
+        val syncManager = RunSyncManager(
+            store = pendingRunStore,
+            submitPendingRun = { pendingSubmission ->
                 apiClient.submitRun(firebaseIdToken, pendingSubmission.request)
-                pendingRunStore.remove(pendingSubmission.runId)
-                syncedCount += 1
+            }
+        )
+
+        val result = try {
+            syncManager.retryPendingRuns()
+        } finally {
+            isRetryingPendingRuns = false
+            refreshPendingRunCount()
+        }
+
+        runSyncState = when {
+            result.syncedCount > 0 && pendingRunCount == 0 -> RunSyncState(
+                status = RunSyncStatus.Synced,
+                message = "All runs synced"
+            )
+            result.syncedCount > 0 -> RunSyncState(
+                status = RunSyncStatus.Failed,
+                message = pendingRunsLabel(pendingRunCount)
+            )
+            result.hasFailures -> RunSyncState(
+                status = RunSyncStatus.Failed,
+                message = "Last sync failed"
+            )
+            pendingRunCount > 0 -> RunSyncState(
+                status = RunSyncStatus.Failed,
+                message = pendingRunsLabel(pendingRunCount)
+            )
+            else -> RunSyncState(
+                status = RunSyncStatus.Synced,
+                message = "All runs synced"
+            )
+        }
+
+        return result.syncedCount
+    }
+
+    fun retryPendingRunsWithFreshToken() {
+        if (isRetryingPendingRuns || pendingRunStore.pendingCount() == 0) {
+            refreshPendingRunCount()
+            return
+        }
+        coroutineScope.launch {
+            try {
+                retryPendingRuns(authManager.getFreshIdToken())
             } catch (error: Exception) {
-                Log.w(ACCOUNT_LOG_TAG, "Pending run retry failed: ${error.message}")
-                return syncedCount
+                runSyncState = RunSyncState(
+                    status = RunSyncStatus.Failed,
+                    message = "Last sync failed"
+                )
+                refreshPendingRunCount()
+                Log.w(ACCOUNT_LOG_TAG, "Pending run retry unavailable: ${error.message}")
             }
         }
-        return syncedCount
+    }
+
+    fun savePendingRun(
+        runId: String,
+        request: RunSubmissionRequest,
+        error: Throwable
+    ): Boolean {
+        if (RunRetryPolicy.classify(error) != RunFailureKind.Retryable) {
+            pendingRunStore.remove(runId)
+            refreshPendingRunCount()
+            return false
+        }
+
+        pendingRunStore.savePending(
+            PendingRunSubmission(
+                runId = runId,
+                request = request,
+                createdAtMillis = System.currentTimeMillis(),
+                lastError = RunRetryPolicy.friendlyMessage(error)
+            )
+        )
+        refreshPendingRunCount()
+        return true
     }
 
     suspend fun refreshAccountState(
@@ -223,10 +311,6 @@ fun GameScreen(modifier: Modifier = Modifier) {
             syncHighScoreFromBackend(backendUser)
             val retriedCount = retryPendingRuns(authSession.idToken)
             if (retriedCount > 0) {
-                runSyncState = RunSyncState(
-                    status = RunSyncStatus.Synced,
-                    message = "Pending runs synced"
-                )
                 runCatching { apiClient.getMe(authSession.idToken) }.getOrNull()?.let { refreshedUser ->
                     accountConnectionState = accountConnectionState.copy(
                         backendUser = refreshedUser,
@@ -278,10 +362,10 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 )
                 syncHighScoreFromBackend(updatedUser)
                 if (retriedCount > 0) {
-                    runSyncState = RunSyncState(
-                        status = RunSyncStatus.Synced,
-                        message = "Pending runs synced"
-                    )
+                    runCatching { apiClient.getMe(token) }.getOrNull()?.let { refreshedUser ->
+                        accountConnectionState = accountConnectionState.copy(backendUser = refreshedUser)
+                        syncHighScoreFromBackend(refreshedUser)
+                    }
                 }
                 markSavePromptDismissed()
                 authDialogMode = null
@@ -337,10 +421,6 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 )
                 syncHighScoreFromBackend(backendUser)
                 if (retriedCount > 0) {
-                    runSyncState = RunSyncState(
-                        status = RunSyncStatus.Synced,
-                        message = "Pending runs synced"
-                    )
                     backendUser = apiClient.getMe(token)
                     accountConnectionState = accountConnectionState.copy(backendUser = backendUser)
                     syncHighScoreFromBackend(backendUser)
@@ -371,10 +451,10 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 )
                 syncHighScoreFromBackend(updatedUser)
                 if (retriedCount > 0) {
-                    runSyncState = RunSyncState(
-                        status = RunSyncStatus.Synced,
-                        message = "Pending runs synced"
-                    )
+                    runCatching { apiClient.getMe(token) }.getOrNull()?.let { refreshedUser ->
+                        accountConnectionState = accountConnectionState.copy(backendUser = refreshedUser)
+                        syncHighScoreFromBackend(refreshedUser)
+                    }
                 }
                 markSavePromptDismissed()
                 authDialogMode = null
@@ -452,12 +532,11 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 val token = authManager.getFreshIdToken()
                 apiClient.submitRun(token, request)
                 pendingRunStore.remove(runId)
-                val retriedCount = retryPendingRuns(token)
+                retryPendingRuns(token)
                 runSyncState = RunSyncState(
                     runId = runId,
                     status = RunSyncStatus.Synced,
                     message = when {
-                        retriedCount > 0 -> "Pending runs synced"
                         accountConnectionState.isAnonymous -> "Guest run saved"
                         else -> "Run synced"
                     }
@@ -474,16 +553,15 @@ fun GameScreen(modifier: Modifier = Modifier) {
                     syncHighScoreFromBackend(backendUser)
                 }
             } catch (error: Exception) {
-                pendingRunStore.savePending(
-                    PendingRunSubmission(
-                        runId = runId,
-                        request = request
-                    )
-                )
+                val queued = savePendingRun(runId, request, error)
                 runSyncState = RunSyncState(
                     runId = runId,
                     status = RunSyncStatus.Failed,
-                    message = "Sync pending"
+                    message = if (queued) {
+                        "Run saved locally, will retry later"
+                    } else {
+                        "Sync failed"
+                    }
                 )
                 Log.w(ACCOUNT_LOG_TAG, "Run submission failed: ${error.message}")
             }
@@ -509,6 +587,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
 
     LaunchedEffect(Unit) {
         accountConnectionState = AccountConnectionState(isLoading = true)
+        refreshPendingRunCount()
 
         try {
             val authSession = authManager.ensureAnonymousUser()
@@ -523,6 +602,13 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 authError = "Auth unavailable"
             )
             Log.w(ACCOUNT_LOG_TAG, "Firebase anonymous auth unavailable: ${error.message}")
+        }
+    }
+
+    LaunchedEffect(showSettingsScreen) {
+        if (showSettingsScreen) {
+            refreshPendingRunCount()
+            retryPendingRunsWithFreshToken()
         }
     }
 
@@ -760,6 +846,8 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 accountConnectionState = accountConnectionState,
                 debugApiBaseUrl = ApiConfig.debugBaseUrlLabel,
                 runSyncMessage = runSyncState.message,
+                pendingRunCount = pendingRunCount,
+                isRetryingPendingRuns = isRetryingPendingRuns,
                 onRegisterClick = {
                     showSettingsScreen = false
                     openAuthDialog(AuthDialogMode.Register)
@@ -770,6 +858,9 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 },
                 onRefreshAccountClick = {
                     refreshAccountConnection()
+                },
+                onRetrySyncClick = {
+                    retryPendingRunsWithFreshToken()
                 },
                 onLeaderboardClick = {
                     openLeaderboard()
@@ -1192,6 +1283,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
             LeaderboardDialog(
                 state = leaderboardUiState,
                 accountConnectionState = accountConnectionState,
+                pendingRunCount = pendingRunCount,
                 onRefresh = {
                     loadLeaderboard()
                 },
@@ -1245,6 +1337,10 @@ fun GameScreen(modifier: Modifier = Modifier) {
 }
 
 private const val ACCOUNT_LOG_TAG = "GridfallAccount"
+
+private fun pendingRunsLabel(count: Int): String {
+    return if (count == 1) "1 run pending" else "$count runs pending"
+}
 
 @Suppress("DEPRECATION")
 private fun appVersionName(context: Context): String {

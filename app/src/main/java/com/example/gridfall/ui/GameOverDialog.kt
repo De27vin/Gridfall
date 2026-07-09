@@ -88,7 +88,11 @@ fun GameOverDialog(
                 if (runSyncMessage != null) {
                     Text(
                         text = runSyncMessage,
-                        color = if (runSyncMessage.contains("failed", ignoreCase = true)) {
+                        color = if (
+                            runSyncMessage.contains("failed", ignoreCase = true) ||
+                            runSyncMessage.contains("pending", ignoreCase = true) ||
+                            runSyncMessage.contains("saved locally", ignoreCase = true)
+                        ) {
                             theme.warning
                         } else {
                             theme.success
