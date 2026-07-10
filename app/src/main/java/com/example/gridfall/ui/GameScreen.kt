@@ -858,9 +858,11 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 pendingRunCount = pendingRunCount,
                 isRetryingPendingRuns = isRetryingPendingRuns,
                 onRegisterClick = {
+                    showSettingsScreen = false
                     openAuthDialog(AuthDialogMode.Register)
                 },
                 onLoginClick = {
+                    showSettingsScreen = false
                     openAuthDialog(AuthDialogMode.Login)
                 },
                 onRefreshAccountClick = {
@@ -873,6 +875,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                     openLeaderboardScreen()
                 },
                 onLogoutClick = {
+                    showSettingsScreen = false
                     showLogoutConfirmDialog = true
                 },
                 onReturnToGame = {
