@@ -84,6 +84,7 @@ import com.example.gridfall.ui.auth.AuthDialogMode
 import com.example.gridfall.ui.auth.LogoutConfirmDialog
 import com.example.gridfall.ui.auth.SaveProgressPrompt
 import com.example.gridfall.ui.leaderboard.LeaderboardDialog
+import com.example.gridfall.ui.leaderboard.LeaderboardScreen
 import com.example.gridfall.ui.leaderboard.LeaderboardUiState
 import com.example.gridfall.ui.theme.*
 import kotlinx.coroutines.delay
@@ -127,6 +128,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
     var runSyncState by remember { mutableStateOf(RunSyncState()) }
     var runSubmissionRegistry by remember { mutableStateOf(RunSubmissionRegistry()) }
     var showLeaderboardDialog by remember { mutableStateOf(false) }
+    var showLeaderboardScreen by remember { mutableStateOf(false) }
     var leaderboardUiState by remember { mutableStateOf(LeaderboardUiState()) }
     val soundManager = remember { GridfallSoundManager(context) }
     val authManager = remember { GridfallAuthManager() }
@@ -580,8 +582,15 @@ fun GameScreen(modifier: Modifier = Modifier) {
         }
     }
 
-    fun openLeaderboard() {
+    fun openLeaderboardDialog() {
         showLeaderboardDialog = true
+        loadLeaderboard()
+    }
+
+    fun openLeaderboardScreen() {
+        showSettingsScreen = false
+        showLeaderboardDialog = false
+        showLeaderboardScreen = true
         loadLeaderboard()
     }
 
@@ -849,11 +858,9 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 pendingRunCount = pendingRunCount,
                 isRetryingPendingRuns = isRetryingPendingRuns,
                 onRegisterClick = {
-                    showSettingsScreen = false
                     openAuthDialog(AuthDialogMode.Register)
                 },
                 onLoginClick = {
-                    showSettingsScreen = false
                     openAuthDialog(AuthDialogMode.Login)
                 },
                 onRefreshAccountClick = {
@@ -863,13 +870,26 @@ fun GameScreen(modifier: Modifier = Modifier) {
                     retryPendingRunsWithFreshToken()
                 },
                 onLeaderboardClick = {
-                    openLeaderboard()
+                    openLeaderboardScreen()
                 },
                 onLogoutClick = {
                     showLogoutConfirmDialog = true
                 },
                 onReturnToGame = {
                     showSettingsScreen = false
+                },
+                modifier = modifier
+            )
+        } else if (showLeaderboardScreen) {
+            LeaderboardScreen(
+                state = leaderboardUiState,
+                accountConnectionState = accountConnectionState,
+                pendingRunCount = pendingRunCount,
+                onRefresh = {
+                    loadLeaderboard()
+                },
+                onBack = {
+                    showLeaderboardScreen = false
                 },
                 modifier = modifier
             )
@@ -901,6 +921,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 combo = gameState.combo,
                 onSettingsClick = {
                     showRestartConfirmDialog = false
+                    showLeaderboardScreen = false
                     showSettingsScreen = true
                 },
                 modifier = Modifier.fillMaxWidth()
@@ -1214,7 +1235,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
         }
     }
 
-        if (!showSettingsScreen && gameState.isGameOver) {
+        if (!showSettingsScreen && !showLeaderboardScreen && gameState.isGameOver) {
             LaunchedEffect(gameState.isGameOver, savePromptDismissed, accountConnectionState.isAnonymous) {
                 offerSavePromptIfNeeded()
             }
@@ -1224,11 +1245,11 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 isNewBest = isNewBestThisGame,
                 runSyncMessage = runSyncState.message,
                 onLeaderboard = {
-                    openLeaderboard()
+                    openLeaderboardDialog()
                 },
                 onRestart = ::restartGame
         )
-    } else if (!showSettingsScreen && showRiskSpinOverlay && showRiskSpinOptions) {
+    } else if (!showSettingsScreen && !showLeaderboardScreen && showRiskSpinOverlay && showRiskSpinOptions) {
         RiskSpinDialog(
             gameState = gameState,
             onOptionSelected = { option ->
@@ -1248,7 +1269,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 riskSpinPaidCost = null
             }
         )
-        } else if (!showSettingsScreen && showRestartConfirmDialog) {
+        } else if (!showSettingsScreen && !showLeaderboardScreen && showRestartConfirmDialog) {
             RestartConfirmDialog(
                 onCancel = {
                     showRestartConfirmDialog = false

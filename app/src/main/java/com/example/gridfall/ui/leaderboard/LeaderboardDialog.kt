@@ -85,19 +85,12 @@ fun LeaderboardDialog(
             }
         },
         text = {
-            Box(
+            LeaderboardContent(
+                state = state,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 180.dp, max = 380.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                when {
-                    state.isLoading -> CircularProgressIndicator(color = theme.accentStrong)
-                    state.error != null -> StateText(text = state.error, color = theme.warning)
-                    state.entries.isEmpty() -> StateText(text = "No leaderboard entries yet.", color = theme.textSecondary)
-                    else -> LeaderboardList(entries = state.entries)
-                }
-            }
+                    .heightIn(min = 180.dp, max = 380.dp)
+            )
         },
         confirmButton = {
             LeaderboardButton(label = "Refresh", onClick = onRefresh)
@@ -109,14 +102,75 @@ fun LeaderboardDialog(
 }
 
 @Composable
+fun LeaderboardContent(
+    state: LeaderboardUiState,
+    modifier: Modifier = Modifier
+) {
+    val theme = LocalGridfallColors.current
+
+    Box(
+        modifier = modifier,
+        contentAlignment = Alignment.Center
+    ) {
+        when {
+            state.isLoading -> CircularProgressIndicator(color = theme.accentStrong)
+            state.error != null -> StateText(text = state.error, color = theme.warning)
+            state.entries.isEmpty() -> StateText(text = "No leaderboard entries yet.", color = theme.textSecondary)
+            else -> LeaderboardList(entries = state.entries)
+        }
+    }
+}
+
+@Composable
 private fun LeaderboardList(entries: List<LeaderboardEntryDto>) {
     LazyColumn(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
+        item {
+            LeaderboardHeaderRow()
+        }
         items(entries, key = { entry -> entry.rank }) { entry ->
             LeaderboardRow(entry = entry)
         }
+    }
+}
+
+@Composable
+private fun LeaderboardHeaderRow() {
+    val theme = LocalGridfallColors.current
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 10.dp, vertical = 2.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "Rank",
+            color = theme.textMuted,
+            style = MaterialTheme.typography.labelSmall.retroText(theme),
+            modifier = Modifier.weight(0.55f)
+        )
+        Text(
+            text = "Username",
+            color = theme.textMuted,
+            style = MaterialTheme.typography.labelSmall.retroText(theme),
+            modifier = Modifier.weight(1.60f)
+        )
+        Text(
+            text = "Best score",
+            color = theme.textMuted,
+            style = MaterialTheme.typography.labelSmall.retroText(theme),
+            modifier = Modifier.weight(1f)
+        )
+        Text(
+            text = "Best level",
+            color = theme.textMuted,
+            style = MaterialTheme.typography.labelSmall.retroText(theme),
+            modifier = Modifier.weight(0.75f)
+        )
     }
 }
 
