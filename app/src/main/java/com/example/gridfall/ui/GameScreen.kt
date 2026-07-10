@@ -180,14 +180,9 @@ fun GameScreen(modifier: Modifier = Modifier) {
     }
 
     fun syncHighScoreFromBackend(backendUser: MeResponse) {
-        val mergedHighScore = HighScoreStore.mergedBestScore(
-            localBestScore = highScore,
-            backendBestScore = backendUser.profile.bestScore
-        )
-        if (mergedHighScore != highScore) {
-            highScore = mergedHighScore
-            HighScoreStore.save(context, mergedHighScore)
-        }
+        val accountHighScore = HighScoreStore.accountBestScore(backendUser.profile.bestScore)
+        highScore = accountHighScore
+        HighScoreStore.save(context, accountHighScore)
     }
 
     fun refreshPendingRunCount() {
@@ -400,6 +395,8 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 }
 
                 val authSession = authManager.loginWithEmailPassword(email, password)
+                highScore = 0
+                HighScoreStore.save(context, 0)
                 var token = authManager.getFreshIdToken()
                 var backendUser = apiClient.getMe(token)
 
@@ -474,6 +471,8 @@ fun GameScreen(modifier: Modifier = Modifier) {
             authUiError = null
             try {
                 val authSession = authManager.logoutToAnonymous()
+                highScore = 0
+                HighScoreStore.save(context, 0)
                 refreshAccountState(authSession)
                 showLogoutConfirmDialog = false
             } catch (error: Exception) {

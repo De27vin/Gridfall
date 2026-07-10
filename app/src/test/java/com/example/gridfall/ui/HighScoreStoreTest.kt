@@ -5,24 +5,17 @@ import org.junit.Test
 
 class HighScoreStoreTest {
     @Test
-    fun mergedBestScoreUsesBackendWhenLocalIsLower() {
-        assertEquals(
-            150,
-            HighScoreStore.mergedBestScore(
-                localBestScore = 0,
-                backendBestScore = 150
-            )
-        )
+    fun accountBestScoreUsesTheBackendScore() {
+        assertEquals(150, HighScoreStore.accountBestScore(150))
     }
 
     @Test
-    fun mergedBestScoreKeepsLocalWhenLocalIsHigher() {
-        assertEquals(
-            200,
-            HighScoreStore.mergedBestScore(
-                localBestScore = 200,
-                backendBestScore = 150
-            )
-        )
+    fun accountBestScoreDoesNotKeepThePreviousAccountsScore() {
+        assertEquals(0, HighScoreStore.accountBestScore(0))
+    }
+
+    @Test
+    fun accountBestScoreDoesNotReturnNegativeValues() {
+        assertEquals(0, HighScoreStore.accountBestScore(-1))
     }
 }

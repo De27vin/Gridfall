@@ -20,10 +20,7 @@ object HighScoreStore {
             .apply()
     }
 
-    fun mergedBestScore(
-        localBestScore: Int,
-        backendBestScore: Int
-    ): Int {
-        return maxOf(localBestScore, backendBestScore)
+    fun accountBestScore(backendBestScore: Int): Int {
+        return backendBestScore.coerceAtLeast(0)
     }
 }
