@@ -34,7 +34,7 @@ android {
             buildConfigField(
                 "String",
                 "GRIDFALL_API_BASE_URL",
-                "\"https://api.your-domain.ch\""
+                "\"https://api.gridfall.site\""
             )
             optimization {
                 enable = false
