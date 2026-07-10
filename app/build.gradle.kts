@@ -30,6 +30,16 @@ android {
                 "\"http://192.168.222.172:8080\""
             )
         }
+        // Public HTTPS test build. It remains debuggable so Settings displays the active API URL.
+        create("staging") {
+            initWith(getByName("debug"))
+            matchingFallbacks += listOf("debug")
+            buildConfigField(
+                "String",
+                "GRIDFALL_API_BASE_URL",
+                "\"https://api.gridfall.site\""
+            )
+        }
         release {
             buildConfigField(
                 "String",

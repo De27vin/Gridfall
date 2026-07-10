@@ -3,8 +3,11 @@
 Gridfall Android API URLs are configured by Gradle `BuildConfig` fields.
 
 - Debug API URL: `http://192.168.222.172:8080`
-- Release API URL placeholder: `https://api.your-domain.ch`
-- Update the release URL before shipping a public build.
+- Staging API URL: `https://api.gridfall.site`
+- Release API URL: `https://api.gridfall.site`
+- Build the public mobile-data test APK with `./gradlew.bat :app:assembleStaging --console=plain`.
+- Install it on a connected device with `./gradlew.bat :app:installStaging --console=plain`.
+- Staging is debuggable, so Settings displays `API: https://api.gridfall.site`.
 - Release requires a Synology reverse proxy or equivalent HTTPS endpoint with a valid certificate.
 - Release builds must not use a local LAN IP.
 - Release builds must not allow cleartext HTTP.
