@@ -20,7 +20,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.activity.compose.BackHandler
 import androidx.compose.material3.Button
+import androidx.activity.compose.BackHandler
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -141,6 +143,13 @@ fun GameScreen(modifier: Modifier = Modifier) {
     var showLeaderboardDialog by remember { mutableStateOf(false) }
     var showLeaderboardScreen by remember { mutableStateOf(false) }
     var leaderboardUiState by remember { mutableStateOf(LeaderboardUiState()) }
+
+    BackHandler(enabled = showSettingsScreen || showLeaderboardScreen) {
+        when {
+            showSettingsScreen -> showSettingsScreen = false
+            showLeaderboardScreen -> showLeaderboardScreen = false
+        }
+    }
     val soundManager = remember { GridfallSoundManager(context) }
     val authManager = remember { GridfallAuthManager() }
     val apiClient = remember { GridfallApiClient() }
