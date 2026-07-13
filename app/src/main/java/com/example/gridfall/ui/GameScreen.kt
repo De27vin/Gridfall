@@ -32,6 +32,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -96,7 +97,11 @@ fun GameScreen(modifier: Modifier = Modifier) {
     val context = LocalContext.current.applicationContext
     val view = LocalView.current
     val lifecycleOwner = view.findViewTreeLifecycleOwner()
-    var gameState by remember { mutableStateOf(GameEngine.createInitialState()) }
+    val inProgressRunStore = remember { InProgressRunStore(context) }
+    val restoredInProgressRun = remember { inProgressRunStore.load() }
+    var gameState by remember {
+        mutableStateOf(restoredInProgressRun?.gameState ?: GameEngine.createInitialState())
+    }
     var dragState by remember { mutableStateOf(DragState()) }
     var boardLayoutInfo by remember { mutableStateOf<BoardLayoutInfo?>(null) }
     var highScore by remember { mutableStateOf(HighScoreStore.load(context)) }
@@ -108,10 +113,16 @@ fun GameScreen(modifier: Modifier = Modifier) {
     var scoreEventFeedback by remember { mutableStateOf<ScoreEventFeedback?>(null) }
     var scoreEventFeedbackToken by remember { mutableStateOf(0) }
     var showRestartConfirmDialog by remember { mutableStateOf(false) }
-    var showRiskSpinOverlay by remember { mutableStateOf(false) }
+    var showRiskSpinOverlay by remember {
+        mutableStateOf(restoredInProgressRun?.riskSpinMemorySession != null)
+    }
     var showRiskSpinOptions by remember { mutableStateOf(false) }
-    var riskSpinMemorySession by remember { mutableStateOf<RiskSpinMemorySession?>(null) }
-    var riskSpinPaidCost by remember { mutableStateOf<Int?>(null) }
+    var riskSpinMemorySession by remember {
+        mutableStateOf(restoredInProgressRun?.riskSpinMemorySession)
+    }
+    var riskSpinPaidCost by remember {
+        mutableStateOf(restoredInProgressRun?.riskSpinPaidCost)
+    }
     var showSettingsScreen by remember { mutableStateOf(false) }
     var selectedThemeMode by remember { mutableStateOf(ThemePreferenceStore.load(context)) }
     var soundEffectsVolume by remember { mutableStateOf(SoundPreferenceStore.loadSoundEffectsVolume(context)) }
@@ -134,6 +145,20 @@ fun GameScreen(modifier: Modifier = Modifier) {
     val authManager = remember { GridfallAuthManager() }
     val apiClient = remember { GridfallApiClient() }
     val pendingRunStore = remember { PendingRunSubmissionStore(context) }
+    val persistInProgressRun by rememberUpdatedState(newValue = {
+        val memorySession = riskSpinMemorySession.takeIf { showRiskSpinOverlay }
+        if (!gameState.isGameOver && InProgressRunJson.hasProgress(gameState, memorySession)) {
+            inProgressRunStore.save(
+                SavedInProgressRun(
+                    gameState = gameState,
+                    riskSpinMemorySession = memorySession,
+                    riskSpinPaidCost = riskSpinPaidCost.takeIf { memorySession != null }
+                )
+            )
+        } else {
+            inProgressRunStore.clear()
+        }
+    })
     var pendingRunCount by remember { mutableStateOf(pendingRunStore.pendingCount()) }
     var isRetryingPendingRuns by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
@@ -621,9 +646,16 @@ fun GameScreen(modifier: Modifier = Modifier) {
     }
 
     LaunchedEffect(gameState.isGameOver, gameState.runStats.runId) {
+        if (gameState.isGameOver) {
+            inProgressRunStore.clear()
+        }
         if (RunSubmissionPolicy.shouldSubmitGameOverRun(gameState)) {
             submitEndedRunOnce(gameState)
         }
+    }
+
+    LaunchedEffect(gameState, riskSpinMemorySession, riskSpinPaidCost, showRiskSpinOverlay) {
+        persistInProgressRun()
     }
 
     DisposableEffect(soundManager) {
@@ -640,10 +672,13 @@ fun GameScreen(modifier: Modifier = Modifier) {
             isAppInForeground = owner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
             val observer = LifecycleEventObserver { _, event ->
                 when (event) {
-                    Lifecycle.Event.ON_RESUME -> isAppInForeground = true
+                    Lifecycle.Event.ON_RESUME -> {
+                        isAppInForeground = true
+                    }
                     Lifecycle.Event.ON_PAUSE,
                     Lifecycle.Event.ON_STOP,
                     Lifecycle.Event.ON_DESTROY -> {
+                        persistInProgressRun()
                         isAppInForeground = false
                         soundManager.stopBackgroundMusic()
                     }
@@ -722,6 +757,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
     }
 
     fun restartGame() {
+        inProgressRunStore.clear()
         showRestartConfirmDialog = false
         showRiskSpinOverlay = false
         showRiskSpinOptions = false
