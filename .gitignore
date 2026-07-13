@@ -7,8 +7,10 @@
 /.idea/workspace.xml
 /.idea/navEditor.xml
 /.idea/assetWizardSettings.xml
+/.idea/shelf/
 .DS_Store
 /build
+/app/build/
 /captures
 .externalNativeBuild
 .cxx
@@ -20,3 +22,13 @@ local.properties
 /keystore.properties
 /keystore/
 *.keystore
+
+# API local dependencies, environment, and generated output
+/api/node_modules/
+/api/dist/
+/api/.env
+/api/.env.*
+!/api/.env.example
+/api/firebase-service-account.json
+/api/coverage/
+/api/*.log
