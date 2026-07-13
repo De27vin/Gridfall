@@ -1,8 +1,28 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.google.services)
 }
+
+val releaseKeystorePropertiesFile = rootProject.file("keystore.properties")
+val releaseKeystoreProperties = Properties().apply {
+    if (releaseKeystorePropertiesFile.isFile) {
+        releaseKeystorePropertiesFile.inputStream().use(::load)
+    }
+}
+
+fun releaseSigningProperty(name: String): String? {
+    return releaseKeystoreProperties.getProperty(name)?.trim()?.takeIf { it.isNotEmpty() }
+}
+
+val hasReleaseSigningProperties = listOf(
+    "storeFile",
+    "storePassword",
+    "keyAlias",
+    "keyPassword"
+).all { releaseSigningProperty(it) != null }
 
 android {
     namespace = "com.example.gridfall"
@@ -20,6 +40,17 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    signingConfigs {
+        create("release") {
+            if (hasReleaseSigningProperties) {
+                storeFile = rootProject.file(requireNotNull(releaseSigningProperty("storeFile")))
+                storePassword = requireNotNull(releaseSigningProperty("storePassword"))
+                keyAlias = requireNotNull(releaseSigningProperty("keyAlias"))
+                keyPassword = requireNotNull(releaseSigningProperty("keyPassword"))
+            }
+        }
     }
 
     buildTypes {
@@ -41,6 +72,7 @@ android {
             )
         }
         release {
+            signingConfig = signingConfigs.getByName("release")
             buildConfigField(
                 "String",
                 "GRIDFALL_API_BASE_URL",
