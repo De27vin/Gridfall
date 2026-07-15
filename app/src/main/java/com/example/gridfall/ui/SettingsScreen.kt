@@ -51,7 +51,8 @@ import kotlin.math.roundToInt
 private val themeOptions = listOf(
     GridfallThemeMode.PremiumTactical,
     GridfallThemeMode.InfernoCore,
-    GridfallThemeMode.RetroArcade
+    GridfallThemeMode.RetroArcade,
+    GridfallThemeMode.Blockworld
 )
 
 private fun pendingRunsLabel(count: Int): String {

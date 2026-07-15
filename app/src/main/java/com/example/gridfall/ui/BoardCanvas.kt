@@ -73,8 +73,9 @@ fun BoardCanvas(
             )
             .infernoBoardFrameTexture(theme)
             .retroBoardFrameTexture(theme)
+            .blockworldFrameTexture(theme)
             .border(
-                if (theme.isRetroTheme() || theme.isInfernoTheme()) 2.dp else 1.dp,
+                if (theme.isRetroTheme() || theme.isInfernoTheme() || theme.isBlockworldTheme()) 2.dp else 1.dp,
                 theme.panelBorder.copy(alpha = if (theme.isInfernoTheme()) 0.92f else 1f),
                 outerShape
             )
@@ -82,6 +83,7 @@ fun BoardCanvas(
                 when {
                     theme.isRetroTheme() -> 10.dp
                     theme.isInfernoTheme() -> 12.dp
+                    theme.isBlockworldTheme() -> 10.dp
                     else -> 8.dp
                 }
             )
@@ -89,6 +91,7 @@ fun BoardCanvas(
             .background(theme.boardInner)
             .infernoBoardWellTexture(theme)
             .retroBoardWellTexture(theme)
+            .blockworldWellTexture(theme)
             .onGloballyPositioned { coordinates ->
                 val sizePx = minOf(coordinates.size.width, coordinates.size.height).toFloat()
                 val spacing = 4.dp.value * (sizePx / 300f) // Scale spacing roughly
@@ -141,7 +144,9 @@ fun BoardCanvas(
             placementPreview?.let { preview ->
                 val previewColor = if (!preview.isValid) theme.invalidPreviewBorder else theme.validPreviewBorder
                 val previewFill = if (!preview.isValid) theme.invalidPreviewFill else theme.validPreviewFill
-                val previewCornerRadius = if (theme.isRetroTheme()) {
+                val previewCornerRadius = if (theme.isBlockworldTheme()) {
+                    CornerRadius.Zero
+                } else if (theme.isRetroTheme()) {
                     CornerRadius(cellSize * 0.045f, cellSize * 0.045f)
                 } else if (theme.isInfernoTheme()) {
                     CornerRadius(cellSize * 0.060f, cellSize * 0.060f)
@@ -435,6 +440,13 @@ private fun DrawScope.drawEmptyCell(
     )
 }
 
+private fun DrawScope.drawBlockworldEmptyCell(topLeft: Offset, cellSize: Float, colors: GridfallColors) {
+    drawRect(color = Color.Black.copy(alpha = 0.24f), topLeft = topLeft + Offset(cellSize * 0.05f, cellSize * 0.06f), size = Size(cellSize, cellSize))
+    drawRect(color = colors.emptyCell, topLeft = topLeft, size = Size(cellSize, cellSize))
+    drawRect(color = colors.emptyCell.copy(alpha = 0.64f), topLeft = topLeft, size = Size(cellSize, cellSize * 0.18f))
+    drawRect(color = colors.boardInner.copy(alpha = 0.66f), topLeft = topLeft + Offset(0f, cellSize * 0.82f), size = Size(cellSize, cellSize * 0.18f))
+    drawRect(color = colors.emptyCellBorder.copy(alpha = 0.88f), topLeft = topLeft, size = Size(cellSize, cellSize), style = Stroke(width = (cellSize * 0.045f).coerceAtLeast(1f)))
+}
 private fun DrawScope.drawFilledCell(
     topLeft: Offset,
     cellSize: Float,
@@ -454,7 +466,9 @@ private fun DrawScope.drawContractWarningCell(
     cellSize: Float,
     colors: GridfallColors
 ) {
-    val cornerRadius = if (colors.isInfernoTheme()) {
+    val cornerRadius = if (colors.isBlockworldTheme()) {
+        CornerRadius.Zero
+    } else if (colors.isInfernoTheme()) {
         CornerRadius(cellSize * 0.060f, cellSize * 0.060f)
     } else {
         CornerRadius(8.dp.toPx(), 8.dp.toPx())

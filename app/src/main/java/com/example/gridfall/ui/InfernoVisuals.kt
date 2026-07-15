@@ -17,14 +17,15 @@ import com.example.gridfall.ui.theme.InfernoCoreColors
 internal fun GridfallColors.isInfernoTheme(): Boolean = this == InfernoCoreColors
 
 internal fun infernoCorner(colors: GridfallColors, default: Dp): Dp {
-    return if (colors.isInfernoTheme()) 8.dp else default
+    return when { colors.isBlockworldTheme() -> 0.dp; colors.isInfernoTheme() -> 8.dp; else -> default }
 }
 
 internal fun infernoBorderWidth(colors: GridfallColors, default: Dp): Dp {
-    return if (colors.isInfernoTheme()) 2.dp else default
+    return if (colors.isInfernoTheme() || colors.isBlockworldTheme()) 2.dp else default
 }
 
 internal fun Modifier.infernoAppTexture(colors: GridfallColors): Modifier {
+    if (colors.isBlockworldTheme()) return blockworldFrameTexture(colors)
     if (!colors.isInfernoTheme()) return this
 
     return drawWithCache {
@@ -77,6 +78,7 @@ internal fun Modifier.infernoAppTexture(colors: GridfallColors): Modifier {
 }
 
 internal fun Modifier.infernoPanelTexture(colors: GridfallColors): Modifier {
+    if (colors.isBlockworldTheme()) return blockworldFrameTexture(colors)
     if (!colors.isInfernoTheme()) return this
 
     return drawWithCache {
@@ -113,6 +115,7 @@ internal fun Modifier.infernoPanelTexture(colors: GridfallColors): Modifier {
 }
 
 internal fun Modifier.infernoBoardFrameTexture(colors: GridfallColors): Modifier {
+    if (colors.isBlockworldTheme()) return blockworldFrameTexture(colors)
     if (!colors.isInfernoTheme()) return this
 
     return drawWithCache {
@@ -145,6 +148,7 @@ internal fun Modifier.infernoBoardFrameTexture(colors: GridfallColors): Modifier
 }
 
 internal fun Modifier.infernoBoardWellTexture(colors: GridfallColors): Modifier {
+    if (colors.isBlockworldTheme()) return blockworldFrameTexture(colors)
     if (!colors.isInfernoTheme()) return this
 
     return drawWithCache {
@@ -167,6 +171,7 @@ internal fun Modifier.infernoSlotTexture(
     colors: GridfallColors,
     active: Boolean
 ): Modifier {
+    if (colors.isBlockworldTheme()) return blockworldFrameTexture(colors)
     if (!colors.isInfernoTheme()) return this
 
     val intensity = if (active) 1f else 0.64f

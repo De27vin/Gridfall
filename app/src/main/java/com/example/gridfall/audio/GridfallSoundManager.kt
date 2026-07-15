@@ -91,7 +91,9 @@ class GridfallSoundManager(context: Context) {
         event: ThemeSoundEvent,
         effectsVolume: Float
     ) {
-        sounds[SoundKey(themeMode, event)]?.let { soundId ->
+        val soundId = sounds[SoundKey(themeMode, event)]
+            ?: sounds[SoundKey(GridfallThemeMode.PremiumTactical, event)]
+        if (soundId != null) {
             play(soundId, effectsVolume)
         }
     }
@@ -194,6 +196,7 @@ class GridfallSoundManager(context: Context) {
                     GridfallThemeMode.PremiumTactical -> Premium
                     GridfallThemeMode.InfernoCore -> Inferno
                     GridfallThemeMode.RetroArcade -> Retro
+                    GridfallThemeMode.Blockworld -> Premium
                 }
             }
         }

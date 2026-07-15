@@ -21,6 +21,11 @@ internal fun DrawScope.drawTacticalBlock(
     val palette = paletteForVariant(variant, colors)
     val isInferno = colors.isInfernoTheme()
 
+    if (colors.isBlockworldTheme()) {
+        drawBlockworldBlock(topLeft = topLeft, cellSize = cellSize, variant = variant, colors = colors)
+        return
+    }
+
     if (colors.isRetroTheme()) {
         drawRetroBlock(topLeft = topLeft, cellSize = cellSize, variant = variant, colors = colors)
         return
@@ -107,6 +112,27 @@ internal fun DrawScope.drawTacticalBlock(
     }
 }
 
+private fun DrawScope.drawBlockworldBlock(topLeft: Offset, cellSize: Float, variant: Int, colors: GridfallColors) {
+    val palette = paletteForVariant(variant, colors)
+    val shadowOffset = cellSize * 0.07f
+    drawRect(color = Color.Black.copy(alpha = 0.42f), topLeft = topLeft + Offset(shadowOffset, shadowOffset), size = Size(cellSize, cellSize))
+    drawRect(color = palette.middle, topLeft = topLeft, size = Size(cellSize, cellSize))
+    drawRect(color = palette.top, topLeft = topLeft, size = Size(cellSize, cellSize * 0.24f))
+    drawRect(color = palette.bottom, topLeft = topLeft + Offset(0f, cellSize * 0.76f), size = Size(cellSize, cellSize * 0.24f))
+    drawRect(color = palette.bottom.copy(alpha = 0.72f), topLeft = topLeft + Offset(cellSize * 0.82f, cellSize * 0.24f), size = Size(cellSize * 0.18f, cellSize * 0.52f))
+    val fleckSize = (cellSize * 0.12f).coerceAtLeast(1f)
+    listOf(Offset(0.18f, 0.38f), Offset(0.55f, 0.48f), Offset(0.34f, 0.68f)).forEachIndexed { index, point ->
+        drawRect(color = if (index % 2 == 0) Color.White.copy(alpha = 0.13f) else Color.Black.copy(alpha = 0.14f), topLeft = topLeft + Offset(cellSize * point.x, cellSize * point.y), size = Size(fleckSize, fleckSize))
+    }
+    drawRect(color = colors.boardInner.copy(alpha = 0.88f), topLeft = topLeft, size = Size(cellSize, cellSize), style = Stroke(width = (cellSize * 0.055f).coerceAtLeast(1.5f)))
+    if (variant == 0) {
+        val coreSize = cellSize * 0.42f
+        val coreTopLeft = topLeft + Offset((cellSize - coreSize) / 2f, (cellSize - coreSize) / 2f)
+        drawRect(color = colors.bombOuter, topLeft = coreTopLeft, size = Size(coreSize, coreSize))
+        drawRect(color = colors.bombCore, topLeft = coreTopLeft + Offset(coreSize * 0.24f, coreSize * 0.24f), size = Size(coreSize * 0.52f, coreSize * 0.52f))
+        drawRect(color = colors.bombInner, topLeft = coreTopLeft + Offset(coreSize * 0.40f, coreSize * 0.08f), size = Size(coreSize * 0.20f, coreSize * 0.84f))
+    }
+}
 private fun DrawScope.drawInfernoBlock(
     topLeft: Offset,
     cellSize: Float,
