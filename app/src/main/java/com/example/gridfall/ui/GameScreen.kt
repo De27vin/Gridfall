@@ -143,6 +143,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
     var showLeaderboardDialog by remember { mutableStateOf(false) }
     var showLeaderboardScreen by remember { mutableStateOf(false) }
     var leaderboardUiState by remember { mutableStateOf(LeaderboardUiState()) }
+    var wasRiskSpinAvailable by remember { mutableStateOf(false) }
 
     BackHandler(enabled = showSettingsScreen || showLeaderboardScreen) {
         when {
@@ -172,6 +173,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
     var isRetryingPendingRuns by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     val activeThemeColors = colorsForThemeMode(selectedThemeMode)
+    val riskSpinIsAvailable = GameEngine.riskSpinAvailability(gameState).isAvailable
     val currentLevel = LevelSystem.levelForScore(gameState.score)
     val nextLevelScore = LevelSystem.nextLevelScore(currentLevel)
     val density = LocalDensity.current
@@ -663,6 +665,13 @@ fun GameScreen(modifier: Modifier = Modifier) {
         }
     }
 
+    LaunchedEffect(riskSpinIsAvailable) {
+        if (riskSpinIsAvailable && !wasRiskSpinAvailable) {
+            soundManager.playRiskSpinAvailable(soundEffectsVolume)
+        }
+        wasRiskSpinAvailable = riskSpinIsAvailable
+    }
+
     LaunchedEffect(gameState, riskSpinMemorySession, riskSpinPaidCost, showRiskSpinOverlay) {
         persistInProgressRun()
     }
@@ -1093,6 +1102,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                         .height(44.dp)
                         .infernoPanelTexture(activeThemeColors)
                         .retroPanelTexture(activeThemeColors)
+                        .riskSpinAvailabilityGlow(activeThemeColors, riskSpinAvailability.isAvailable)
                         .border(
                             width = if (activeThemeColors.isRetroTheme() || activeThemeColors.isInfernoTheme()) 1.dp else 0.dp,
                             color = activeThemeColors.accentStrong.copy(
@@ -1268,6 +1278,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                     if (result != null) {
                         gameState = result.state
                         riskSpinMemorySession = result.session
+                        soundManager.playRiskSpinFieldChosen(soundEffectsVolume)
                         view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
                     }
                 },
@@ -1306,6 +1317,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                     riskSpinMemorySession = result.session
                     riskSpinPaidCost = result.cost
                     showRiskSpinOptions = false
+                    soundManager.playRiskSpinAccepted(soundEffectsVolume)
                     view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
                 }
             },

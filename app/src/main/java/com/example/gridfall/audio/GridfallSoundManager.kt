@@ -52,6 +52,9 @@ class GridfallSoundManager(context: Context) {
     )
 
     private val contractPopup = loadSfx("contract_popup.ogg")
+    private val riskSpinAvailable = loadSfx("risk_spin_available.ogg")
+    private val riskSpinAccepted = loadSfx("risk_spin_accepted.ogg")
+    private val riskSpinFieldChosen = loadSfx("risk_spin_field_chosen.ogg")
     private val contractSuccess = loadSfx("contract_success.ogg")
     private val contractFailed = listOf(
         loadSfx("contract_failed_1.ogg"),
@@ -101,6 +104,18 @@ class GridfallSoundManager(context: Context) {
         if (soundId != null) {
             play(soundId, effectsVolume)
         }
+    }
+
+fun playRiskSpinAvailable(effectsVolume: Float) {
+        play(riskSpinAvailable, effectsVolume)
+    }
+
+    fun playRiskSpinAccepted(effectsVolume: Float) {
+        play(riskSpinAccepted, effectsVolume)
+    }
+
+    fun playRiskSpinFieldChosen(effectsVolume: Float) {
+        play(riskSpinFieldChosen, effectsVolume)
     }
 
     fun playContractPopup(effectsVolume: Float) {
