@@ -29,21 +29,26 @@ class GridfallSoundManager(context: Context) {
         }
 
     private val sounds = mapOf(
-        SoundKey(GridfallThemeMode.PremiumTactical, ThemeSoundEvent.Place) to loadSfx("premium_place.ogg"),
-        SoundKey(GridfallThemeMode.PremiumTactical, ThemeSoundEvent.Bomb) to loadSfx("premium_bomb.ogg"),
-        SoundKey(GridfallThemeMode.PremiumTactical, ThemeSoundEvent.LineClear) to loadSfx("premium_line_clear.ogg"),
-        SoundKey(GridfallThemeMode.PremiumTactical, ThemeSoundEvent.MultiLineClear) to loadSfx("premium_multi_line_clear.ogg"),
-        SoundKey(GridfallThemeMode.PremiumTactical, ThemeSoundEvent.GameOver) to loadSfx("premium_game_over.ogg"),
-        SoundKey(GridfallThemeMode.InfernoCore, ThemeSoundEvent.Place) to loadSfx("inferno_place.ogg"),
-        SoundKey(GridfallThemeMode.InfernoCore, ThemeSoundEvent.Bomb) to loadSfx("inferno_bomb.ogg"),
-        SoundKey(GridfallThemeMode.InfernoCore, ThemeSoundEvent.LineClear) to loadSfx("inferno_line_clear.ogg"),
-        SoundKey(GridfallThemeMode.InfernoCore, ThemeSoundEvent.MultiLineClear) to loadSfx("inferno_multi_line_clear.ogg"),
-        SoundKey(GridfallThemeMode.InfernoCore, ThemeSoundEvent.GameOver) to loadSfx("inferno_game_over.ogg"),
-        SoundKey(GridfallThemeMode.RetroArcade, ThemeSoundEvent.Place) to loadSfx("retro_place.ogg"),
-        SoundKey(GridfallThemeMode.RetroArcade, ThemeSoundEvent.Bomb) to loadSfx("retro_bomb.ogg"),
-        SoundKey(GridfallThemeMode.RetroArcade, ThemeSoundEvent.LineClear) to loadSfx("retro_line_clear.ogg"),
-        SoundKey(GridfallThemeMode.RetroArcade, ThemeSoundEvent.MultiLineClear) to loadSfx("retro_multi_line_clear.ogg"),
-        SoundKey(GridfallThemeMode.RetroArcade, ThemeSoundEvent.GameOver) to loadSfx("retro_game_over.ogg")
+        SoundKey(GridfallThemeMode.PremiumTactical, ThemeSoundEvent.Place) to loadSfx("premium_tactical/premium_place.ogg"),
+        SoundKey(GridfallThemeMode.PremiumTactical, ThemeSoundEvent.Bomb) to loadSfx("premium_tactical/premium_bomb.ogg"),
+        SoundKey(GridfallThemeMode.PremiumTactical, ThemeSoundEvent.LineClear) to loadSfx("premium_tactical/premium_line_clear.ogg"),
+        SoundKey(GridfallThemeMode.PremiumTactical, ThemeSoundEvent.MultiLineClear) to loadSfx("premium_tactical/premium_multi_line_clear.ogg"),
+        SoundKey(GridfallThemeMode.PremiumTactical, ThemeSoundEvent.GameOver) to loadSfx("premium_tactical/premium_game_over.ogg"),
+        SoundKey(GridfallThemeMode.InfernoCore, ThemeSoundEvent.Place) to loadSfx("inferno_core/inferno_place.ogg"),
+        SoundKey(GridfallThemeMode.InfernoCore, ThemeSoundEvent.Bomb) to loadSfx("inferno_core/inferno_bomb.ogg"),
+        SoundKey(GridfallThemeMode.InfernoCore, ThemeSoundEvent.LineClear) to loadSfx("inferno_core/inferno_line_clear.ogg"),
+        SoundKey(GridfallThemeMode.InfernoCore, ThemeSoundEvent.MultiLineClear) to loadSfx("inferno_core/inferno_multi_line_clear.ogg"),
+        SoundKey(GridfallThemeMode.InfernoCore, ThemeSoundEvent.GameOver) to loadSfx("inferno_core/inferno_game_over.ogg"),
+        SoundKey(GridfallThemeMode.RetroArcade, ThemeSoundEvent.Place) to loadSfx("retro_arcade/retro_place.ogg"),
+        SoundKey(GridfallThemeMode.RetroArcade, ThemeSoundEvent.Bomb) to loadSfx("retro_arcade/retro_bomb.ogg"),
+        SoundKey(GridfallThemeMode.RetroArcade, ThemeSoundEvent.LineClear) to loadSfx("retro_arcade/retro_line_clear.ogg"),
+        SoundKey(GridfallThemeMode.RetroArcade, ThemeSoundEvent.MultiLineClear) to loadSfx("retro_arcade/retro_multi_line_clear.ogg"),
+        SoundKey(GridfallThemeMode.RetroArcade, ThemeSoundEvent.GameOver) to loadSfx("retro_arcade/retro_game_over.ogg"),
+        SoundKey(GridfallThemeMode.Blockworld, ThemeSoundEvent.Place) to loadSfx("blockworld/blockworld_place.ogg"),
+        SoundKey(GridfallThemeMode.Blockworld, ThemeSoundEvent.Bomb) to loadSfx("blockworld/blockworld_bomb.ogg"),
+        SoundKey(GridfallThemeMode.Blockworld, ThemeSoundEvent.LineClear) to loadSfx("blockworld/blockworld_clear_line.ogg"),
+        SoundKey(GridfallThemeMode.Blockworld, ThemeSoundEvent.MultiLineClear) to loadSfx("blockworld/blockworld_multi_line_clear.ogg"),
+        SoundKey(GridfallThemeMode.Blockworld, ThemeSoundEvent.GameOver) to loadSfx("blockworld/blockworld_game_over.ogg")
     )
 
     private val contractPopup = loadSfx("contract_popup.ogg")
@@ -188,7 +193,8 @@ class GridfallSoundManager(context: Context) {
         Menu("sounds/music/menu-background-music.ogg"),
         Premium("sounds/music/background-music.ogg"),
         Inferno("sounds/music/inferno-background-music.ogg"),
-        Retro("sounds/music/retro-background-music.ogg");
+        Retro("sounds/music/retro-background-music.ogg"),
+        Blockworld("sounds/music/blockworld-background-music.ogg");
 
         companion object {
             fun forTheme(themeMode: GridfallThemeMode): MusicTrack {
@@ -196,7 +202,7 @@ class GridfallSoundManager(context: Context) {
                     GridfallThemeMode.PremiumTactical -> Premium
                     GridfallThemeMode.InfernoCore -> Inferno
                     GridfallThemeMode.RetroArcade -> Retro
-                    GridfallThemeMode.Blockworld -> Premium
+                    GridfallThemeMode.Blockworld -> Blockworld
                 }
             }
         }
