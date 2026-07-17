@@ -82,6 +82,7 @@ export function serializeUserWithProfile({ user, profile }: UserWithProfile) {
       bestScore: profile.bestScore,
       bestLevel: profile.bestLevel,
       gamesPlayed: profile.gamesPlayed,
+      totalPoints: profile.totalPoints,
       totalLinesCleared: profile.totalLinesCleared,
       totalContractsCompleted: profile.totalContractsCompleted,
       totalBombsUsed: profile.totalBombsUsed,

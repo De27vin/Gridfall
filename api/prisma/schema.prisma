@@ -32,6 +32,7 @@ model PlayerProfile {
   bestScore                Int      @default(0)
   bestLevel                Int      @default(1)
   gamesPlayed              Int      @default(0)
+  totalPoints              Int      @default(0)
   totalLinesCleared        Int      @default(0)
   totalContractsCompleted  Int      @default(0)
   totalBombsUsed           Int      @default(0)

@@ -13,6 +13,7 @@ data class PlayerProfileDto(
     val bestScore: Int,
     val bestLevel: Int,
     val gamesPlayed: Int,
+    val totalPoints: Int,
     val totalLinesCleared: Int,
     val totalContractsCompleted: Int,
     val totalBombsUsed: Int,

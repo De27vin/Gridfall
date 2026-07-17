@@ -18,6 +18,7 @@ describe("submitRunSchema", () => {
       bestScore: 1234,
       bestLevel: 7,
       gamesPlayed: 1,
+      totalPoints: 1234,
       totalLinesCleared: 50,
       totalContractsCompleted: 4,
       totalBombsUsed: 3,

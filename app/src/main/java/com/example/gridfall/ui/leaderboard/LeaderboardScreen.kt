@@ -80,20 +80,8 @@ fun LeaderboardScreen(
                 .padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            if (accountConnectionState.isAnonymous) {
-                Text(
-                    text = "Register and choose a username to appear on the leaderboard.",
-                    color = theme.textSecondary,
-                    style = MaterialTheme.typography.bodySmall.retroText(theme)
-                )
-            }
-            if (pendingRunCount > 0) {
-                Text(
-                    text = "Some runs are still pending sync.",
-                    color = theme.warning,
-                    style = MaterialTheme.typography.bodySmall.retroText(theme)
-                )
-            }
+            LeaderboardStatus(accountConnectionState, pendingRunCount)
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End

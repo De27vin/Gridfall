@@ -1,6 +1,10 @@
 package com.example.gridfall.network
 
 import com.example.gridfall.network.dto.LeaderboardEntryDto
+import com.example.gridfall.network.dto.LeaderboardsResponse
+import com.example.gridfall.network.dto.LeaderboardSectionDto
+import com.example.gridfall.network.dto.LeaderboardSectionsDto
+import com.example.gridfall.network.dto.YourStatsDto
 import com.example.gridfall.network.dto.LeaderboardResponse
 import com.example.gridfall.network.dto.MeResponse
 import com.example.gridfall.network.dto.PlayerProfileDto
@@ -118,6 +122,27 @@ class GridfallApiClient(
         }
     }
 
+suspend fun getLeaderboards(
+        firebaseIdToken: String?,
+        limit: Int = 10
+    ): LeaderboardsResponse = withContext(Dispatchers.IO) {
+        val safeLimit = limit.coerceIn(1, 100)
+        val builder = Request.Builder()
+            .url(apiConfig.endpoint("/leaderboards?limit=$safeLimit"))
+            .get()
+        firebaseIdToken?.takeIf { it.isNotBlank() }?.let { token ->
+            builder.header("Authorization", "Bearer $token")
+        }
+
+        httpClient.newCall(builder.build()).execute().use { response ->
+            val body = response.body?.string().orEmpty()
+            if (!response.isSuccessful) {
+                throw IOException("GET /leaderboards failed with HTTP ${response.code}")
+            }
+            parseLeaderboardsResponse(body)
+        }
+    }
+
     suspend fun getLeaderboard(limit: Int = 50): LeaderboardResponse = withContext(Dispatchers.IO) {
         val safeLimit = limit.coerceIn(1, 100)
         val request = Request.Builder()
@@ -168,6 +193,7 @@ class GridfallApiClient(
                 bestScore = profile.getInt("bestScore"),
                 bestLevel = profile.getInt("bestLevel"),
                 gamesPlayed = profile.getInt("gamesPlayed"),
+                totalPoints = profile.optInt("totalPoints"),
                 totalLinesCleared = profile.getInt("totalLinesCleared"),
                 totalContractsCompleted = profile.getInt("totalContractsCompleted"),
                 totalBombsUsed = profile.getInt("totalBombsUsed"),
@@ -188,6 +214,55 @@ class GridfallApiClient(
         )
     }
 
+    private fun parseLeaderboardsResponse(rawJson: String): LeaderboardsResponse {
+        val json = JSONObject(rawJson)
+        val me = json.optJSONObject("me")?.let { stats ->
+            YourStatsDto(
+                username = stats.optString("username").takeIf { it.isNotBlank() && it != "null" },
+                bestScore = stats.optInt("bestScore"),
+                bestLevel = stats.optInt("bestLevel", 1),
+                totalPoints = stats.optInt("totalPoints"),
+                gamesPlayed = stats.optInt("gamesPlayed"),
+                totalLinesCleared = stats.optInt("totalLinesCleared"),
+                totalContractsCompleted = stats.optInt("totalContractsCompleted")
+            )
+        }
+        val sections = json.optJSONObject("leaderboards") ?: JSONObject()
+        return LeaderboardsResponse(
+            me = me,
+            leaderboards = LeaderboardSectionsDto(
+                bestScore = parseLeaderboardSection(sections.optJSONObject("bestScore")),
+                totalPoints = parseLeaderboardSection(sections.optJSONObject("totalPoints")),
+                linesCleared = parseLeaderboardSection(sections.optJSONObject("linesCleared")),
+                contractsCompleted = parseLeaderboardSection(sections.optJSONObject("contractsCompleted"))
+            )
+        )
+    }
+
+    private fun parseLeaderboardSection(section: JSONObject?): LeaderboardSectionDto {
+        val entries = section?.optJSONArray("entries")
+        val parsedEntries = (0 until (entries?.length() ?: 0)).mapNotNull { index ->
+            entries?.optJSONObject(index)?.let { parseLeaderboardEntry(it, index + 1) }
+        }
+        return LeaderboardSectionDto(
+            entries = parsedEntries,
+            me = section?.optJSONObject("me")?.let { parseLeaderboardEntry(it, 0) }
+        )
+    }
+
+    private fun parseLeaderboardEntry(entry: JSONObject, fallbackRank: Int): LeaderboardEntryDto? {
+        val username = entry.optString("username").takeIf { it.isNotBlank() && it != "null" } ?: return null
+        return LeaderboardEntryDto(
+            rank = entry.optInt("rank", fallbackRank),
+            username = username,
+            bestScore = entry.optInt("bestScore"),
+            bestLevel = entry.optInt("bestLevel", 1),
+            totalPoints = entry.optInt("totalPoints"),
+            totalLinesCleared = entry.optInt("totalLinesCleared"),
+            totalContractsCompleted = entry.optInt("totalContractsCompleted"),
+            isInTop = entry.optBoolean("isInTop")
+        )
+    }
     private fun parseLeaderboardResponse(rawJson: String): LeaderboardResponse {
         val json = JSONObject(rawJson)
         val entries = json.optJSONArray("entries")

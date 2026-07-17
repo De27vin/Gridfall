@@ -609,7 +609,8 @@ fun GameScreen(modifier: Modifier = Modifier) {
         leaderboardUiState = LeaderboardUiState(isLoading = true)
         coroutineScope.launch {
             leaderboardUiState = try {
-                LeaderboardUiState(entries = apiClient.getLeaderboard(limit = 50).entries)
+                val token = runCatching { authManager.getFreshIdToken() }.getOrNull()
+                LeaderboardUiState(response = apiClient.getLeaderboards(firebaseIdToken = token, limit = 10))
             } catch (error: Exception) {
                 Log.w(ACCOUNT_LOG_TAG, "Leaderboard unavailable: ${error.message}")
                 LeaderboardUiState(error = "Could not load leaderboard")

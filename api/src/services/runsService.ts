@@ -39,9 +39,13 @@ export async function saveRunAndUpdateProfile(userId: string, input: SubmitRunIn
     const profile = await tx.playerProfile.update({
       where: { userId },
       data: {
-        bestScore: Math.max(currentProfile.bestScore, input.score),
-        bestLevel: Math.max(currentProfile.bestLevel, input.level),
+        bestScore: input.score > currentProfile.bestScore ? input.score : currentProfile.bestScore,
+        bestLevel: input.score > currentProfile.bestScore ||
+          (input.score === currentProfile.bestScore && input.level > currentProfile.bestLevel)
+          ? input.level
+          : currentProfile.bestLevel,
         gamesPlayed: { increment: 1 },
+        totalPoints: { increment: input.score },
         totalLinesCleared: { increment: input.linesCleared },
         totalContractsCompleted: { increment: input.contractsCompleted },
         totalBombsUsed: { increment: input.bombsUsed },
@@ -58,6 +62,7 @@ export function summarizeRunStats(input: SubmitRunInput) {
     bestScore: input.score,
     bestLevel: input.level,
     gamesPlayed: 1,
+    totalPoints: input.score,
     totalLinesCleared: input.linesCleared,
     totalContractsCompleted: input.contractsCompleted,
     totalBombsUsed: input.bombsUsed,

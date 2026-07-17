@@ -15,6 +15,7 @@ export interface ProfileStats {
   bestScore: number;
   bestLevel: number;
   gamesPlayed: number;
+  totalPoints: number;
   totalLinesCleared: number;
   totalContractsCompleted: number;
   totalBombsUsed: number;
@@ -125,6 +126,7 @@ export function mergeProfileStats(
     bestScore: Math.max(registered.bestScore, guest.bestScore),
     bestLevel: Math.max(registered.bestLevel, guest.bestLevel),
     gamesPlayed: registered.gamesPlayed + guest.gamesPlayed,
+    totalPoints: registered.totalPoints + guest.totalPoints,
     totalLinesCleared: registered.totalLinesCleared + guest.totalLinesCleared,
     totalContractsCompleted: registered.totalContractsCompleted + guest.totalContractsCompleted,
     totalBombsUsed: registered.totalBombsUsed + guest.totalBombsUsed,
