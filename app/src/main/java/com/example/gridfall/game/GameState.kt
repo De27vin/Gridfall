@@ -5,6 +5,7 @@ data class GameState(
     val currentPieces: List<Piece>,
     val usedPieceIndices: Set<Int>,
     val score: Int,
+    val maxScoreReached: Int = score,
     val combo: Int,
     val isGameOver: Boolean,
     val contractState: ContractState = ContractState(),

@@ -99,6 +99,7 @@ object InProgressRunJson {
             .put("pieces", JSONArray().also { array -> currentPieces.forEach { array.put(it.toJson()) } })
             .put("usedPieceIndices", JSONArray().also { array -> usedPieceIndices.sorted().forEach(array::put) })
             .put("score", score)
+            .put("maxScoreReached", maxScoreReached)
             .put("combo", combo)
             .put("isGameOver", isGameOver)
             .put("contractState", contractState.toJson())
@@ -119,6 +120,10 @@ object InProgressRunJson {
             currentPieces = pieces,
             usedPieceIndices = usedIndices,
             score = optInt("score").coerceAtLeast(0),
+            maxScoreReached = maxOf(
+                optInt("maxScoreReached", optInt("score")).coerceAtLeast(0),
+                optInt("score").coerceAtLeast(0)
+            ),
             combo = optInt("combo").coerceAtLeast(0),
             isGameOver = optBoolean("isGameOver"),
             contractState = optJSONObject("contractState")?.toContractState() ?: ContractState(),

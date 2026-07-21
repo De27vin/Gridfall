@@ -81,6 +81,20 @@ class RiskSpinTest {
     }
 
     @Test
+    fun riskSpinKeepsTheHighestScoreReachedForTheRun() {
+        val state = testState(score = 5_000)
+
+        val result = GameEngine.startRiskSpinMemorySession(
+            state = state,
+            option = RiskSpinOption.Safe,
+            random = Random(1)
+        )
+
+        assertNotNull(result)
+        assertEquals(4_500, result!!.state.score)
+        assertEquals(5_000, result.state.maxScoreReached)
+    }
+    @Test
     fun memorySessionStartsWithSafeRiskAndDesperateRevealCounts() {
         val state = testState(score = 500)
 

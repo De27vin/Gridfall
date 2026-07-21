@@ -540,8 +540,8 @@ fun GameScreen(modifier: Modifier = Modifier) {
 
     fun runSubmissionRequest(endedState: GameState): RunSubmissionRequest {
         return RunSubmissionRequest(
-            score = endedState.score,
-            level = LevelSystem.levelForScore(endedState.score),
+            score = endedState.maxScoreReached,
+            level = LevelSystem.levelForScore(endedState.maxScoreReached),
             linesCleared = endedState.runStats.linesCleared,
             contractsCompleted = endedState.runStats.contractsCompleted,
             bombsUsed = endedState.runStats.bombsUsed,

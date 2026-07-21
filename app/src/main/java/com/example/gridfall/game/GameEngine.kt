@@ -363,11 +363,13 @@ object GameEngine {
             availablePieces + placeableJokerPieces(finalRiskSpinState.inventory)
         )
 
+        val finalScore = (scoreAfterPlacement + contractScoreDelta).coerceAtLeast(0)
         return state.copy(
             board = placementResult.board,
             currentPieces = nextPieces,
             usedPieceIndices = finalUsedPieceIndices,
-            score = (scoreAfterPlacement + contractScoreDelta).coerceAtLeast(0),
+            score = finalScore,
+            maxScoreReached = maxOf(state.maxScoreReached, finalScore),
             combo = placementResult.nextCombo,
             isGameOver = isGameOver,
             contractState = finalContractState,
@@ -428,6 +430,7 @@ object GameEngine {
         return state.copy(
             board = placementResult.board,
             score = scoreAfterPlacement,
+            maxScoreReached = maxOf(state.maxScoreReached, scoreAfterPlacement),
             combo = placementResult.nextCombo,
             isGameOver = isGameOver,
             contractState = immediateContractEvaluation.contractState,
@@ -445,6 +448,7 @@ object GameEngine {
         )
 
         return snapshot.copy(
+            maxScoreReached = maxOf(state.maxScoreReached, snapshot.maxScoreReached),
             riskSpinState = snapshot.riskSpinState.copy(
                 inventory = restoredInventory,
                 previousMoveSnapshot = null
