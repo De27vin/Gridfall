@@ -49,6 +49,7 @@ fun JokerInventoryCarousel(
     onJokerDragEnded: () -> Unit,
     onJokerDragCancelled: () -> Unit,
     onRevertClicked: () -> Unit,
+    onBlockBreakerClicked: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val colors = LocalGridfallColors.current
@@ -104,7 +105,8 @@ fun JokerInventoryCarousel(
                         onJokerDragged = onJokerDragged,
                         onJokerDragEnded = onJokerDragEnded,
                         onJokerDragCancelled = onJokerDragCancelled,
-                        onRevertClicked = onRevertClicked
+                        onRevertClicked = onRevertClicked,
+                        onBlockBreakerClicked = onBlockBreakerClicked
                     )
                 }
             }
@@ -122,13 +124,14 @@ private fun JokerChip(
     onJokerDragged: (Offset) -> Unit,
     onJokerDragEnded: () -> Unit,
     onJokerDragCancelled: () -> Unit,
-    onRevertClicked: () -> Unit
+    onRevertClicked: () -> Unit,
+    onBlockBreakerClicked: () -> Unit
 ) {
     val colors = LocalGridfallColors.current
     val piece = jokerType.toPiece()
     val shape = RoundedCornerShape(retroCorner(colors, infernoCorner(colors, 12.dp)))
     var chipTopLeft by remember { mutableStateOf(Offset.Zero) }
-    val enabled = piece != null || canUseRevert
+    val enabled = piece != null || jokerType == JokerType.BlockBreaker || canUseRevert
 
     Box(
         modifier = Modifier
@@ -174,8 +177,10 @@ private fun JokerChip(
                     Modifier.pointerInput(canUseRevert) {
                         detectTapGestures(
                             onTap = {
-                                if (canUseRevert) {
-                                    onRevertClicked()
+                                when (jokerType) {
+                                    JokerType.Revert -> if (canUseRevert) onRevertClicked()
+                                    JokerType.BlockBreaker -> onBlockBreakerClicked()
+                                    else -> Unit
                                 }
                             }
                         )
@@ -185,13 +190,22 @@ private fun JokerChip(
             .padding(5.dp),
         contentAlignment = Alignment.Center
     ) {
-        JokerIcon(
-            jokerType = jokerType,
-            enabled = enabled,
-            modifier = Modifier
-                .size(30.dp)
-                .alpha(if (isDragging) 0.35f else 1f)
-        )
+        val iconModifier = Modifier
+            .size(30.dp)
+            .alpha(if (isDragging) 0.35f else 1f)
+        if (jokerType == JokerType.Bomb || jokerType == JokerType.MegaBomb) {
+            PiecePreview(
+                piece = requireNotNull(piece),
+                colors = colors,
+                modifier = iconModifier
+            )
+        } else {
+            JokerIcon(
+                jokerType = jokerType,
+                enabled = enabled,
+                modifier = iconModifier
+            )
+        }
 
         Text(
             text = shortJokerLabel(jokerType),
@@ -284,5 +298,6 @@ private fun shortJokerLabel(jokerType: JokerType): String {
         JokerType.Bomb -> "BOMB"
         JokerType.MegaBomb -> "MEGA"
         JokerType.Revert -> "UNDO"
+        JokerType.BlockBreaker -> "BREAK"
     }
 }

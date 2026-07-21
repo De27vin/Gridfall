@@ -29,7 +29,7 @@ internal fun JokerIcon(
             JokerType.Single -> colors.block4Mid
             JokerType.HorizontalTwo -> colors.block3Mid
             JokerType.VerticalTwo -> colors.block2Mid
-            JokerType.Bomb, JokerType.MegaBomb, JokerType.Revert -> colors.block1Mid
+            JokerType.Bomb, JokerType.MegaBomb, JokerType.Revert, JokerType.BlockBreaker -> colors.block1Mid
         }
         val dark = Color.Black.copy(alpha = 0.30f)
         val gap = size.minDimension * 0.08f
@@ -72,6 +72,15 @@ internal fun JokerIcon(
                 val left = (size.width - cell) / 2f
                 block(left, gap, cell, cell)
                 block(left, gap * 2f + cell, cell, cell)
+            }
+            JokerType.BlockBreaker -> {
+                val cell = size.minDimension * 0.64f
+                val left = (size.width - cell) / 2f
+                val top = (size.height - cell) / 2f
+                block(left, top, cell, cell)
+                val stroke = (cell * 0.13f).coerceAtLeast(1f)
+                drawLine(colors.textPrimary, Offset(left + cell * 0.26f, top + cell * 0.26f), Offset(left + cell * 0.74f, top + cell * 0.74f), stroke)
+                drawLine(colors.textPrimary, Offset(left + cell * 0.74f, top + cell * 0.26f), Offset(left + cell * 0.26f, top + cell * 0.74f), stroke)
             }
             JokerType.Bomb, JokerType.MegaBomb -> {
                 val center = Offset(size.width / 2f, size.height / 2f + size.height * 0.05f)

@@ -255,6 +255,7 @@ object InProgressRunJson {
         return JSONObject()
             .put("inventory", JSONArray().also { array -> inventory.forEach { array.put(it.name) } })
             .put("cooldownBatchesRemaining", cooldownBatchesRemaining)
+            .put("hasUsedRevertSinceLastMove", hasUsedRevertSinceLastMove)
             .put(
                 "previousMoveSnapshot",
                 if (includeRevertSnapshot) previousMoveSnapshot?.toJson(includeRevertSnapshot = false)
@@ -273,6 +274,7 @@ object InProgressRunJson {
         return RiskSpinState(
             inventory = inventory,
             cooldownBatchesRemaining = optInt("cooldownBatchesRemaining").coerceAtLeast(0),
+            hasUsedRevertSinceLastMove = optBoolean("hasUsedRevertSinceLastMove"),
             previousMoveSnapshot = if (allowRevertSnapshot) {
                 optJSONObject("previousMoveSnapshot")?.toGameState(allowRevertSnapshot = false)
             } else {

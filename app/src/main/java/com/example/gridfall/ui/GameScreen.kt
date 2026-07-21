@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.activity.compose.BackHandler
 import androidx.compose.material3.Button
-import androidx.activity.compose.BackHandler
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -59,6 +58,7 @@ import com.example.gridfall.auth.AuthPromptStore
 import com.example.gridfall.auth.GridfallAuthManager
 import com.example.gridfall.auth.GridfallAuthSession
 import com.example.gridfall.game.Board
+import com.example.gridfall.game.Cell
 import com.example.gridfall.game.ClearResult
 import com.example.gridfall.game.GameEngine
 import com.example.gridfall.game.GameState
@@ -112,6 +112,9 @@ fun GameScreen(modifier: Modifier = Modifier) {
     var lineClearFeedbackToken by remember { mutableStateOf(0) }
     var bombPulseFeedback by remember { mutableStateOf<BombPulseFeedback?>(null) }
     var bombPulseFeedbackToken by remember { mutableStateOf(0) }
+    var blockBreakerFeedback by remember { mutableStateOf<BlockBreakerFeedback?>(null) }
+    var blockBreakerFeedbackToken by remember { mutableStateOf(0) }
+    var isBlockBreakerTargeting by remember { mutableStateOf(false) }
     var scoreEventFeedback by remember { mutableStateOf<ScoreEventFeedback?>(null) }
     var scoreEventFeedbackToken by remember { mutableStateOf(0) }
     var showRestartConfirmDialog by remember { mutableStateOf(false) }
@@ -742,6 +745,8 @@ fun GameScreen(modifier: Modifier = Modifier) {
         if (bombPulseFeedback != null) {
             delay(560)
             bombPulseFeedback = null
+        blockBreakerFeedback = null
+        isBlockBreakerTargeting = false
         }
     }
 
@@ -787,17 +792,41 @@ fun GameScreen(modifier: Modifier = Modifier) {
         dragState = DragState()
         lineClearFeedback = null
         bombPulseFeedback = null
+        blockBreakerFeedback = null
+        isBlockBreakerTargeting = false
         scoreEventFeedback = null
         isNewBestThisGame = false
     }
 
     fun finishDrag() {
+        if (isBlockBreakerTargeting) {
+            dragState = DragState()
+            return
+        }
         val pieceIndex = dragState.pieceIndex
         val jokerType = dragState.jokerType
         val piece = dragState.piece
         val resolution = dragState.placementResolution
         val target = resolution?.target
 
+        if (jokerType == JokerType.BlockBreaker && target != null && resolution.isValid) {
+            val nextState = GameEngine.useBlockBreaker(gameState, target.startRow, target.startCol)
+            if (nextState != gameState) {
+                gameState = nextState
+                blockBreakerFeedbackToken += 1
+                blockBreakerFeedback = BlockBreakerFeedback(target.startRow, target.startCol, blockBreakerFeedbackToken)
+                scoreEventFeedbackToken += 1
+                scoreEventFeedback = ScoreEventFeedback("Block Breaker +5", FeedbackTone.Warning, scoreEventFeedbackToken)
+                if (nextState.score > highScore) {
+                    highScore = nextState.score
+                    HighScoreStore.save(context, nextState.score)
+                    isNewBestThisGame = true
+                }
+                view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+            }
+            dragState = DragState()
+            return
+        }
         if (piece != null && target != null && resolution.isValid && (pieceIndex != null || jokerType != null)) {
             val clearResult = previewClearResult(
                 board = gameState.board,
@@ -886,6 +915,10 @@ fun GameScreen(modifier: Modifier = Modifier) {
         }
 
         dragState = DragState()
+    }
+
+    BackHandler(enabled = isBlockBreakerTargeting) {
+        isBlockBreakerTargeting = false
     }
 
     CompositionLocalProvider(LocalGridfallColors provides activeThemeColors) {
@@ -991,6 +1024,28 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 placementPreview = placementPreview,
                 lineClearFeedback = lineClearFeedback,
                 bombPulseFeedback = bombPulseFeedback,
+                blockBreakerFeedback = blockBreakerFeedback,
+                blockBreakerTargetCells = if (isBlockBreakerTargeting) occupiedBoardCells(gameState.board) else emptySet(),
+                onBlockBreakerCellTapped = { cell ->
+                    if (!isBlockBreakerTargeting || dragState.isDragging) return@BoardCanvas
+                    val nextState = GameEngine.useBlockBreaker(gameState, cell.row, cell.col)
+                    if (nextState == gameState) {
+                        view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                    } else {
+                        gameState = nextState
+                        isBlockBreakerTargeting = false
+                        blockBreakerFeedbackToken += 1
+                        blockBreakerFeedback = BlockBreakerFeedback(cell.row, cell.col, blockBreakerFeedbackToken)
+                        scoreEventFeedbackToken += 1
+                        scoreEventFeedback = ScoreEventFeedback("Block Breaker +5", FeedbackTone.Warning, scoreEventFeedbackToken)
+                        if (nextState.score > highScore) {
+                            highScore = nextState.score
+                            HighScoreStore.save(context, nextState.score)
+                            isNewBestThisGame = true
+                        }
+                        view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                    }
+                },
                 contractWarningCells = contractWarningCells(gameState.contractState),
                 onBoardLayoutChanged = { layoutInfo ->
                     boardLayoutInfo = layoutInfo
@@ -1145,7 +1200,8 @@ fun GameScreen(modifier: Modifier = Modifier) {
                         dragPosition = position,
                         boardLayoutInfo = boardLayoutInfo,
                         board = gameState.board,
-                        verticalShiftPx = verticalShiftPx
+                        verticalShiftPx = verticalShiftPx,
+                        targetOccupied = selectedJokerType == JokerType.BlockBreaker
                     )
                     dragState = DragState(
                         jokerInventoryIndex = inventoryIndex,
@@ -1166,7 +1222,8 @@ fun GameScreen(modifier: Modifier = Modifier) {
                             dragPosition = nextPosition,
                             boardLayoutInfo = boardLayoutInfo,
                             board = gameState.board,
-                            verticalShiftPx = verticalShiftPx
+                            verticalShiftPx = verticalShiftPx,
+                            targetOccupied = dragState.jokerType == JokerType.BlockBreaker
                         )
                     } else {
                         null
@@ -1180,6 +1237,11 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 onJokerDragEnded = ::finishDrag,
                 onJokerDragCancelled = {
                     dragState = DragState()
+                },
+                onBlockBreakerClicked = {
+                    if (!dragState.isDragging && !gameState.isGameOver) {
+                        isBlockBreakerTargeting = !isBlockBreakerTargeting
+                    }
                 },
                 onRevertClicked = {
                     val nextState = GameEngine.useRevertJoker(gameState)
@@ -1203,6 +1265,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 piece = draggedPiece,
                 cellSizePx = currentBoardLayoutInfo.cellSizePx,
                 spacingPx = currentBoardLayoutInfo.spacingPx,
+                isBlockBreaker = dragState.jokerType == JokerType.BlockBreaker,
                 modifier = Modifier.offset {
                     IntOffset(
                         x = draggedPiecePosition.x.roundToInt(),
@@ -1457,6 +1520,7 @@ private fun DraggedPiece(
     piece: Piece,
     cellSizePx: Float,
     spacingPx: Float,
+    isBlockBreaker: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val bounds = piece.bounds()
@@ -1479,15 +1543,18 @@ private fun DraggedPiece(
         modifier = modifier
             .size(widthDp, heightDp)
     ) {
-        piece.cells.forEach { cell ->
-            val row = cell.row - bounds.minRow
-            val col = cell.col - bounds.minCol
-            val topLeft = Offset(
-                x = col * (cellSizePx + spacingPx),
-                y = row * (cellSizePx + spacingPx)
-            )
-
-            drawDraggedCell(topLeft, cellSizePx, piece.colorVariant, theme)
+        if (isBlockBreaker) {
+            val inset = cellSizePx * 0.18f
+            val stroke = (cellSizePx * 0.15f).coerceAtLeast(2.dp.toPx())
+            drawLine(theme.danger, Offset(inset, inset), Offset(cellSizePx - inset, cellSizePx - inset), stroke)
+            drawLine(theme.danger, Offset(cellSizePx - inset, inset), Offset(inset, cellSizePx - inset), stroke)
+        } else {
+            piece.cells.forEach { cell ->
+                val row = cell.row - bounds.minRow
+                val col = cell.col - bounds.minCol
+                val topLeft = Offset(x = col * (cellSizePx + spacingPx), y = row * (cellSizePx + spacingPx))
+                drawDraggedCell(topLeft, cellSizePx, piece.colorVariant, theme)
+            }
         }
     }
 }
@@ -1553,12 +1620,20 @@ private fun createPlacementPreview(
     )
 }
 
+private fun occupiedBoardCells(board: Board): Set<Cell> {
+    return buildSet {
+        for (row in 0 until Board.SIZE) for (col in 0 until Board.SIZE) {
+            if (!board.isEmpty(row, col)) add(Cell(row, col))
+        }
+    }
+}
 private fun calculateCurrentDragPlacementResolution(
     piece: Piece,
     dragPosition: Offset,
     boardLayoutInfo: BoardLayoutInfo?,
     board: Board,
-    verticalShiftPx: Float
+    verticalShiftPx: Float,
+    targetOccupied: Boolean = false
 ): DragPlacementResolution? {
     val layoutInfo = boardLayoutInfo ?: return null
     
@@ -1571,7 +1646,8 @@ private fun calculateCurrentDragPlacementResolution(
         piece = piece,
         visualPieceTopLeft = dragPosition + currentDragVisualOffset + Offset(0f, verticalShiftPx), 
         boardLayoutInfo = layoutInfo,
-        board = board
+        board = board,
+        targetOccupied = targetOccupied
     )
 }
 

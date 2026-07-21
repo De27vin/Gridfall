@@ -5,6 +5,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -24,6 +25,8 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.example.gridfall.game.Board
 import com.example.gridfall.game.Cell
@@ -39,11 +42,16 @@ fun BoardCanvas(
     placementPreview: PlacementPreview? = null,
     lineClearFeedback: LineClearFeedback? = null,
     bombPulseFeedback: BombPulseFeedback? = null,
+    blockBreakerFeedback: BlockBreakerFeedback? = null,
     contractWarningCells: Set<Cell> = emptySet(),
+    blockBreakerTargetCells: Set<Cell> = emptySet(),
+    onBlockBreakerCellTapped: (Cell) -> Unit = {},
     onBoardLayoutChanged: (BoardLayoutInfo) -> Unit = {}
 ) {
     val linePulse = remember { Animatable(1f) }
     val bombPulse = remember { Animatable(1f) }
+    val blockBreakerPulse = remember { Animatable(1f) }
+    val density = LocalDensity.current
     val theme = LocalGridfallColors.current
     val outerShape = RoundedCornerShape(retroCorner(theme, infernoCorner(theme, 22.dp)))
     val innerShape = RoundedCornerShape(retroCorner(theme, infernoCorner(theme, 14.dp)))
@@ -59,6 +67,13 @@ fun BoardCanvas(
         if (bombPulseFeedback != null) {
             bombPulse.snapTo(0f)
             bombPulse.animateTo(1f, animationSpec = tween(durationMillis = 520))
+        }
+    }
+
+    LaunchedEffect(blockBreakerFeedback?.token) {
+        if (blockBreakerFeedback != null) {
+            blockBreakerPulse.snapTo(0f)
+            blockBreakerPulse.animateTo(1f, animationSpec = tween(durationMillis = 360))
         }
     }
 
@@ -107,7 +122,28 @@ fun BoardCanvas(
                 )
             }
     ) {
-        Canvas(modifier = Modifier.fillMaxSize()) {
+        val targetSpacingPx = with(density) { 4.dp.toPx() }
+        Canvas(
+            modifier = Modifier
+                .fillMaxSize()
+                .then(
+                    if (blockBreakerTargetCells.isNotEmpty()) {
+                        Modifier.pointerInput(blockBreakerTargetCells) {
+                            detectTapGestures { offset ->
+                                val spacing = targetSpacingPx
+                                val cellSize = (size.width - spacing * (Board.SIZE + 1)) / Board.SIZE
+                                if (cellSize <= 0f || offset.x < spacing || offset.y < spacing) return@detectTapGestures
+                                val col = ((offset.x - spacing) / (cellSize + spacing)).toInt()
+                                val row = ((offset.y - spacing) / (cellSize + spacing)).toInt()
+                                if (row !in 0 until Board.SIZE || col !in 0 until Board.SIZE) return@detectTapGestures
+                                val cellX = offset.x - spacing - col * (cellSize + spacing)
+                                val cellY = offset.y - spacing - row * (cellSize + spacing)
+                                if (cellX in 0f..cellSize && cellY in 0f..cellSize) onBlockBreakerCellTapped(Cell(row, col))
+                            }
+                        }
+                    } else Modifier
+                )
+        ) {
             val spacing = 4.dp.toPx()
             val cellSize = (size.width - spacing * (Board.SIZE + 1)) / Board.SIZE
             val cornerRadius = CornerRadius(8.dp.toPx(), 8.dp.toPx())
@@ -137,6 +173,14 @@ fun BoardCanvas(
                         y = spacing + cell.row * (cellSize + spacing)
                     )
                     drawContractWarningCell(topLeft, cellSize, theme)
+                }
+            }
+
+            blockBreakerTargetCells.forEach { cell ->
+                if (cell.row in 0 until Board.SIZE && cell.col in 0 until Board.SIZE) {
+                    val topLeft = Offset(spacing + cell.col * (cellSize + spacing), spacing + cell.row * (cellSize + spacing))
+                    drawRoundRect(theme.warning.copy(alpha = 0.12f), topLeft, Size(cellSize, cellSize), cornerRadius)
+                    drawRoundRect(theme.warning.copy(alpha = 0.72f), topLeft, Size(cellSize, cellSize), cornerRadius, style = Stroke(width = 1.5.dp.toPx()))
                 }
             }
 
@@ -323,6 +367,16 @@ fun BoardCanvas(
                         }
                     }
                 }
+            }
+
+            blockBreakerFeedback?.let { feedback ->
+                val progress = blockBreakerPulse.value.coerceIn(0f, 1f)
+                val fade = (1f - progress).coerceIn(0f, 1f)
+                val center = Offset(spacing + feedback.col * (cellSize + spacing) + cellSize / 2f, spacing + feedback.row * (cellSize + spacing) + cellSize / 2f)
+                drawCircle(theme.warning.copy(alpha = 0.78f * fade), cellSize * (0.20f + progress * 0.62f), center, style = Stroke(width = (cellSize * 0.10f * fade).coerceAtLeast(1.dp.toPx())))
+                val crack = cellSize * (0.18f + progress * 0.16f)
+                drawLine(theme.textPrimary.copy(alpha = 0.72f * fade), center - Offset(crack, crack), center + Offset(crack, crack), strokeWidth = 1.5.dp.toPx())
+                drawLine(theme.textPrimary.copy(alpha = 0.72f * fade), center + Offset(crack, -crack), center + Offset(-crack, crack), strokeWidth = 1.5.dp.toPx())
             }
 
             bombPulseFeedback?.let { feedback ->

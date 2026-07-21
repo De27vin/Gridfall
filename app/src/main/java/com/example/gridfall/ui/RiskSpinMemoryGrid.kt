@@ -226,11 +226,21 @@ private fun RevealedReward(field: RiskSpinMemoryField) {
                 )
             }
             jokerType != null -> {
-                JokerIcon(
-                    jokerType = jokerType,
-                    enabled = !field.lostBecauseInventoryFull,
-                    modifier = Modifier.size(18.dp)
-                )
+                if (jokerType == com.example.gridfall.game.JokerType.Bomb ||
+                    jokerType == com.example.gridfall.game.JokerType.MegaBomb
+                ) {
+                    PiecePreview(
+                        piece = requireNotNull(jokerType.toPiece()),
+                        colors = theme,
+                        modifier = Modifier.size(18.dp)
+                    )
+                } else {
+                    JokerIcon(
+                        jokerType = jokerType,
+                        enabled = !field.lostBecauseInventoryFull,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
                 Text(
                     text = rewardLabel(field.outcome, field.lostBecauseInventoryFull),
                     color = rewardTextColor(field),
@@ -255,6 +265,7 @@ private fun rewardLabel(
         RiskSpinOutcome.Bomb -> "BOMB"
         RiskSpinOutcome.MegaBomb -> "MEGA"
         RiskSpinOutcome.Revert -> "UNDO"
+        RiskSpinOutcome.BlockBreaker -> "BREAK"
     }
 }
 

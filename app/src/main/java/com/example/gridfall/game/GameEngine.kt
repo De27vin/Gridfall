@@ -3,6 +3,7 @@ package com.example.gridfall.game
 import kotlin.random.Random
 
 object GameEngine {
+    const val BLOCK_BREAKER_SCORE = 5
     fun createInitialState(): GameState {
         val level = LevelSystem.levelForScore(0)
 
@@ -286,7 +287,8 @@ object GameEngine {
         state: GameState,
         pieceIndex: Int,
         startRow: Int,
-        startCol: Int
+        startCol: Int,
+        random: Random = Random.Default
     ): GameState {
         if (state.isGameOver) return state
         if (pieceIndex !in state.currentPieces.indices) return state
@@ -345,7 +347,17 @@ object GameEngine {
             ) {
                 finalRunStats = finalRunStats.recordCompletedContract()
             }
-            advancedRiskSpinState = advanceRiskSpinBatch(state.riskSpinState)
+            val cooldownRiskSpinState = advanceRiskSpinBatch(state.riskSpinState)
+            advancedRiskSpinState = if (evaluation.contractState.isCompleted) {
+                cooldownRiskSpinState.copy(
+                    inventory = ContractBonusReward.addBlockBreakerIfRolled(
+                        inventory = cooldownRiskSpinState.inventory,
+                        rollPercent = random.nextInt(100)
+                    )
+                )
+            } else {
+                cooldownRiskSpinState
+            }
         } else {
             nextPieces = state.currentPieces
             finalUsedPieceIndices = nextUsedPieceIndices
@@ -357,7 +369,10 @@ object GameEngine {
         val availablePieces = nextPieces.filterIndexed { index, _ ->
             index !in finalUsedPieceIndices
         }
-        val finalRiskSpinState = advancedRiskSpinState.copy(previousMoveSnapshot = previousSnapshot)
+        val finalRiskSpinState = advancedRiskSpinState.copy(
+            previousMoveSnapshot = previousSnapshot,
+            hasUsedRevertSinceLastMove = false
+        )
         val isGameOver = !hasAnyValidMove(
             placementResult.board,
             availablePieces + placeableJokerPieces(finalRiskSpinState.inventory)
@@ -413,7 +428,8 @@ object GameEngine {
         val nextInventory = removeOneJoker(state.riskSpinState.inventory, jokerType)
         val nextRiskSpinState = state.riskSpinState.copy(
             inventory = nextInventory,
-            previousMoveSnapshot = previousSnapshot
+            previousMoveSnapshot = previousSnapshot,
+            hasUsedRevertSinceLastMove = false
         )
         val nextRunStats = state.runStats.recordPlacement(
             pieceEffect = piece.effect,
@@ -439,8 +455,24 @@ object GameEngine {
         )
     }
 
+    fun useBlockBreaker(state: GameState, row: Int, col: Int): GameState {
+        if (state.isGameOver || JokerType.BlockBreaker !in state.riskSpinState.inventory) return state
+        if (!state.board.isInside(row, col) || state.board.isEmpty(row, col)) return state
+
+        val nextScore = state.score + BLOCK_BREAKER_SCORE
+        return state.copy(
+            board = state.board.set(row, col, 0),
+            score = nextScore,
+            maxScoreReached = maxOf(state.maxScoreReached, nextScore),
+            riskSpinState = state.riskSpinState.copy(
+                inventory = removeOneJoker(state.riskSpinState.inventory, JokerType.BlockBreaker)
+            )
+        )
+    }
+
     fun useRevertJoker(state: GameState): GameState {
         if (JokerType.Revert !in state.riskSpinState.inventory) return state
+        if (state.riskSpinState.hasUsedRevertSinceLastMove) return state
         val snapshot = state.riskSpinState.previousMoveSnapshot ?: return state
         val restoredInventory = removeOneJoker(
             inventory = snapshot.riskSpinState.inventory,
@@ -451,7 +483,8 @@ object GameEngine {
             maxScoreReached = maxOf(state.maxScoreReached, snapshot.maxScoreReached),
             riskSpinState = snapshot.riskSpinState.copy(
                 inventory = restoredInventory,
-                previousMoveSnapshot = null
+                previousMoveSnapshot = null,
+                hasUsedRevertSinceLastMove = true
             ),
             isGameOver = false
         )

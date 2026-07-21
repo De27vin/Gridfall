@@ -20,7 +20,8 @@ internal fun calculateDragPlacementResolution(
     piece: Piece,
     visualPieceTopLeft: Offset,
     boardLayoutInfo: BoardLayoutInfo,
-    board: Board
+    board: Board,
+    targetOccupied: Boolean = false
 ): DragPlacementResolution {
     val target = calculatePlacementTargetFromVisualPiece(
         piece = piece,
@@ -30,12 +31,20 @@ internal fun calculateDragPlacementResolution(
 
     return DragPlacementResolution(
         target = target,
-        isValid = target != null && GameEngine.canPlace(
-            board = board,
-            piece = piece,
-            startRow = target.startRow,
-            startCol = target.startCol
-        )
+        isValid = target != null && if (targetOccupied) {
+            piece.cells.all { cell ->
+                val row = target.startRow + cell.row
+                val col = target.startCol + cell.col
+                board.isInside(row, col) && !board.isEmpty(row, col)
+            }
+        } else {
+            GameEngine.canPlace(
+                board = board,
+                piece = piece,
+                startRow = target.startRow,
+                startCol = target.startCol
+            )
+        }
     )
 }
 

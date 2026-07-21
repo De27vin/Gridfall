@@ -29,6 +29,12 @@ data class BombPulseFeedback(
     val token: Int
 )
 
+data class BlockBreakerFeedback(
+    val row: Int,
+    val col: Int,
+    val token: Int
+)
+
 data class ScoreEventFeedback(
     val text: String,
     val tone: FeedbackTone,

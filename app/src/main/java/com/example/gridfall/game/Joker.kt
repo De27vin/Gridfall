@@ -6,7 +6,8 @@ enum class JokerType(val title: String) {
     VerticalTwo("1x2 Joker"),
     Bomb("Bomb Joker"),
     MegaBomb("Mega Bomb Joker"),
-    Revert("Revert Joker");
+    Revert("Revert Joker"),
+    BlockBreaker("Block Breaker");
 
     fun toPiece(): Piece? {
         return when (this) {
@@ -34,6 +35,11 @@ enum class JokerType(val title: String) {
                 colorVariant = 0
             )
             Revert -> null
+            BlockBreaker -> Piece(
+                id = "joker_block_breaker",
+                cells = listOf(Cell(0, 0)),
+                colorVariant = 1
+            )
         }
     }
 }
@@ -41,7 +47,8 @@ enum class JokerType(val title: String) {
 data class RiskSpinState(
     val inventory: List<JokerType> = emptyList(),
     val cooldownBatchesRemaining: Int = 0,
-    val previousMoveSnapshot: GameState? = null
+    val previousMoveSnapshot: GameState? = null,
+    val hasUsedRevertSinceLastMove: Boolean = false
 ) {
     val isInventoryFull: Boolean
         get() = inventory.size >= MAX_INVENTORY_SIZE
