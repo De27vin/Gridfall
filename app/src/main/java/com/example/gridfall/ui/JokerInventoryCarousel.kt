@@ -185,20 +185,13 @@ private fun JokerChip(
             .padding(5.dp),
         contentAlignment = Alignment.Center
     ) {
-        if (piece != null) {
-            PiecePreview(
-                piece = piece,
-                colors = colors,
-                modifier = Modifier
-                    .size(30.dp)
-                    .alpha(if (isDragging) 0.35f else 1f)
-            )
-        } else {
-            UndoJokerIcon(
-                enabled = canUseRevert,
-                modifier = Modifier.size(30.dp)
-            )
-        }
+        JokerIcon(
+            jokerType = jokerType,
+            enabled = enabled,
+            modifier = Modifier
+                .size(30.dp)
+                .alpha(if (isDragging) 0.35f else 1f)
+        )
 
         Text(
             text = shortJokerLabel(jokerType),

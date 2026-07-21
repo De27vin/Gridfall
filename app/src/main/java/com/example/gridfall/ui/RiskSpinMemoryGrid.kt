@@ -211,7 +211,6 @@ private fun MemoryTile(
 private fun RevealedReward(field: RiskSpinMemoryField) {
     val theme = LocalGridfallColors.current
     val jokerType = field.outcome.toJokerType()
-    val piece = jokerType?.toPiece()
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -226,23 +225,11 @@ private fun RevealedReward(field: RiskSpinMemoryField) {
                     textAlign = TextAlign.Center
                 )
             }
-            piece != null -> {
-                PiecePreview(
-                    piece = piece,
-                    colors = theme,
-                    modifier = Modifier.size(17.dp)
-                )
-                Text(
-                    text = rewardLabel(field.outcome, field.lostBecauseInventoryFull),
-                    color = rewardTextColor(field),
-                    style = MaterialTheme.typography.labelSmall.retroText(theme),
-                    textAlign = TextAlign.Center
-                )
-            }
-            field.outcome == RiskSpinOutcome.Revert -> {
-                UndoJokerIcon(
+            jokerType != null -> {
+                JokerIcon(
+                    jokerType = jokerType,
                     enabled = !field.lostBecauseInventoryFull,
-                    modifier = Modifier.size(16.dp)
+                    modifier = Modifier.size(18.dp)
                 )
                 Text(
                     text = rewardLabel(field.outcome, field.lostBecauseInventoryFull),
@@ -250,8 +237,7 @@ private fun RevealedReward(field: RiskSpinMemoryField) {
                     style = MaterialTheme.typography.labelSmall.retroText(theme),
                     textAlign = TextAlign.Center
                 )
-            }
-            else -> Unit
+            }            else -> Unit
         }
     }
 }
