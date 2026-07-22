@@ -32,3 +32,10 @@ local.properties
 /api/firebase-service-account.json
 /api/coverage/
 /api/*.log
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+.env*
+!.env.example
