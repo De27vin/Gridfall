@@ -36,6 +36,11 @@ internal fun DrawScope.drawTacticalBlock(
         return
     }
 
+    if (colors.isAeroTheme()) {
+        drawAeroBlock(topLeft = topLeft, cellSize = cellSize, variant = variant, colors = colors)
+        return
+    }
+
     if (variant == 0) {
         drawRoundRect(
             color = colors.bombGlow.copy(alpha = if (isInferno) 0.62f else colors.bombGlow.alpha),
@@ -112,6 +117,23 @@ internal fun DrawScope.drawTacticalBlock(
     }
 }
 
+
+private fun DrawScope.drawAeroBlock(
+    topLeft: Offset,
+    cellSize: Float,
+    variant: Int,
+    colors: GridfallColors
+) {
+    val palette = paletteForVariant(variant, colors)
+    val corner = CornerRadius(cellSize * 0.17f, cellSize * 0.17f)
+    if (variant == 0) drawCircle(colors.bombGlow.copy(alpha = 0.52f), cellSize * 0.62f, topLeft + Offset(cellSize / 2f, cellSize / 2f))
+    drawRoundRect(Brush.verticalGradient(listOf(palette.top, palette.middle, palette.bottom), topLeft.y, topLeft.y + cellSize), topLeft, Size(cellSize, cellSize), corner)
+    drawRoundRect(Brush.linearGradient(listOf(Color.White.copy(alpha = 0.42f), Color.White.copy(alpha = 0.08f), Color.Transparent), topLeft, topLeft + Offset(cellSize, cellSize * 0.48f)), topLeft + Offset(cellSize * 0.08f, cellSize * 0.07f), Size(cellSize * 0.84f, cellSize * 0.42f), CornerRadius(cellSize * 0.12f, cellSize * 0.12f))
+    drawRoundRect(Color.White.copy(alpha = 0.42f), topLeft, Size(cellSize, cellSize), corner, style = Stroke(width = (cellSize * 0.035f).coerceAtLeast(1f)))
+    drawCircle(Color.White.copy(alpha = 0.34f), cellSize * 0.10f, topLeft + Offset(cellSize * 0.26f, cellSize * 0.25f))
+    drawLine(colors.accentStrong.copy(alpha = 0.42f), topLeft + Offset(cellSize * 0.16f, cellSize * 0.76f), topLeft + Offset(cellSize * 0.82f, cellSize * 0.76f), strokeWidth = (cellSize * 0.035f).coerceAtLeast(1f))
+    if (variant == 0) drawBombCore(topLeft, cellSize, colors)
+}
 private fun DrawScope.drawBlockworldBlock(topLeft: Offset, cellSize: Float, variant: Int, colors: GridfallColors) {
     val palette = paletteForVariant(variant, colors)
     val shadowOffset = cellSize * 0.07f

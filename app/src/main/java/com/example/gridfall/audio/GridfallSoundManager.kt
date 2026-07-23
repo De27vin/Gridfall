@@ -218,6 +218,7 @@ fun playRiskSpinAvailable(effectsVolume: Float) {
                     GridfallThemeMode.InfernoCore -> Inferno
                     GridfallThemeMode.RetroArcade -> Retro
                     GridfallThemeMode.Blockworld -> Blockworld
+                    GridfallThemeMode.Aero -> Premium
                 }
             }
         }

@@ -9,6 +9,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import com.example.gridfall.ui.theme.AeroColors
 import com.example.gridfall.ui.theme.BlockworldColors
 import com.example.gridfall.ui.theme.GridfallColors
 import com.example.gridfall.ui.theme.InfernoCoreColors
@@ -58,6 +59,7 @@ private fun GridfallColors.assetThemeSuffix(): String {
         PremiumTacticalColors -> "premium"
         InfernoCoreColors -> "inferno"
         RetroArcadeColors -> "retro"
+        AeroColors -> "premium"
         else -> "premium"
     }
 }

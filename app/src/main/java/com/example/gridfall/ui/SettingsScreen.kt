@@ -52,7 +52,8 @@ private val themeOptions = listOf(
     GridfallThemeMode.PremiumTactical,
     GridfallThemeMode.InfernoCore,
     GridfallThemeMode.RetroArcade,
-    GridfallThemeMode.Blockworld
+    GridfallThemeMode.Blockworld,
+    GridfallThemeMode.Aero
 )
 
 private fun pendingRunsLabel(count: Int): String {
