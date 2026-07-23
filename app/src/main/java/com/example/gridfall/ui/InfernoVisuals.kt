@@ -17,15 +17,15 @@ import com.example.gridfall.ui.theme.InfernoCoreColors
 internal fun GridfallColors.isInfernoTheme(): Boolean = this == InfernoCoreColors
 
 internal fun infernoCorner(colors: GridfallColors, default: Dp): Dp {
-    return when { colors.isBlockworldTheme() -> 0.dp; colors.isAeroTheme() -> 28.dp; colors.isInfernoTheme() -> 8.dp; else -> default }
+    return when { colors.isBlockworldTheme() -> 0.dp; colors.isFrutigerEaroTheme() -> 28.dp; colors.isInfernoTheme() -> 8.dp; else -> default }
 }
 
 internal fun infernoBorderWidth(colors: GridfallColors, default: Dp): Dp {
-    return if (colors.isInfernoTheme() || colors.isBlockworldTheme() || colors.isAeroTheme()) 2.dp else default
+    return if (colors.isInfernoTheme() || colors.isBlockworldTheme() || colors.isFrutigerEaroTheme()) 2.dp else default
 }
 
 internal fun Modifier.infernoAppTexture(colors: GridfallColors): Modifier {
-    if (colors.isAeroTheme()) return aeroAppTexture(colors)
+    if (colors.isFrutigerEaroTheme()) return frutigerEaroAppTexture(colors)
     if (colors.isBlockworldTheme()) return blockworldFrameTexture(colors)
     if (!colors.isInfernoTheme()) return this
 

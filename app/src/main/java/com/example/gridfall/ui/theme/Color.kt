@@ -67,11 +67,12 @@ enum class GridfallThemeMode(val id: String, val label: String) {
     InfernoCore("inferno_core", "Inferno Core"),
     RetroArcade("retro_arcade", "Retro Arcade"),
     Blockworld("blockworld", "Blockworld"),
-    Aero("aero", "Fruchtiger Earo");
+    FrutigerEaro("frutiger_earo", "Frutiger Earo");
 
     companion object {
         fun fromId(id: String?): GridfallThemeMode {
-            return entries.firstOrNull { it.id == id } ?: PremiumTactical
+                        if (id == "aero") return FrutigerEaro
+return entries.firstOrNull { it.id == id } ?: PremiumTactical
         }
     }
 }
@@ -280,7 +281,7 @@ val BlockworldColors = GridfallColors(
 )
 
 
-val AeroColors = GridfallColors(
+val FrutigerEaroColors = GridfallColors(
     backgroundTop = Color(0xFF168FC0), backgroundBottom = Color(0xFF063C58),
     darkGlass = Color(0xC9166E86), tacticalFrame = Color(0xFF117B9C),
     boardInner = Color(0xFF07516D), emptyCell = Color(0xA40A6683), emptyCellBorder = Color(0xFF9BF3FF),
@@ -306,6 +307,6 @@ fun colorsForThemeMode(mode: GridfallThemeMode): GridfallColors {
         GridfallThemeMode.InfernoCore -> InfernoCoreColors
         GridfallThemeMode.RetroArcade -> RetroArcadeColors
         GridfallThemeMode.Blockworld -> BlockworldColors
-        GridfallThemeMode.Aero -> AeroColors
+        GridfallThemeMode.FrutigerEaro -> FrutigerEaroColors
     }
 }

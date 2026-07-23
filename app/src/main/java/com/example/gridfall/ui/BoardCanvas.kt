@@ -87,11 +87,11 @@ fun BoardCanvas(
                 shape = outerShape
             )
             .infernoBoardFrameTexture(theme)
-            .aeroBoardFrameTexture(theme)
+            .frutigerEaroBoardFrameTexture(theme)
             .retroBoardFrameTexture(theme)
             .blockworldFrameTexture(theme)
             .border(
-                if (theme.isRetroTheme() || theme.isInfernoTheme() || theme.isBlockworldTheme() || theme.isAeroTheme()) 2.dp else 1.dp,
+                if (theme.isRetroTheme() || theme.isInfernoTheme() || theme.isBlockworldTheme() || theme.isFrutigerEaroTheme()) 2.dp else 1.dp,
                 theme.panelBorder.copy(alpha = if (theme.isInfernoTheme()) 0.92f else 1f),
                 outerShape
             )
@@ -106,7 +106,7 @@ fun BoardCanvas(
             .clip(innerShape)
             .background(theme.boardInner)
             .infernoBoardWellTexture(theme)
-            .aeroBoardWellTexture(theme)
+            .frutigerEaroBoardWellTexture(theme)
             .retroBoardWellTexture(theme)
             .blockworldWellTexture(theme)
             .onGloballyPositioned { coordinates ->
@@ -465,8 +465,8 @@ private fun DrawScope.drawEmptyCell(
         return
     }
 
-    if (colors.isAeroTheme()) {
-        drawAeroEmptyCell(topLeft, cellSize, colors)
+    if (colors.isFrutigerEaroTheme()) {
+        drawFrutigerEaroEmptyCell(topLeft, cellSize, colors)
         return
     }
 

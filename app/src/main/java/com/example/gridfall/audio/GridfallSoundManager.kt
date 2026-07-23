@@ -48,7 +48,12 @@ class GridfallSoundManager(context: Context) {
         SoundKey(GridfallThemeMode.Blockworld, ThemeSoundEvent.Bomb) to loadSfx("blockworld/blockworld_bomb.ogg"),
         SoundKey(GridfallThemeMode.Blockworld, ThemeSoundEvent.LineClear) to loadSfx("blockworld/blockworld_clear_line.ogg"),
         SoundKey(GridfallThemeMode.Blockworld, ThemeSoundEvent.MultiLineClear) to loadSfx("blockworld/blockworld_multi_line_clear.ogg"),
-        SoundKey(GridfallThemeMode.Blockworld, ThemeSoundEvent.GameOver) to loadSfx("blockworld/blockworld_game_over.ogg")
+        SoundKey(GridfallThemeMode.Blockworld, ThemeSoundEvent.GameOver) to loadSfx("blockworld/blockworld_game_over.ogg"),
+        SoundKey(GridfallThemeMode.FrutigerEaro, ThemeSoundEvent.Place) to loadSfx("frutiger_earo/frutiger_earo_place.ogg"),
+        SoundKey(GridfallThemeMode.FrutigerEaro, ThemeSoundEvent.Bomb) to loadSfx("frutiger_earo/frutiger_earo_bomb.ogg"),
+        SoundKey(GridfallThemeMode.FrutigerEaro, ThemeSoundEvent.LineClear) to loadSfx("frutiger_earo/frutiger_earo_clear_line.ogg"),
+        SoundKey(GridfallThemeMode.FrutigerEaro, ThemeSoundEvent.MultiLineClear) to loadSfx("frutiger_earo/frutiger_earo_multiple_line_clear.ogg"),
+        SoundKey(GridfallThemeMode.FrutigerEaro, ThemeSoundEvent.GameOver) to loadSfx("frutiger_earo/frutiger_earo_game_over.ogg")
     )
 
     private val contractPopup = loadSfx("contract_popup.ogg")
@@ -209,7 +214,8 @@ fun playRiskSpinAvailable(effectsVolume: Float) {
         Premium("sounds/music/background-music.ogg"),
         Inferno("sounds/music/inferno-background-music.ogg"),
         Retro("sounds/music/retro-background-music.ogg"),
-        Blockworld("sounds/music/blockworld-background-music.ogg");
+        Blockworld("sounds/music/blockworld-background-music.ogg"),
+        FrutigerEaro("sounds/music/frutiger_earo-background-music.ogg");
 
         companion object {
             fun forTheme(themeMode: GridfallThemeMode): MusicTrack {
@@ -218,7 +224,7 @@ fun playRiskSpinAvailable(effectsVolume: Float) {
                     GridfallThemeMode.InfernoCore -> Inferno
                     GridfallThemeMode.RetroArcade -> Retro
                     GridfallThemeMode.Blockworld -> Blockworld
-                    GridfallThemeMode.Aero -> Premium
+                    GridfallThemeMode.FrutigerEaro -> FrutigerEaro
                 }
             }
         }

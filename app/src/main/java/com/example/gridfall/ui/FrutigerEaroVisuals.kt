@@ -10,13 +10,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
-import com.example.gridfall.ui.theme.AeroColors
+import com.example.gridfall.ui.theme.FrutigerEaroColors
 import com.example.gridfall.ui.theme.GridfallColors
 
-internal fun GridfallColors.isAeroTheme(): Boolean = this == AeroColors
+internal fun GridfallColors.isFrutigerEaroTheme(): Boolean = this == FrutigerEaroColors
 
-internal fun Modifier.aeroAppTexture(colors: GridfallColors): Modifier {
-    if (!colors.isAeroTheme()) return this
+internal fun Modifier.frutigerEaroAppTexture(colors: GridfallColors): Modifier {
+    if (!colors.isFrutigerEaroTheme()) return this
     return drawWithCache {
         onDrawBehind {
             drawRect(Brush.radialGradient(listOf(colors.accent.copy(alpha = 0.26f), Color.Transparent), Offset(size.width * 0.74f, size.height * 0.10f), size.minDimension * 0.90f))
@@ -30,8 +30,8 @@ internal fun Modifier.aeroAppTexture(colors: GridfallColors): Modifier {
     }
 }
 
-internal fun Modifier.aeroBoardFrameTexture(colors: GridfallColors): Modifier {
-    if (!colors.isAeroTheme()) return this
+internal fun Modifier.frutigerEaroBoardFrameTexture(colors: GridfallColors): Modifier {
+    if (!colors.isFrutigerEaroTheme()) return this
     return drawWithCache {
         onDrawBehind {
             drawRect(Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.15f), Color.Transparent, colors.accent.copy(alpha = 0.08f))))
@@ -39,8 +39,8 @@ internal fun Modifier.aeroBoardFrameTexture(colors: GridfallColors): Modifier {
     }
 }
 
-internal fun Modifier.aeroBoardWellTexture(colors: GridfallColors): Modifier {
-    if (!colors.isAeroTheme()) return this
+internal fun Modifier.frutigerEaroBoardWellTexture(colors: GridfallColors): Modifier {
+    if (!colors.isFrutigerEaroTheme()) return this
     return drawWithCache {
         onDrawBehind {
             drawRect(Brush.radialGradient(listOf(colors.accent.copy(alpha = 0.16f), Color.Transparent), Offset(size.width * 0.5f, size.height * 0.12f), size.width * 0.84f))
@@ -48,7 +48,7 @@ internal fun Modifier.aeroBoardWellTexture(colors: GridfallColors): Modifier {
     }
 }
 
-internal fun DrawScope.drawAeroEmptyCell(topLeft: Offset, cellSize: Float, colors: GridfallColors) {
+internal fun DrawScope.drawFrutigerEaroEmptyCell(topLeft: Offset, cellSize: Float, colors: GridfallColors) {
     val corner = CornerRadius(cellSize * 0.25f, cellSize * 0.25f)
     drawRoundRect(Brush.verticalGradient(listOf(colors.emptyCell.copy(alpha = 0.94f), colors.boardInner.copy(alpha = 0.80f)), topLeft.y, topLeft.y + cellSize), topLeft, Size(cellSize, cellSize), corner)
     drawRoundRect(Color.White.copy(alpha = 0.20f), topLeft + Offset(cellSize * 0.10f, cellSize * 0.10f), Size(cellSize * 0.80f, cellSize * 0.22f), CornerRadius(cellSize * 0.11f, cellSize * 0.11f))

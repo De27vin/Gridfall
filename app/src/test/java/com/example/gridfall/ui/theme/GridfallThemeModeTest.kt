@@ -7,11 +7,12 @@ import org.junit.Test
 
 class GridfallThemeModeTest {
     @Test
-    fun aeroThemeHasStableUniqueIdAndPalette() {
-        assertEquals(GridfallThemeMode.Aero, GridfallThemeMode.fromId("aero"))
+    fun frutigerEaroThemeHasStableUniqueIdAndPalette() {
+        assertEquals(GridfallThemeMode.FrutigerEaro, GridfallThemeMode.fromId("frutiger_earo"))
+        assertEquals(GridfallThemeMode.FrutigerEaro, GridfallThemeMode.fromId("aero"))
         assertEquals(GridfallThemeMode.entries.size, GridfallThemeMode.entries.map { it.id }.toSet().size)
-        assertEquals(AeroColors, colorsForThemeMode(GridfallThemeMode.Aero))
-        assertNotEquals(PremiumTacticalColors, AeroColors)
-        assertTrue(GridfallThemeMode.entries.any { it.label == "Fruchtiger Earo" })
+        assertEquals(FrutigerEaroColors, colorsForThemeMode(GridfallThemeMode.FrutigerEaro))
+        assertNotEquals(PremiumTacticalColors, FrutigerEaroColors)
+        assertTrue(GridfallThemeMode.entries.any { it.label == "Frutiger Earo" })
     }
 }
