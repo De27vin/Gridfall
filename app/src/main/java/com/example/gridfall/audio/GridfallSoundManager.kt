@@ -49,11 +49,11 @@ class GridfallSoundManager(context: Context) {
         SoundKey(GridfallThemeMode.Blockworld, ThemeSoundEvent.LineClear) to loadSfx("blockworld/blockworld_clear_line.ogg"),
         SoundKey(GridfallThemeMode.Blockworld, ThemeSoundEvent.MultiLineClear) to loadSfx("blockworld/blockworld_multi_line_clear.ogg"),
         SoundKey(GridfallThemeMode.Blockworld, ThemeSoundEvent.GameOver) to loadSfx("blockworld/blockworld_game_over.ogg"),
-        SoundKey(GridfallThemeMode.FrutigerEaro, ThemeSoundEvent.Place) to loadSfx("frutiger_earo/frutiger_earo_place.ogg"),
-        SoundKey(GridfallThemeMode.FrutigerEaro, ThemeSoundEvent.Bomb) to loadSfx("frutiger_earo/frutiger_earo_bomb.ogg"),
-        SoundKey(GridfallThemeMode.FrutigerEaro, ThemeSoundEvent.LineClear) to loadSfx("frutiger_earo/frutiger_earo_clear_line.ogg"),
-        SoundKey(GridfallThemeMode.FrutigerEaro, ThemeSoundEvent.MultiLineClear) to loadSfx("frutiger_earo/frutiger_earo_multiple_line_clear.ogg"),
-        SoundKey(GridfallThemeMode.FrutigerEaro, ThemeSoundEvent.GameOver) to loadSfx("frutiger_earo/frutiger_earo_game_over.ogg")
+        SoundKey(GridfallThemeMode.FrutigerAero, ThemeSoundEvent.Place) to loadSfx("frutiger_aero/frutiger_aero_place.ogg"),
+        SoundKey(GridfallThemeMode.FrutigerAero, ThemeSoundEvent.Bomb) to loadSfx("frutiger_aero/frutiger_aero_bomb.ogg"),
+        SoundKey(GridfallThemeMode.FrutigerAero, ThemeSoundEvent.LineClear) to loadSfx("frutiger_aero/frutiger_aero_clear_line.ogg"),
+        SoundKey(GridfallThemeMode.FrutigerAero, ThemeSoundEvent.MultiLineClear) to loadSfx("frutiger_aero/frutiger_aero_multiple_line_clear.ogg"),
+        SoundKey(GridfallThemeMode.FrutigerAero, ThemeSoundEvent.GameOver) to loadSfx("frutiger_aero/frutiger_aero_game_over.ogg")
     )
 
     private val contractPopup = loadSfx("contract_popup.ogg")
@@ -82,6 +82,7 @@ class GridfallSoundManager(context: Context) {
         } else {
             MusicTrack.forTheme(themeMode)
         }
+
 
         val player = musicPlayer
         if (currentMusicTrack == targetTrack && player != null) {
@@ -152,6 +153,7 @@ fun playRiskSpinAvailable(effectsVolume: Float) {
         currentMusicVolume = 0f
     }
 
+
     private fun createMusicPlayer(track: MusicTrack): MediaPlayer? {
         return runCatching {
             MediaPlayer().apply {
@@ -215,7 +217,7 @@ fun playRiskSpinAvailable(effectsVolume: Float) {
         Inferno("sounds/music/inferno-background-music.ogg"),
         Retro("sounds/music/retro-background-music.ogg"),
         Blockworld("sounds/music/blockworld-background-music.ogg"),
-        FrutigerEaro("sounds/music/frutiger_earo-background-music.ogg");
+        FrutigerAero("sounds/music/frutiger_aero-background-music.ogg");
 
         companion object {
             fun forTheme(themeMode: GridfallThemeMode): MusicTrack {
@@ -224,7 +226,7 @@ fun playRiskSpinAvailable(effectsVolume: Float) {
                     GridfallThemeMode.InfernoCore -> Inferno
                     GridfallThemeMode.RetroArcade -> Retro
                     GridfallThemeMode.Blockworld -> Blockworld
-                    GridfallThemeMode.FrutigerEaro -> FrutigerEaro
+                    GridfallThemeMode.FrutigerAero -> FrutigerAero
                 }
             }
         }

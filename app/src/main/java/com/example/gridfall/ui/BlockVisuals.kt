@@ -36,8 +36,8 @@ internal fun DrawScope.drawTacticalBlock(
         return
     }
 
-    if (colors.isFrutigerEaroTheme()) {
-        drawFrutigerEaroBlock(topLeft = topLeft, cellSize = cellSize, variant = variant, colors = colors)
+    if (colors.isFrutigerAeroTheme()) {
+        drawFrutigerAeroBlock(topLeft = topLeft, cellSize = cellSize, variant = variant, colors = colors)
         return
     }
 
@@ -118,7 +118,7 @@ internal fun DrawScope.drawTacticalBlock(
 }
 
 
-private fun DrawScope.drawFrutigerEaroBlock(
+private fun DrawScope.drawFrutigerAeroBlock(
     topLeft: Offset,
     cellSize: Float,
     variant: Int,
