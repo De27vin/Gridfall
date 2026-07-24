@@ -9,9 +9,9 @@ enum class RiskSpinOption(
     val spinCount: Int,
     val minimumCost: Int
 ) {
-    Safe("Safe Spin", 0.10f, 1, 10),
-    Risk("Risk Spin", 0.20f, 3, 20),
-    Desperate("Desperate Spin", 0.35f, 5, 35);
+    Safe("Safe Spin", 0.025f, 1, 10),
+    Risk("Risk Spin", 0.10f, 3, 20),
+    Desperate("Desperate Spin", 0.175f, 5, 35);
 
     fun cost(score: Int): Int {
         return maxOf(minimumCost, floor(score * stakePercent).toInt())

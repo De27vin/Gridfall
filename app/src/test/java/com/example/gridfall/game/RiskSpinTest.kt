@@ -71,8 +71,8 @@ class RiskSpinTest {
 
         assertNotNull(result)
         val nextState = result!!.state
-        assertEquals(180, nextState.score)
-        assertEquals(20, result.cost)
+        assertEquals(190, nextState.score)
+        assertEquals(10, result.cost)
         assertEquals(1, result.entries.size)
         assertTrue(
             nextState.riskSpinState.cooldownBatchesRemaining in
@@ -91,7 +91,7 @@ class RiskSpinTest {
         )
 
         assertNotNull(result)
-        assertEquals(4_500, result!!.state.score)
+        assertEquals(4_875, result!!.state.score)
         assertEquals(5_000, result.state.maxScoreReached)
     }
     @Test
@@ -118,8 +118,8 @@ class RiskSpinTest {
         )
 
         assertNotNull(result)
-        assertEquals(180, result!!.state.score)
-        assertEquals(20, result.cost)
+        assertEquals(190, result!!.state.score)
+        assertEquals(10, result.cost)
         assertEquals(emptyList<JokerType>(), result.state.riskSpinState.inventory)
         assertTrue(
             result.state.riskSpinState.cooldownBatchesRemaining in
@@ -140,11 +140,11 @@ class RiskSpinTest {
     @Test
     fun spinOptionCostsUseMinimumOrScorePercentage() {
         assertEquals(10, RiskSpinOption.Safe.cost(50))
-        assertEquals(25, RiskSpinOption.Safe.cost(250))
+        assertEquals(10, RiskSpinOption.Safe.cost(250))
         assertEquals(20, RiskSpinOption.Risk.cost(50))
-        assertEquals(50, RiskSpinOption.Risk.cost(250))
+        assertEquals(25, RiskSpinOption.Risk.cost(250))
         assertEquals(35, RiskSpinOption.Desperate.cost(50))
-        assertEquals(87, RiskSpinOption.Desperate.cost(250))
+        assertEquals(43, RiskSpinOption.Desperate.cost(250))
         assertFalse(GameEngine.canSelectRiskSpinOption(testState(score = 5), RiskSpinOption.Safe))
     }
 
