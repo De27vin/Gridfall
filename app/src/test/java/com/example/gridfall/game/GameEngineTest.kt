@@ -337,6 +337,14 @@ class GameEngineTest {
     }
 
     @Test
+    fun perfectClearBonusScalesByLevelAndCapsAtOneThousand() {
+        assertEquals(200, ScoreSystem.perfectClearBonusForLevel(1))
+        assertEquals(550, ScoreSystem.perfectClearBonusForLevel(8))
+        assertEquals(700, ScoreSystem.perfectClearBonusForLevel(11))
+        assertEquals(1_000, ScoreSystem.perfectClearBonusForLevel(17))
+        assertEquals(1_000, ScoreSystem.perfectClearBonusForLevel(50))
+    }
+    @Test
     fun rowOnlyClearDoesNotAddCrossClearBonus() {
         val piece = Piece("single", listOf(Cell(0, 0)))
         val rowReady = (0 until Board.SIZE - 1).fold(Board.empty()) { currentBoard, col ->

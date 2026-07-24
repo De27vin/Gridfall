@@ -459,9 +459,15 @@ fun skipContract(state: GameState, random: Random = Random.Default): GameState {
         if (state.isGameOver || JokerType.BlockBreaker !in state.riskSpinState.inventory) return state
         if (!state.board.isInside(row, col) || state.board.isEmpty(row, col)) return state
 
-        val nextScore = state.score + BLOCK_BREAKER_SCORE
+        val nextBoard = state.board.set(row, col, 0)
+        val perfectClearBonus = if (nextBoard.isEmpty()) {
+            ScoreSystem.perfectClearBonusForLevel(LevelSystem.levelForScore(state.score))
+        } else {
+            0
+        }
+        val nextScore = state.score + BLOCK_BREAKER_SCORE + perfectClearBonus
         return state.copy(
-            board = state.board.set(row, col, 0),
+            board = nextBoard,
             score = nextScore,
             maxScoreReached = maxOf(state.maxScoreReached, nextScore),
             riskSpinState = state.riskSpinState.copy(
@@ -518,7 +524,8 @@ fun skipContract(state: GameState, random: Random = Random.Default): GameState {
                 clearedLineCount = 0,
                 scoreGained = ScoreSystem.calculateBombScore(
                     clearedCellCount = bombResult.clearedCellCount,
-                    isPerfectClear = bombResult.clearedCellCount > 0 && bombResult.board.isEmpty()
+                    isPerfectClear = bombResult.clearedCellCount > 0 && bombResult.board.isEmpty(),
+                    level = LevelSystem.levelForScore(state.score)
                 ),
                 nextCombo = 0
             )
@@ -533,7 +540,8 @@ fun skipContract(state: GameState, random: Random = Random.Default): GameState {
             clearedLineCount = clearResult.clearedLineCount,
             previousCombo = state.combo,
             isCrossClear = isCrossClear,
-            isPerfectClear = isPerfectClear
+            isPerfectClear = isPerfectClear,
+            level = LevelSystem.levelForScore(state.score)
         )
 
         return PlacementResult(

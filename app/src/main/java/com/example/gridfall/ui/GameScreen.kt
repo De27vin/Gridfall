@@ -825,11 +825,16 @@ fun GameScreen(modifier: Modifier = Modifier) {
         if (jokerType == JokerType.BlockBreaker && target != null && resolution.isValid) {
             val nextState = GameEngine.useBlockBreaker(gameState, target.startRow, target.startCol)
             if (nextState != gameState) {
+                val scoreFeedbackText = if (nextState.board.isEmpty()) {
+                    "Perfect Clear +${nextState.score - gameState.score}"
+                } else {
+                    "Block Breaker +5"
+                }
                 gameState = nextState
                 blockBreakerFeedbackToken += 1
                 blockBreakerFeedback = BlockBreakerFeedback(target.startRow, target.startCol, blockBreakerFeedbackToken)
                 scoreEventFeedbackToken += 1
-                scoreEventFeedback = ScoreEventFeedback("Block Breaker +5", FeedbackTone.Warning, scoreEventFeedbackToken)
+                scoreEventFeedback = ScoreEventFeedback(scoreFeedbackText, FeedbackTone.Warning, scoreEventFeedbackToken)
                 if (nextState.score > highScore) {
                     highScore = nextState.score
                     HighScoreStore.save(context, nextState.score)
@@ -1045,12 +1050,17 @@ fun GameScreen(modifier: Modifier = Modifier) {
                     if (nextState == gameState) {
                         view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                     } else {
+                        val scoreFeedbackText = if (nextState.board.isEmpty()) {
+                            "Perfect Clear +${nextState.score - gameState.score}"
+                        } else {
+                            "Block Breaker +5"
+                        }
                         gameState = nextState
                         isBlockBreakerTargeting = false
                         blockBreakerFeedbackToken += 1
                         blockBreakerFeedback = BlockBreakerFeedback(cell.row, cell.col, blockBreakerFeedbackToken)
                         scoreEventFeedbackToken += 1
-                        scoreEventFeedback = ScoreEventFeedback("Block Breaker +5", FeedbackTone.Warning, scoreEventFeedbackToken)
+                        scoreEventFeedback = ScoreEventFeedback(scoreFeedbackText, FeedbackTone.Warning, scoreEventFeedbackToken)
                         if (nextState.score > highScore) {
                             highScore = nextState.score
                             HighScoreStore.save(context, nextState.score)

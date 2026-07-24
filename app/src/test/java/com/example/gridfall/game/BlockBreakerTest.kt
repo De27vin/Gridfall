@@ -32,6 +32,16 @@ class BlockBreakerTest {
     }
 
     @Test
+    fun blockBreakerAwardsPerfectClearBonusWhenItRemovesTheLastCell() {
+        val state = stateWithBreaker(Board.empty().fill(2, 2), score = 2_000)
+
+        val nextState = GameEngine.useBlockBreaker(state, row = 2, col = 2)
+
+        assertTrue(nextState.board.isEmpty())
+        assertEquals(2_555, nextState.score)
+        assertTrue(nextState.riskSpinState.inventory.isEmpty())
+    }
+    @Test
     fun blockBreakerCannotBeUsedAfterGameOver() {
         val state = stateWithBreaker(Board.empty().fill(1, 1), score = 10).copy(isGameOver = true)
 
