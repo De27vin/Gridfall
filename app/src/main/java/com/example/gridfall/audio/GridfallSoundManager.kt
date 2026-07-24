@@ -48,7 +48,7 @@ class GridfallSoundManager(context: Context) {
         SoundKey(GridfallThemeMode.Blockworld, ThemeSoundEvent.Bomb) to loadSfx("blockworld/blockworld_bomb.ogg"),
         SoundKey(GridfallThemeMode.Blockworld, ThemeSoundEvent.LineClear) to loadSfx("blockworld/blockworld_clear_line.ogg"),
         SoundKey(GridfallThemeMode.Blockworld, ThemeSoundEvent.MultiLineClear) to loadSfx("blockworld/blockworld_multi_line_clear.ogg"),
-        SoundKey(GridfallThemeMode.Blockworld, ThemeSoundEvent.GameOver) to loadSfx("blockworld/blockworld_game_over.ogg"),
+        SoundKey(GridfallThemeMode.Blockworld, ThemeSoundEvent.GameOver) to loadSfx("blockworld/blockworld-game-over.ogg"),
         SoundKey(GridfallThemeMode.FrutigerAero, ThemeSoundEvent.Place) to loadSfx("frutiger_aero/frutiger_aero_place.ogg"),
         SoundKey(GridfallThemeMode.FrutigerAero, ThemeSoundEvent.Bomb) to loadSfx("frutiger_aero/frutiger_aero_bomb.ogg"),
         SoundKey(GridfallThemeMode.FrutigerAero, ThemeSoundEvent.LineClear) to loadSfx("frutiger_aero/frutiger_aero_clear_line.ogg"),
