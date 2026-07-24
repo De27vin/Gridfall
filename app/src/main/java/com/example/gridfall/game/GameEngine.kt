@@ -14,9 +14,7 @@ object GameEngine {
             score = 0,
             combo = 0,
             isGameOver = false,
-            contractState = ContractState(
-                batchesUntilNextOffer = ContractGenerator.initialOfferCooldown()
-            ),
+            contractState = ContractState(),
             runStats = RunStats.newRun()
         )
     }
@@ -40,21 +38,22 @@ object GameEngine {
         )
     }
 
-    fun skipContract(state: GameState): GameState {
+fun skipContract(state: GameState, random: Random = Random.Default): GameState {
         if (state.isGameOver) return state
         if (state.contractState.offeredContract == null) return state
 
+        val offerFollowUp = state.score >= ContractGenerator.CONTRACT_UNLOCK_SCORE &&
+            ContractGenerator.shouldOfferBackToBack(random)
         return state.copy(
             contractState = state.contractState.copy(
-                offeredContract = null,
+                offeredContract = if (offerFollowUp) ContractGenerator.generate(state.score, random) else null,
                 activeContract = null,
                 resolvedContract = null,
                 isAccepted = false,
                 isCompleted = false,
                 isFailed = false,
                 rewardClaimed = false,
-                penaltyApplied = false,
-                batchesUntilNextOffer = ContractGenerator.nextOfferCooldown()
+                penaltyApplied = false
             )
         )
     }
@@ -339,7 +338,8 @@ object GameEngine {
             nextPieces = PieceGenerator.generateBatch(level = nextLevel)
             finalContractState = advanceContractBatch(
                 contractState = evaluation.contractState,
-                level = nextLevel
+                score = finalScore,
+                random = random
             )
             if (
                 evaluation.contractState.resolvedContract != null &&
@@ -664,7 +664,7 @@ object GameEngine {
                 resolvedContract = activeContract,
                 isFailed = true,
                 penaltyApplied = true,
-                batchesUntilNextOffer = ContractGenerator.nextOfferCooldown(),
+                nextContractScoreThreshold = contractState.nextContractScoreThreshold,
                 completedBatchCount = contractState.completedBatchCount
             ),
             scoreDelta = -activeContract.penaltyPoints
@@ -717,6 +717,7 @@ object GameEngine {
                 isFailed = !completed,
                 rewardClaimed = completed,
                 penaltyApplied = !completed,
+                nextContractScoreThreshold = contractState.nextContractScoreThreshold,
                 completedBatchCount = contractState.completedBatchCount
             ),
             scoreDelta = scoreDelta
@@ -725,37 +726,32 @@ object GameEngine {
 
     private fun advanceContractBatch(
         contractState: ContractState,
-        level: Int
+        score: Int,
+        random: Random
     ): ContractState {
         val completedBatchCount = contractState.completedBatchCount + 1
-        val resolvedContract = contractState.resolvedContract
-
-        if (resolvedContract != null) {
-            return contractState.copy(
-                completedBatchCount = completedBatchCount,
-                batchesUntilNextOffer = ContractGenerator.nextOfferCooldown()
-            )
+        if (contractState.resolvedContract != null) {
+            return contractState.copy(completedBatchCount = completedBatchCount)
         }
-
         if (contractState.offeredContract != null || contractState.activeContract != null) {
             return contractState.copy(completedBatchCount = completedBatchCount)
         }
 
-        val batchesUntilNextOffer = (contractState.batchesUntilNextOffer - 1).coerceAtLeast(0)
-        return if (batchesUntilNextOffer == 0) {
-            contractState.copy(
-                offeredContract = ContractGenerator.generate(level = level),
-                batchesUntilNextOffer = 0,
-                completedBatchCount = completedBatchCount
-            )
-        } else {
-            contractState.copy(
-                batchesUntilNextOffer = batchesUntilNextOffer,
+        val threshold = contractState.nextContractScoreThreshold
+            .coerceAtLeast(ContractGenerator.CONTRACT_UNLOCK_SCORE)
+        if (score < threshold) {
+            return contractState.copy(
+                nextContractScoreThreshold = threshold,
                 completedBatchCount = completedBatchCount
             )
         }
-    }
 
+        return ContractState(
+            offeredContract = ContractGenerator.generate(score = score, random = random),
+            nextContractScoreThreshold = ContractGenerator.nextContractScoreThreshold(threshold, random),
+            completedBatchCount = completedBatchCount
+        )
+    }
     private fun absoluteCells(
         piece: Piece,
         startRow: Int,

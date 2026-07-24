@@ -95,7 +95,7 @@ fun ContractOfferPopup(
                     color = theme.success
                 )
                 ContractMiniBadge(
-                    text = "Risk -${contract.penaltyPoints}",
+                    text = "Penalty -${contract.penaltyPoints}",
                     color = theme.danger
                 )
             }
@@ -184,9 +184,9 @@ fun ContractResultChip(
 ) {
     val contract = contractState.resolvedContract ?: return
     val text = if (contractState.isCompleted) {
-        "Mission Complete +${contract.rewardPoints}"
+        "Contract Complete +${contract.rewardPoints}"
     } else {
-        "Mission Failed -${contract.penaltyPoints}"
+        "Contract Failed -${contract.penaltyPoints}"
     }
     val theme = LocalGridfallColors.current
     val accent = if (contractState.isCompleted) theme.success else theme.danger

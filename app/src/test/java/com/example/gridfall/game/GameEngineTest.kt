@@ -673,7 +673,7 @@ class GameEngineTest {
 
         assertNull(state.contractState.offeredContract)
         assertNull(state.contractState.activeContract)
-        assertTrue(state.contractState.batchesUntilNextOffer in 3..5)
+        assertEquals(ContractGenerator.CONTRACT_UNLOCK_SCORE, state.contractState.nextContractScoreThreshold)
     }
 
     @Test
@@ -704,27 +704,27 @@ class GameEngineTest {
         assertNull(nextState.contractState.offeredContract)
         assertNull(nextState.contractState.activeContract)
         assertFalse(nextState.contractState.isAccepted)
-        assertTrue(nextState.contractState.batchesUntilNextOffer in 12..18)
+        assertEquals(ContractGenerator.CONTRACT_UNLOCK_SCORE, nextState.contractState.nextContractScoreThreshold)
     }
 
     @Test
-    fun contractOfferAppearsOnlyAfterCooldownBatches() {
+    fun contractOfferAppearsOnlyWhenScoreThresholdIsReached() {
         val piece = Piece("single", listOf(Cell(0, 0)))
-        val cooldownTwoState = testState(
+        val beforeUnlock = testState(
             currentPieces = listOf(piece, piece, piece),
-            contractState = ContractState(batchesUntilNextOffer = 2)
+            score = ContractGenerator.CONTRACT_UNLOCK_SCORE - 4
         )
-        val cooldownOneState = testState(
+        val atUnlock = testState(
             currentPieces = listOf(piece, piece, piece),
-            contractState = ContractState(batchesUntilNextOffer = 1)
+            score = ContractGenerator.CONTRACT_UNLOCK_SCORE - 3
         )
 
-        val afterCooldownTwoBatch = placeAllThreeSingles(cooldownTwoState)
-        val afterCooldownOneBatch = placeAllThreeSingles(cooldownOneState)
+        val afterBeforeUnlockBatch = placeAllThreeSingles(beforeUnlock)
+        val afterUnlockBatch = placeAllThreeSingles(atUnlock)
 
-        assertNull(afterCooldownTwoBatch.contractState.offeredContract)
-        assertEquals(1, afterCooldownTwoBatch.contractState.batchesUntilNextOffer)
-        assertNotNull(afterCooldownOneBatch.contractState.offeredContract)
+        assertNull(afterBeforeUnlockBatch.contractState.offeredContract)
+        assertNotNull(afterUnlockBatch.contractState.offeredContract)
+        assertTrue(afterUnlockBatch.contractState.nextContractScoreThreshold in 6_300..6_700)
     }
 
     @Test
@@ -880,7 +880,7 @@ class GameEngineTest {
         assertFalse(afterFirst.contractState.isCompleted)
         assertTrue(afterFirst.contractState.isFailed)
         assertTrue(afterFirst.contractState.penaltyApplied)
-        assertTrue(afterFirst.contractState.batchesUntilNextOffer in 12..18)
+        assertEquals(ContractGenerator.CONTRACT_UNLOCK_SCORE, afterFirst.contractState.nextContractScoreThreshold)
         assertTrue(contractWarningCells(afterFirst.contractState).isEmpty())
         assertEquals(0, afterFirst.score)
     }
@@ -955,7 +955,7 @@ class GameEngineTest {
         assertFalse(afterFirst.contractState.isCompleted)
         assertTrue(afterFirst.contractState.isFailed)
         assertTrue(afterFirst.contractState.penaltyApplied)
-        assertTrue(afterFirst.contractState.batchesUntilNextOffer in 12..18)
+        assertEquals(ContractGenerator.CONTRACT_UNLOCK_SCORE, afterFirst.contractState.nextContractScoreThreshold)
         assertTrue(contractWarningCells(afterFirst.contractState).isEmpty())
         assertEquals(0, afterFirst.score)
     }
@@ -1112,7 +1112,7 @@ class GameEngineTest {
         assertNull(afterThird.contractState.offeredContract)
         assertNull(afterThird.contractState.activeContract)
         assertEquals(0, afterThird.contractState.batchPlacedPieces)
-        assertTrue(afterThird.contractState.batchesUntilNextOffer in 12..18)
+        assertEquals(ContractGenerator.CONTRACT_UNLOCK_SCORE, afterThird.contractState.nextContractScoreThreshold)
     }
 
     @Test
@@ -1424,31 +1424,22 @@ class GameEngineTest {
     }
 
     @Test
-    fun contractRewardScalesWithLevel() {
-        val lowLevelEasyLine = ContractGenerator.generateForType(ContractType.ClearAtLeastOneLine, level = 1)
-        val highLevelEasyLine = ContractGenerator.generateForType(ContractType.ClearAtLeastOneLine, level = 4)
-        val lowLevelExactLines = ContractGenerator.generateForType(ContractType.ClearExactlyTwoLines, level = 1)
-        val highLevelExactLines = ContractGenerator.generateForType(ContractType.ClearExactlyTwoLines, level = 4)
-
-        assertEquals(25, lowLevelEasyLine.rewardPoints)
-        assertEquals(40, highLevelEasyLine.rewardPoints)
-        assertEquals(40, lowLevelExactLines.rewardPoints)
-        assertEquals(55, highLevelExactLines.rewardPoints)
-        assertTrue(lowLevelExactLines.rewardPoints > lowLevelEasyLine.rewardPoints)
+    fun contractRewardScalesWithLateGameScoreAndCaps() {
+        assertEquals(600, ContractGenerator.rewardForScore(5_000))
+        assertEquals(750, ContractGenerator.rewardForScore(6_500))
+        assertEquals(900, ContractGenerator.rewardForScore(8_000))
+        assertEquals(1_100, ContractGenerator.rewardForScore(9_500))
+        assertEquals(1_300, ContractGenerator.rewardForScore(11_000))
+        assertEquals(1_500, ContractGenerator.rewardForScore(20_000))
+        assertEquals(585, ContractGenerator.penaltyForReward(900))
     }
 
     @Test
-    fun lineClearContractsHaveLowerGenerationWeightThanMediumContracts() {
+    fun placementRestrictionContractsHaveLowerGenerationWeight() {
         val weights = ContractGenerator.contractTypeWeights()
-        val lineClearWeight = weights.getValue(ContractType.ClearAtLeastOneLine) +
-            weights.getValue(ContractType.ClearExactlyTwoLines)
-        val mediumWeight = weights.getValue(ContractType.NoEdgePlacement) +
-            weights.getValue(ContractType.AvoidCenterArea) +
-            weights.getValue(ContractType.ScoreAtLeastTwenty)
 
-        assertTrue(weights.getValue(ContractType.ClearAtLeastOneLine) < weights.getValue(ContractType.NoEdgePlacement))
-        assertTrue(weights.getValue(ContractType.ClearExactlyTwoLines) < weights.getValue(ContractType.AvoidCenterArea))
-        assertTrue(lineClearWeight < mediumWeight)
+        assertTrue(weights.getValue(ContractType.NoEdgePlacement) < weights.getValue(ContractType.ClearAtLeastOneLine))
+        assertTrue(weights.getValue(ContractType.AvoidCenterArea) < weights.getValue(ContractType.ScoreAtLeastTwenty))
     }
 
     @Test

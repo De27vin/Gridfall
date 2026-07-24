@@ -5,6 +5,7 @@ import com.example.gridfall.game.Board
 import com.example.gridfall.game.Cell
 import com.example.gridfall.game.Contract
 import com.example.gridfall.game.ContractState
+import com.example.gridfall.game.ContractGenerator
 import com.example.gridfall.game.ContractType
 import com.example.gridfall.game.GameState
 import com.example.gridfall.game.JokerType
@@ -115,18 +116,25 @@ object InProgressRunJson {
             ?: emptySet()
         if (usedIndices.any { it !in pieces.indices }) return null
 
+        val score = optInt("score").coerceAtLeast(0)
+        val restoredContractState = optJSONObject("contractState")?.toContractState() ?: ContractState()
+
         return GameState(
             board = board,
             currentPieces = pieces,
             usedPieceIndices = usedIndices,
-            score = optInt("score").coerceAtLeast(0),
+            score = score,
             maxScoreReached = maxOf(
-                optInt("maxScoreReached", optInt("score")).coerceAtLeast(0),
-                optInt("score").coerceAtLeast(0)
+                optInt("maxScoreReached", score).coerceAtLeast(0),
+                score
             ),
             combo = optInt("combo").coerceAtLeast(0),
             isGameOver = optBoolean("isGameOver"),
-            contractState = optJSONObject("contractState")?.toContractState() ?: ContractState(),
+            contractState = if (score < ContractGenerator.CONTRACT_UNLOCK_SCORE) {
+                ContractState()
+            } else {
+                restoredContractState
+            },
             riskSpinState = optJSONObject("riskSpinState")?.toRiskSpinState(allowRevertSnapshot)
                 ?: RiskSpinState(),
             runStats = optJSONObject("runStats")?.toRunStats() ?: return null
@@ -227,6 +235,7 @@ object InProgressRunJson {
             .put("usedCenter", usedCenter)
             .put("rewardClaimed", rewardClaimed)
             .put("penaltyApplied", penaltyApplied)
+            .put("nextContractScoreThreshold", nextContractScoreThreshold)
             .put("batchesUntilNextOffer", batchesUntilNextOffer)
             .put("completedBatchCount", completedBatchCount)
     }
@@ -246,6 +255,7 @@ object InProgressRunJson {
             usedCenter = optBoolean("usedCenter"),
             rewardClaimed = optBoolean("rewardClaimed"),
             penaltyApplied = optBoolean("penaltyApplied"),
+            nextContractScoreThreshold = optInt("nextContractScoreThreshold", ContractGenerator.CONTRACT_UNLOCK_SCORE).coerceAtLeast(ContractGenerator.CONTRACT_UNLOCK_SCORE),
             batchesUntilNextOffer = optInt("batchesUntilNextOffer").coerceAtLeast(0),
             completedBatchCount = optInt("completedBatchCount").coerceAtLeast(0)
         )

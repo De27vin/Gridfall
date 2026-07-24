@@ -53,6 +53,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.findViewTreeLifecycleOwner
 import com.example.gridfall.audio.GridfallSoundManager
 import com.example.gridfall.audio.SoundPreferenceStore
+import com.example.gridfall.game.ContractGenerator
 import com.example.gridfall.audio.ThemeSoundEvent
 import com.example.gridfall.auth.AuthPromptStore
 import com.example.gridfall.auth.GridfallAuthManager
@@ -771,9 +772,21 @@ fun GameScreen(modifier: Modifier = Modifier) {
         }
     }
 
-    val contractOfferSoundKey = gameState.contractState.offeredContract?.let { contract ->
-        "${gameState.contractState.completedBatchCount}:${contract.id}:${contract.rewardPoints}"
-    }
+    val canShowContractOffer =
+        gameState.score >= ContractGenerator.CONTRACT_UNLOCK_SCORE &&
+            !dragState.isDragging &&
+            !gameState.isGameOver &&
+            !showRiskSpinOverlay &&
+            !showSettingsScreen &&
+            !showLeaderboardScreen &&
+            !showRestartConfirmDialog &&
+            !showSaveProgressPrompt &&
+            !showLogoutConfirmDialog
+    val contractOfferSoundKey = gameState.contractState.offeredContract
+        ?.takeIf { canShowContractOffer }
+        ?.let { contract ->
+            "${gameState.contractState.completedBatchCount}:${contract.id}:${contract.rewardPoints}"
+        }
     LaunchedEffect(contractOfferSoundKey) {
         if (contractOfferSoundKey != null) {
             soundManager.playContractPopup(soundEffectsVolume)
@@ -1304,7 +1317,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
         }
 
         val offeredContract = gameState.contractState.offeredContract
-        if (offeredContract != null) {
+        if (offeredContract != null && canShowContractOffer) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()

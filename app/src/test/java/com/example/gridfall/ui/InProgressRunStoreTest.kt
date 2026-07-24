@@ -23,9 +23,9 @@ import org.junit.Test
 class InProgressRunStoreTest {
     @Test
     fun roundTripsInProgressRunIncludingRevertSnapshotAndMemorySession() {
-        val previousMove = gameState(score = 42, inventory = listOf(JokerType.Revert))
+        val previousMove = gameState(score = 5_042, inventory = listOf(JokerType.Revert))
         val currentState = gameState(
-            score = 73,
+            score = 5_073,
             inventory = listOf(JokerType.Bomb, JokerType.Revert),
             previousMove = previousMove
         )
@@ -77,7 +77,7 @@ class InProgressRunStoreTest {
     }
 
     private fun gameState(
-        score: Int = 73,
+        score: Int = 5_073,
         inventory: List<JokerType> = listOf(JokerType.Bomb),
         previousMove: GameState? = null
     ): GameState {
