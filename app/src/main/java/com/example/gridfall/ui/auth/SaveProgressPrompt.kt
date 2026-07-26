@@ -2,6 +2,9 @@ package com.example.gridfall.ui.auth
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -9,8 +12,9 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import com.example.gridfall.ui.infernoCorner
 import com.example.gridfall.ui.infernoPanelTexture
 import com.example.gridfall.ui.retroCorner
@@ -30,7 +34,7 @@ fun SaveProgressPrompt(
 
     AlertDialog(
         onDismissRequest = onSkip,
-        modifier = androidx.compose.ui.Modifier
+        modifier = Modifier
             .infernoPanelTexture(theme)
             .retroPanelTexture(theme),
         containerColor = theme.dialogBackground,
@@ -52,33 +56,38 @@ fun SaveProgressPrompt(
                 )
             }
         },
-        dismissButton = {
-            OutlinedButton(
-                onClick = onSkip,
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = theme.textSecondary),
-                shape = buttonShape
-            ) {
-                Text("Skip", style = MaterialTheme.typography.labelLarge.retroText(theme))
-            }
-        },
         confirmButton = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedButton(
+                    modifier = Modifier.weight(1f),
+                    onClick = onSkip,
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = theme.textSecondary),
+                    shape = buttonShape
+                ) {
+                    Text("Skip", maxLines = 1, style = MaterialTheme.typography.labelLarge.retroText(theme))
+                }
                 Button(
+                    modifier = Modifier.weight(1f),
                     onClick = onRegister,
+                    contentPadding = PaddingValues(horizontal = 4.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = theme.accentStrong,
                         contentColor = theme.chipBackground
                     ),
                     shape = buttonShape
                 ) {
-                    Text("Register", style = MaterialTheme.typography.labelLarge.retroText(theme))
+                    Text("Register", maxLines = 1, style = MaterialTheme.typography.labelLarge.retroText(theme))
                 }
                 OutlinedButton(
+                    modifier = Modifier.weight(1f),
                     onClick = onLogin,
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = theme.textSecondary),
                     shape = buttonShape
                 ) {
-                    Text("Login", style = MaterialTheme.typography.labelLarge.retroText(theme))
+                    Text("Login", maxLines = 1, style = MaterialTheme.typography.labelLarge.retroText(theme))
                 }
             }
         }
