@@ -23,6 +23,7 @@ object GameEngine {
         if (state.isGameOver) return state
         if (state.usedPieceIndices.isNotEmpty()) return state
         val contract = state.contractState.offeredContract ?: return state
+        val previousSnapshot = snapshotBeforeMove(state)
 
         return state.copy(
             contractState = state.contractState.copy(
@@ -34,14 +35,19 @@ object GameEngine {
                 isFailed = false,
                 rewardClaimed = false,
                 penaltyApplied = false
+            ),
+            riskSpinState = state.riskSpinState.copy(
+                previousMoveSnapshot = previousSnapshot,
+                hasUsedRevertSinceLastMove = false
             )
         )
     }
 
-fun skipContract(state: GameState, random: Random = Random.Default): GameState {
+    fun skipContract(state: GameState, random: Random = Random.Default): GameState {
         if (state.isGameOver) return state
         if (state.contractState.offeredContract == null) return state
 
+        val previousSnapshot = snapshotBeforeMove(state)
         val offerFollowUp = state.score >= ContractGenerator.CONTRACT_UNLOCK_SCORE &&
             ContractGenerator.shouldOfferBackToBack(random)
         return state.copy(
@@ -54,6 +60,10 @@ fun skipContract(state: GameState, random: Random = Random.Default): GameState {
                 isFailed = false,
                 rewardClaimed = false,
                 penaltyApplied = false
+            ),
+            riskSpinState = state.riskSpinState.copy(
+                previousMoveSnapshot = previousSnapshot,
+                hasUsedRevertSinceLastMove = false
             )
         )
     }
@@ -174,7 +184,9 @@ fun skipContract(state: GameState, random: Random = Random.Default): GameState {
             score = (state.score - cost).coerceAtLeast(0),
             riskSpinState = state.riskSpinState.copy(
                 inventory = nextInventory.take(RiskSpinState.MAX_INVENTORY_SIZE),
-                cooldownBatchesRemaining = RiskSpin.randomCooldown(random)
+                cooldownBatchesRemaining = RiskSpin.randomCooldown(random),
+                previousMoveSnapshot = snapshotBeforeMove(state),
+                hasUsedRevertSinceLastMove = false
             )
         )
 
@@ -198,7 +210,9 @@ fun skipContract(state: GameState, random: Random = Random.Default): GameState {
         val nextState = state.copy(
             score = (state.score - cost).coerceAtLeast(0),
             riskSpinState = state.riskSpinState.copy(
-                cooldownBatchesRemaining = RiskSpin.randomCooldown(random)
+                cooldownBatchesRemaining = RiskSpin.randomCooldown(random),
+                previousMoveSnapshot = snapshotBeforeMove(state),
+                hasUsedRevertSinceLastMove = true
             )
         )
 
@@ -243,14 +257,21 @@ fun skipContract(state: GameState, random: Random = Random.Default): GameState {
             lostBecauseInventoryFull = revealedField.lostBecauseInventoryFull
         )
 
+        val nextSession = session.copy(
+            revealsLeft = (session.revealsLeft - 1).coerceAtLeast(0),
+            fields = nextFields
+        )
+
         return RiskSpinMemoryRevealResult(
             state = state.copy(
-                riskSpinState = state.riskSpinState.copy(inventory = nextInventory)
+                riskSpinState = state.riskSpinState.copy(
+                    inventory = nextInventory,
+                    hasUsedRevertSinceLastMove = if (nextSession.isComplete) false else {
+                        state.riskSpinState.hasUsedRevertSinceLastMove
+                    }
+                )
             ),
-            session = session.copy(
-                revealsLeft = (session.revealsLeft - 1).coerceAtLeast(0),
-                fields = nextFields
-            ),
+            session = nextSession,
             entry = entry
         )
     }
@@ -459,6 +480,7 @@ fun skipContract(state: GameState, random: Random = Random.Default): GameState {
         if (state.isGameOver || JokerType.BlockBreaker !in state.riskSpinState.inventory) return state
         if (!state.board.isInside(row, col) || state.board.isEmpty(row, col)) return state
 
+        val previousSnapshot = snapshotBeforeMove(state)
         val nextBoard = state.board.set(row, col, 0)
         val perfectClearBonus = if (nextBoard.isEmpty()) {
             ScoreSystem.perfectClearBonusForLevel(LevelSystem.levelForScore(state.score))
@@ -471,7 +493,9 @@ fun skipContract(state: GameState, random: Random = Random.Default): GameState {
             score = nextScore,
             maxScoreReached = maxOf(state.maxScoreReached, nextScore),
             riskSpinState = state.riskSpinState.copy(
-                inventory = removeOneJoker(state.riskSpinState.inventory, JokerType.BlockBreaker)
+                inventory = removeOneJoker(state.riskSpinState.inventory, JokerType.BlockBreaker),
+                previousMoveSnapshot = previousSnapshot,
+                hasUsedRevertSinceLastMove = false
             )
         )
     }

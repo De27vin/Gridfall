@@ -690,13 +690,20 @@ class GameEngineTest {
         val state = testState(
             currentPieces = listOf(Piece("single", listOf(Cell(0, 0)))),
             contractState = ContractState(offeredContract = contract)
-        )
+        ).copy(riskSpinState = RiskSpinState(inventory = listOf(JokerType.Revert)))
 
         val nextState = GameEngine.acceptContract(state)
 
         assertEquals(contract, nextState.contractState.activeContract)
         assertNull(nextState.contractState.offeredContract)
         assertTrue(nextState.contractState.isAccepted)
+        assertNotNull(nextState.riskSpinState.previousMoveSnapshot)
+
+        val reverted = GameEngine.useRevertJoker(nextState)
+
+        assertEquals(contract, reverted.contractState.offeredContract)
+        assertNull(reverted.contractState.activeContract)
+        assertTrue(reverted.riskSpinState.inventory.isEmpty())
     }
 
     @Test
@@ -705,14 +712,20 @@ class GameEngineTest {
         val state = testState(
             currentPieces = listOf(Piece("single", listOf(Cell(0, 0)))),
             contractState = ContractState(offeredContract = contract)
-        )
+        ).copy(riskSpinState = RiskSpinState(inventory = listOf(JokerType.Revert)))
 
-        val nextState = GameEngine.skipContract(state)
+        val nextState = GameEngine.skipContract(state, Random(1))
 
         assertNull(nextState.contractState.offeredContract)
         assertNull(nextState.contractState.activeContract)
         assertFalse(nextState.contractState.isAccepted)
         assertEquals(ContractGenerator.CONTRACT_UNLOCK_SCORE, nextState.contractState.nextContractScoreThreshold)
+        assertNotNull(nextState.riskSpinState.previousMoveSnapshot)
+
+        val reverted = GameEngine.useRevertJoker(nextState)
+
+        assertEquals(contract, reverted.contractState.offeredContract)
+        assertTrue(reverted.riskSpinState.inventory.isEmpty())
     }
 
     @Test

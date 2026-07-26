@@ -41,6 +41,24 @@ class BlockBreakerTest {
         assertEquals(2_555, nextState.score)
         assertTrue(nextState.riskSpinState.inventory.isEmpty())
     }
+
+    @Test
+    fun blockBreakerUseCanBeRevertedOnlyOnce() {
+        val board = Board.empty().fill(2, 2)
+        val state = stateWithBreaker(board, score = 40).copy(
+            riskSpinState = RiskSpinState(
+                inventory = listOf(JokerType.BlockBreaker, JokerType.Revert)
+            )
+        )
+
+        val afterBreaker = GameEngine.useBlockBreaker(state, row = 2, col = 2)
+        val reverted = GameEngine.useRevertJoker(afterBreaker)
+
+        assertEquals(board, reverted.board)
+        assertEquals(40, reverted.score)
+        assertEquals(listOf(JokerType.BlockBreaker), reverted.riskSpinState.inventory)
+        assertEquals(reverted, GameEngine.useRevertJoker(reverted))
+    }
     @Test
     fun blockBreakerCannotBeUsedAfterGameOver() {
         val state = stateWithBreaker(Board.empty().fill(1, 1), score = 10).copy(isGameOver = true)

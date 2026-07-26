@@ -129,6 +129,40 @@ class RiskSpinTest {
     }
 
     @Test
+    fun completedMemorySpinCanBeRevertedButIntermediateRevealsCannot() {
+        val state = testState(
+            score = 500,
+            riskSpinState = RiskSpinState(inventory = listOf(JokerType.Revert))
+        )
+        val started = GameEngine.startRiskSpinMemorySession(
+            state = state,
+            option = RiskSpinOption.Safe,
+            random = Random(2)
+        )!!
+        val finalRevealSession = started.session.copy(
+            revealsLeft = 1,
+            fields = listOf(RiskSpinMemoryField(id = 0, outcome = RiskSpinOutcome.Single))
+        )
+
+        assertEquals(started.state, GameEngine.useRevertJoker(started.state))
+
+        val completed = GameEngine.revealRiskSpinMemoryField(
+            state = started.state,
+            session = finalRevealSession,
+            fieldId = 0
+        )!!
+        assertTrue(completed.session.isComplete)
+        assertFalse(completed.state.riskSpinState.hasUsedRevertSinceLastMove)
+
+        val reverted = GameEngine.useRevertJoker(completed.state)
+
+        assertEquals(500, reverted.score)
+        assertEquals(0, reverted.riskSpinState.cooldownBatchesRemaining)
+        assertTrue(reverted.riskSpinState.inventory.isEmpty())
+        assertEquals(reverted, GameEngine.useRevertJoker(reverted))
+    }
+
+    @Test
     fun memorySessionGeneratedBoardHasEightyOneWeightedFields() {
         val fields = RiskSpin.generateMemoryFields(Random(2))
         val pool = RiskSpin.rewardPool().toSet()
