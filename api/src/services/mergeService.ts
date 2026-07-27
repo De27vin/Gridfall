@@ -20,6 +20,7 @@ export interface ProfileStats {
   totalContractsCompleted: number;
   totalBombsUsed: number;
   totalMegaBombsUsed: number;
+  totalRiskSpinsUsed: number;
 }
 
 const mergeTokenTtlSeconds = 900;
@@ -130,11 +131,11 @@ export function mergeProfileStats(
     totalLinesCleared: registered.totalLinesCleared + guest.totalLinesCleared,
     totalContractsCompleted: registered.totalContractsCompleted + guest.totalContractsCompleted,
     totalBombsUsed: registered.totalBombsUsed + guest.totalBombsUsed,
-    totalMegaBombsUsed: registered.totalMegaBombsUsed + guest.totalMegaBombsUsed
+    totalMegaBombsUsed: registered.totalMegaBombsUsed + guest.totalMegaBombsUsed,
+    totalRiskSpinsUsed: registered.totalRiskSpinsUsed + guest.totalRiskSpinsUsed
   };
 }
 
 export function hashMergeToken(mergeToken: string): string {
   return crypto.createHash("sha256").update(mergeToken).digest("hex");
 }
-

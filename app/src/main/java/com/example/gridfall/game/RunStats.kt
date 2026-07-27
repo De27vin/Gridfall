@@ -8,7 +8,8 @@ data class RunStats(
     val linesCleared: Int = 0,
     val contractsCompleted: Int = 0,
     val bombsUsed: Int = 0,
-    val megaBombsUsed: Int = 0
+    val megaBombsUsed: Int = 0,
+    val riskSpinsUsed: Int = 0
 ) {
     fun durationSeconds(nowMillis: Long = System.currentTimeMillis()): Int {
         return ((nowMillis - startedAtEpochMillis) / 1000L)
@@ -30,6 +31,10 @@ data class RunStats(
 
     fun recordCompletedContract(): RunStats {
         return copy(contractsCompleted = contractsCompleted + 1)
+    }
+
+    fun recordRiskSpin(): RunStats {
+        return copy(riskSpinsUsed = riskSpinsUsed + 1)
     }
 
     companion object {

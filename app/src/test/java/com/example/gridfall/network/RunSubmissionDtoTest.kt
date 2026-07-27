@@ -16,6 +16,7 @@ class RunSubmissionDtoTest {
             contractsCompleted = 4,
             bombsUsed = 3,
             megaBombsUsed = 1,
+            riskSpinsUsed = 6,
             durationSeconds = 480,
             appVersion = "1.0"
         )
@@ -28,6 +29,7 @@ class RunSubmissionDtoTest {
         assertEquals(4, payload["contractsCompleted"])
         assertEquals(3, payload["bombsUsed"])
         assertEquals(1, payload["megaBombsUsed"])
+        assertEquals(6, payload["riskSpinsUsed"])
         assertEquals(480, payload["durationSeconds"])
         assertEquals("1.0", payload["appVersion"])
     }

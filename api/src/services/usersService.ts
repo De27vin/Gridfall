@@ -86,7 +86,8 @@ export function serializeUserWithProfile({ user, profile }: UserWithProfile) {
       totalLinesCleared: profile.totalLinesCleared,
       totalContractsCompleted: profile.totalContractsCompleted,
       totalBombsUsed: profile.totalBombsUsed,
-      totalMegaBombsUsed: profile.totalMegaBombsUsed
+      totalMegaBombsUsed: profile.totalMegaBombsUsed,
+      totalRiskSpinsUsed: profile.totalRiskSpinsUsed
     }
   };
 }
@@ -97,4 +98,3 @@ function isUniqueConstraintError(error: unknown): boolean {
     "code" in error &&
     (error as { code?: string }).code === "P2002";
 }
-

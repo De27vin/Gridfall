@@ -8,6 +8,7 @@ export const submitRunSchema = z.object({
   contractsCompleted: z.number().int().min(0).max(10_000).default(0),
   bombsUsed: z.number().int().min(0).max(10_000).default(0),
   megaBombsUsed: z.number().int().min(0).max(10_000).default(0),
+  riskSpinsUsed: z.number().int().min(0).max(10_000).default(0),
   durationSeconds: z.number().int().min(0).max(604_800).nullable().optional(),
   appVersion: z.string().trim().max(64).nullable().optional()
 });
@@ -31,6 +32,7 @@ export async function saveRunAndUpdateProfile(userId: string, input: SubmitRunIn
         contractsCompleted: input.contractsCompleted,
         bombsUsed: input.bombsUsed,
         megaBombsUsed: input.megaBombsUsed,
+        riskSpinsUsed: input.riskSpinsUsed,
         durationSeconds: input.durationSeconds,
         appVersion: input.appVersion
       }
@@ -49,7 +51,8 @@ export async function saveRunAndUpdateProfile(userId: string, input: SubmitRunIn
         totalLinesCleared: { increment: input.linesCleared },
         totalContractsCompleted: { increment: input.contractsCompleted },
         totalBombsUsed: { increment: input.bombsUsed },
-        totalMegaBombsUsed: { increment: input.megaBombsUsed }
+        totalMegaBombsUsed: { increment: input.megaBombsUsed },
+        totalRiskSpinsUsed: { increment: input.riskSpinsUsed }
       }
     });
 
@@ -66,7 +69,7 @@ export function summarizeRunStats(input: SubmitRunInput) {
     totalLinesCleared: input.linesCleared,
     totalContractsCompleted: input.contractsCompleted,
     totalBombsUsed: input.bombsUsed,
-    totalMegaBombsUsed: input.megaBombsUsed
+    totalMegaBombsUsed: input.megaBombsUsed,
+    totalRiskSpinsUsed: input.riskSpinsUsed
   };
 }
-

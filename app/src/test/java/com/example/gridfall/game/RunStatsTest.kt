@@ -15,6 +15,7 @@ class RunStatsTest {
         assertEquals(0, state.runStats.contractsCompleted)
         assertEquals(0, state.runStats.bombsUsed)
         assertEquals(0, state.runStats.megaBombsUsed)
+        assertEquals(0, state.runStats.riskSpinsUsed)
     }
 
     @Test
@@ -84,6 +85,19 @@ class RunStatsTest {
     }
 
     @Test
+    fun riskSpinStartIncrementsRunStatsOnce() {
+        val state = testState(score = 500)
+
+        val started = GameEngine.startRiskSpinMemorySession(
+            state = state,
+            option = RiskSpinOption.Safe
+        )
+
+        assertEquals(1, started!!.state.runStats.riskSpinsUsed)
+        assertEquals(0, state.runStats.riskSpinsUsed)
+    }
+
+    @Test
     fun newGameResetsCurrentRunStatsAndCreatesNewRunId() {
         val firstRun = GameEngine.createInitialState()
         val changedStats = firstRun.runStats
@@ -99,6 +113,7 @@ class RunStatsTest {
         assertEquals(0, restarted.runStats.contractsCompleted)
         assertEquals(0, restarted.runStats.bombsUsed)
         assertEquals(0, restarted.runStats.megaBombsUsed)
+        assertEquals(0, restarted.runStats.riskSpinsUsed)
         assertNotEquals(firstRun.runStats.runId, restarted.runStats.runId)
     }
 

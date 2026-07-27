@@ -16,14 +16,16 @@ data class YourStatsDto(
     val totalPoints: Int,
     val gamesPlayed: Int,
     val totalLinesCleared: Int,
-    val totalContractsCompleted: Int
+    val totalContractsCompleted: Int,
+    val totalRiskSpinsUsed: Int = 0
 )
 
 data class LeaderboardSectionsDto(
     val bestScore: LeaderboardSectionDto,
     val totalPoints: LeaderboardSectionDto,
     val linesCleared: LeaderboardSectionDto,
-    val contractsCompleted: LeaderboardSectionDto
+    val contractsCompleted: LeaderboardSectionDto,
+    val riskSpinsUsed: LeaderboardSectionDto = LeaderboardSectionDto(emptyList(), null)
 )
 
 data class LeaderboardSectionDto(
@@ -39,6 +41,7 @@ data class LeaderboardEntryDto(
     val totalPoints: Int = 0,
     val totalLinesCleared: Int = 0,
     val totalContractsCompleted: Int = 0,
+    val totalRiskSpinsUsed: Int = 0,
     val isInTop: Boolean = false
 )
 
@@ -46,5 +49,6 @@ enum class LeaderboardType {
     BestScore,
     TotalPoints,
     LinesCleared,
-    ContractsCompleted
+    ContractsCompleted,
+    RiskSpinsUsed
 }

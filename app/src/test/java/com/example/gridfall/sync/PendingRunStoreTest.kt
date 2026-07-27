@@ -84,6 +84,7 @@ class PendingRunStoreTest {
                 contractsCompleted = 1,
                 bombsUsed = 0,
                 megaBombsUsed = 0,
+                riskSpinsUsed = 2,
                 durationSeconds = 90,
                 appVersion = "1.0"
             ),

@@ -224,7 +224,8 @@ suspend fun getLeaderboards(
                 totalPoints = stats.optInt("totalPoints"),
                 gamesPlayed = stats.optInt("gamesPlayed"),
                 totalLinesCleared = stats.optInt("totalLinesCleared"),
-                totalContractsCompleted = stats.optInt("totalContractsCompleted")
+                totalContractsCompleted = stats.optInt("totalContractsCompleted"),
+                totalRiskSpinsUsed = stats.optInt("totalRiskSpinsUsed")
             )
         }
         val sections = json.optJSONObject("leaderboards") ?: JSONObject()
@@ -234,7 +235,8 @@ suspend fun getLeaderboards(
                 bestScore = parseLeaderboardSection(sections.optJSONObject("bestScore")),
                 totalPoints = parseLeaderboardSection(sections.optJSONObject("totalPoints")),
                 linesCleared = parseLeaderboardSection(sections.optJSONObject("linesCleared")),
-                contractsCompleted = parseLeaderboardSection(sections.optJSONObject("contractsCompleted"))
+                contractsCompleted = parseLeaderboardSection(sections.optJSONObject("contractsCompleted")),
+                riskSpinsUsed = parseLeaderboardSection(sections.optJSONObject("riskSpinsUsed"))
             )
         )
     }
@@ -260,6 +262,7 @@ suspend fun getLeaderboards(
             totalPoints = entry.optInt("totalPoints"),
             totalLinesCleared = entry.optInt("totalLinesCleared"),
             totalContractsCompleted = entry.optInt("totalContractsCompleted"),
+            totalRiskSpinsUsed = entry.optInt("totalRiskSpinsUsed"),
             isInTop = entry.optBoolean("isInTop")
         )
     }

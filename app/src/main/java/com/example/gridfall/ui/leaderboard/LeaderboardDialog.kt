@@ -187,6 +187,7 @@ private fun YourStatsCard(stats: YourStatsDto?) {
             StatsLine("Games Played", formatNumber(stats.gamesPlayed))
             StatsLine("Lines Cleared", formatNumber(stats.totalLinesCleared))
             StatsLine("Contracts Completed", formatNumber(stats.totalContractsCompleted))
+            StatsLine("Risk Spins", formatNumber(stats.totalRiskSpinsUsed))
         }
     }
 }
@@ -245,6 +246,7 @@ private fun LeaderboardSectionsDto.sectionFor(type: LeaderboardType): Leaderboar
     LeaderboardType.TotalPoints -> totalPoints
     LeaderboardType.LinesCleared -> linesCleared
     LeaderboardType.ContractsCompleted -> contractsCompleted
+    LeaderboardType.RiskSpinsUsed -> riskSpinsUsed
 }
 
 private fun LeaderboardType.tabLabel(): String = when (this) {
@@ -252,6 +254,7 @@ private fun LeaderboardType.tabLabel(): String = when (this) {
     LeaderboardType.TotalPoints -> "Points"
     LeaderboardType.LinesCleared -> "Lines"
     LeaderboardType.ContractsCompleted -> "Contracts"
+    LeaderboardType.RiskSpinsUsed -> "Spins"
 }
 
 private fun entryValue(entry: LeaderboardEntryDto, type: LeaderboardType): String = when (type) {
@@ -259,6 +262,7 @@ private fun entryValue(entry: LeaderboardEntryDto, type: LeaderboardType): Strin
     LeaderboardType.TotalPoints -> "${formatNumber(entry.totalPoints)} pts"
     LeaderboardType.LinesCleared -> "${formatNumber(entry.totalLinesCleared)} lines"
     LeaderboardType.ContractsCompleted -> "${formatNumber(entry.totalContractsCompleted)} contracts"
+    LeaderboardType.RiskSpinsUsed -> "${formatNumber(entry.totalRiskSpinsUsed)} spins"
 }
 
 private fun formatNumber(value: Int): String = String.format(Locale.US, "%,d", value)

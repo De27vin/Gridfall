@@ -66,6 +66,7 @@ object InProgressRunJson {
             state.runStats.contractsCompleted > 0 ||
             state.runStats.bombsUsed > 0 ||
             state.runStats.megaBombsUsed > 0 ||
+            state.runStats.riskSpinsUsed > 0 ||
             memorySession != null
     }
 
@@ -301,6 +302,7 @@ object InProgressRunJson {
             .put("contractsCompleted", contractsCompleted)
             .put("bombsUsed", bombsUsed)
             .put("megaBombsUsed", megaBombsUsed)
+            .put("riskSpinsUsed", riskSpinsUsed)
     }
 
     private fun JSONObject.toRunStats(): RunStats? {
@@ -311,7 +313,8 @@ object InProgressRunJson {
             linesCleared = optInt("linesCleared").coerceAtLeast(0),
             contractsCompleted = optInt("contractsCompleted").coerceAtLeast(0),
             bombsUsed = optInt("bombsUsed").coerceAtLeast(0),
-            megaBombsUsed = optInt("megaBombsUsed").coerceAtLeast(0)
+            megaBombsUsed = optInt("megaBombsUsed").coerceAtLeast(0),
+            riskSpinsUsed = optInt("riskSpinsUsed").coerceAtLeast(0)
         )
     }
 

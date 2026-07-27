@@ -108,6 +108,7 @@ object PendingRunSubmissionJson {
             .put("contractsCompleted", request.contractsCompleted)
             .put("bombsUsed", request.bombsUsed)
             .put("megaBombsUsed", request.megaBombsUsed)
+            .put("riskSpinsUsed", request.riskSpinsUsed)
             .put("durationSeconds", request.durationSeconds)
             .put("appVersion", request.appVersion)
             .put("createdAt", createdAtMillis)
@@ -128,6 +129,7 @@ object PendingRunSubmissionJson {
                 contractsCompleted = optInt("contractsCompleted"),
                 bombsUsed = optInt("bombsUsed"),
                 megaBombsUsed = optInt("megaBombsUsed"),
+                riskSpinsUsed = optInt("riskSpinsUsed"),
                 durationSeconds = optInt("durationSeconds"),
                 appVersion = optString("appVersion").takeIf { it.isNotBlank() } ?: "1.0"
             ),

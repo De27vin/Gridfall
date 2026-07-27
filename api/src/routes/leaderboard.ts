@@ -10,14 +10,14 @@ const leaderboardQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(10)
 });
 
-const publicProfileWhere: Prisma.PlayerProfileWhereInput = {
+export const publicProfileWhere: Prisma.PlayerProfileWhereInput = {
   user: {
     username: { not: null },
     mergedIntoUserId: null
   }
 };
 
-type LeaderboardType = "bestScore" | "totalPoints" | "linesCleared" | "contractsCompleted";
+type LeaderboardType = "bestScore" | "totalPoints" | "linesCleared" | "contractsCompleted" | "riskSpinsUsed";
 
 interface LeaderboardEntry {
   rank: number;
@@ -27,6 +27,7 @@ interface LeaderboardEntry {
   totalPoints: number;
   totalLinesCleared: number;
   totalContractsCompleted: number;
+  totalRiskSpinsUsed: number;
   isInTop?: boolean;
 }
 
@@ -65,7 +66,8 @@ export const leaderboardRoutes: FastifyPluginAsync = async (app) => {
       buildSection("bestScore", limit, current?.profile ?? null, current?.user ?? null),
       buildSection("totalPoints", limit, current?.profile ?? null, current?.user ?? null),
       buildSection("linesCleared", limit, current?.profile ?? null, current?.user ?? null),
-      buildSection("contractsCompleted", limit, current?.profile ?? null, current?.user ?? null)
+      buildSection("contractsCompleted", limit, current?.profile ?? null, current?.user ?? null),
+      buildSection("riskSpinsUsed", limit, current?.profile ?? null, current?.user ?? null)
     ]);
 
     return {
@@ -74,7 +76,8 @@ export const leaderboardRoutes: FastifyPluginAsync = async (app) => {
         bestScore: sections[0],
         totalPoints: sections[1],
         linesCleared: sections[2],
-        contractsCompleted: sections[3]
+        contractsCompleted: sections[3],
+        riskSpinsUsed: sections[4]
       }
     };
   });
@@ -117,7 +120,7 @@ async function buildSection(
       AND: [publicProfileWhere, higherRankWhere(type, currentProfile)]
     }
   });
-  const isInTop = entries.some((entry) => entry.username === currentUser.username);
+  const isInTop = isCurrentUserInTop(entries, currentUser.username);
 
   return {
     entries,
@@ -128,7 +131,7 @@ async function buildSection(
   };
 }
 
-function leaderboardOrderBy(type: LeaderboardType): Prisma.PlayerProfileOrderByWithRelationInput[] {
+export function leaderboardOrderBy(type: LeaderboardType): Prisma.PlayerProfileOrderByWithRelationInput[] {
   switch (type) {
     case "bestScore":
       return [{ bestScore: "desc" }, { bestLevel: "desc" }, { updatedAt: "asc" }, { id: "asc" }];
@@ -138,10 +141,12 @@ function leaderboardOrderBy(type: LeaderboardType): Prisma.PlayerProfileOrderByW
       return [{ totalLinesCleared: "desc" }, { bestScore: "desc" }, { updatedAt: "asc" }, { id: "asc" }];
     case "contractsCompleted":
       return [{ totalContractsCompleted: "desc" }, { bestScore: "desc" }, { updatedAt: "asc" }, { id: "asc" }];
+    case "riskSpinsUsed":
+      return [{ totalRiskSpinsUsed: "desc" }, { bestScore: "desc" }, { updatedAt: "asc" }, { id: "asc" }];
   }
 }
 
-function higherRankWhere(type: LeaderboardType, profile: PlayerProfile): Prisma.PlayerProfileWhereInput {
+export function higherRankWhere(type: LeaderboardType, profile: PlayerProfile): Prisma.PlayerProfileWhereInput {
   const finalTie = { updatedAt: profile.updatedAt, id: { lt: profile.id } };
   switch (type) {
     case "bestScore":
@@ -172,7 +177,18 @@ function higherRankWhere(type: LeaderboardType, profile: PlayerProfile): Prisma.
         { totalContractsCompleted: profile.totalContractsCompleted, bestScore: profile.bestScore, updatedAt: { lt: profile.updatedAt } },
         { totalContractsCompleted: profile.totalContractsCompleted, bestScore: profile.bestScore, ...finalTie }
       ] };
+    case "riskSpinsUsed":
+      return { OR: [
+        { totalRiskSpinsUsed: { gt: profile.totalRiskSpinsUsed } },
+        { totalRiskSpinsUsed: profile.totalRiskSpinsUsed, bestScore: { gt: profile.bestScore } },
+        { totalRiskSpinsUsed: profile.totalRiskSpinsUsed, bestScore: profile.bestScore, updatedAt: { lt: profile.updatedAt } },
+        { totalRiskSpinsUsed: profile.totalRiskSpinsUsed, bestScore: profile.bestScore, ...finalTie }
+      ] };
   }
+}
+
+export function isCurrentUserInTop(entries: LeaderboardEntry[], username: string): boolean {
+  return entries.some((entry) => entry.username === username);
 }
 
 function toEntry(profile: PlayerProfile, user: User, rank: number): LeaderboardEntry {
@@ -183,7 +199,8 @@ function toEntry(profile: PlayerProfile, user: User, rank: number): LeaderboardE
     bestLevel: profile.bestLevel,
     totalPoints: profile.totalPoints,
     totalLinesCleared: profile.totalLinesCleared,
-    totalContractsCompleted: profile.totalContractsCompleted
+    totalContractsCompleted: profile.totalContractsCompleted,
+    totalRiskSpinsUsed: profile.totalRiskSpinsUsed
   };
 }
 
@@ -195,6 +212,7 @@ function toStats(profile: PlayerProfile, user: User) {
     totalPoints: profile.totalPoints,
     gamesPlayed: profile.gamesPlayed,
     totalLinesCleared: profile.totalLinesCleared,
-    totalContractsCompleted: profile.totalContractsCompleted
+    totalContractsCompleted: profile.totalContractsCompleted,
+    totalRiskSpinsUsed: profile.totalRiskSpinsUsed
   };
 }

@@ -187,7 +187,8 @@ object GameEngine {
                 cooldownBatchesRemaining = RiskSpin.randomCooldown(random),
                 previousMoveSnapshot = snapshotBeforeMove(state),
                 hasUsedRevertSinceLastMove = false
-            )
+            ),
+            runStats = state.runStats.recordRiskSpin()
         )
 
         return RiskSpinResult(
@@ -213,7 +214,8 @@ object GameEngine {
                 cooldownBatchesRemaining = RiskSpin.randomCooldown(random),
                 previousMoveSnapshot = snapshotBeforeMove(state),
                 hasUsedRevertSinceLastMove = true
-            )
+            ),
+            runStats = state.runStats.recordRiskSpin()
         )
 
         return RiskSpinMemoryStartResult(

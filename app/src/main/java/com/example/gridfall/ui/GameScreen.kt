@@ -550,6 +550,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
             contractsCompleted = endedState.runStats.contractsCompleted,
             bombsUsed = endedState.runStats.bombsUsed,
             megaBombsUsed = endedState.runStats.megaBombsUsed,
+            riskSpinsUsed = endedState.runStats.riskSpinsUsed,
             durationSeconds = endedState.runStats.durationSeconds(),
             appVersion = appVersionName(context)
         )

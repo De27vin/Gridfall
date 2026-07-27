@@ -37,6 +37,7 @@ model PlayerProfile {
   totalContractsCompleted  Int      @default(0)
   totalBombsUsed           Int      @default(0)
   totalMegaBombsUsed       Int      @default(0)
+  totalRiskSpinsUsed       Int      @default(0)
   createdAt                DateTime @default(now())
   updatedAt                DateTime @updatedAt
   user                     User     @relation(fields: [userId], references: [id])
@@ -51,6 +52,7 @@ model Run {
   contractsCompleted Int      @default(0)
   bombsUsed          Int      @default(0)
   megaBombsUsed      Int      @default(0)
+  riskSpinsUsed      Int      @default(0)
   durationSeconds    Int?
   appVersion         String?
   validationStatus   String   @default("accepted")
@@ -73,4 +75,3 @@ model GuestMergeToken {
   @@index([guestUserId])
   @@index([expiresAt])
 }
-

@@ -114,7 +114,8 @@ class InProgressRunStoreTest {
                 startedAtEpochMillis = 100,
                 linesCleared = 2,
                 contractsCompleted = 1,
-                bombsUsed = 1
+                bombsUsed = 1,
+                riskSpinsUsed = 2
             )
         )
     }

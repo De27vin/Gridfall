@@ -13,7 +13,8 @@ describe("mergeProfileStats", () => {
           totalLinesCleared: 100,
           totalContractsCompleted: 4,
           totalBombsUsed: 3,
-          totalMegaBombsUsed: 1
+          totalMegaBombsUsed: 1,
+          totalRiskSpinsUsed: 7
         },
         {
           bestScore: 900,
@@ -23,7 +24,8 @@ describe("mergeProfileStats", () => {
           totalLinesCleared: 20,
           totalContractsCompleted: 2,
           totalBombsUsed: 5,
-          totalMegaBombsUsed: 2
+          totalMegaBombsUsed: 2,
+          totalRiskSpinsUsed: 4
         }
       )
     ).toEqual({
@@ -34,7 +36,8 @@ describe("mergeProfileStats", () => {
       totalLinesCleared: 120,
       totalContractsCompleted: 6,
       totalBombsUsed: 8,
-      totalMegaBombsUsed: 3
+      totalMegaBombsUsed: 3,
+      totalRiskSpinsUsed: 11
     });
   });
 });
