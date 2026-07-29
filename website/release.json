@@ -1,0 +1,35 @@
+{
+  "version": "1.3.4",
+  "releasedAt": "2026-07-27",
+  "highlights": [
+    "Undo now covers key game actions, including completed Risk Spins.",
+    "Risk Spin usage is tracked in run stats and leaderboards."
+  ],
+  "history": [
+    {
+      "version": "1.3.4",
+      "releasedAt": "2026-07-27",
+      "summary": "Undo improvements and Risk Spin tracking."
+    },
+    {
+      "version": "1.3.3",
+      "releasedAt": "2026-07-26",
+      "summary": "First-run save-progress layout polish."
+    },
+    {
+      "version": "1.3.2",
+      "releasedAt": "2026-07-24",
+      "summary": "Perfect Clear scaling and Block Breaker fixes."
+    },
+    {
+      "version": "1.3.1",
+      "releasedAt": "2026-07-24",
+      "summary": "Contract and Risk Spin balance changes."
+    },
+    {
+      "version": "1.3",
+      "releasedAt": "2026-07-24",
+      "summary": "Frutiger Aero theme and website launch."
+    }
+  ]
+}

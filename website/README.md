@@ -17,6 +17,10 @@ Cloudflare Pages serves `website/index.html` directly. Point `gridfall.site` and
 - The page uses CSS gameplay mockups, so `assets/preview.png` is optional. Add a real screenshot there later and update `index.html` if desired.
 - Place the signed APK at `downloads/gridfall.apk` before deployment. APK files should not be committed.
 
+## Release updates
+
+Update `release.json` whenever a new APK is published. It drives the version, release date, "What's new" list, and version history on the download section, so the same information can be used in the newsletter announcement.
+
 ## Local preview
 
 Open `index.html` directly in a browser, or serve this folder with any static file server.

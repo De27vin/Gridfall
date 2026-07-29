@@ -14,6 +14,15 @@ footer nav { display:flex; gap:18px; }
 .newsletter-panel { max-width:540px; justify-self:center; width:100%; }
 .newsletter-panel iframe { display:block; width:100%; max-width:540px; margin:0 auto; border:0; }
 .newsletter-privacy { max-width:540px; margin:14px auto 0; text-align:center; font-size:.8rem; }
+.release-notes { margin-top:22px; padding-top:18px; border-top:1px solid rgba(148,168,200,.16); }
+.release-notes-title { margin:0 0 8px; color:var(--cyan); font-size:.72rem; font-weight:800; letter-spacing:.14em; }
+.release-notes ul { margin:0; padding-left:18px; color:var(--muted); font-size:.87rem; }
+.release-notes li + li { margin-top:5px; }
+.release-history { margin-top:18px; color:var(--muted); font-size:.84rem; }
+.release-history summary { color:var(--cyan); cursor:pointer; font-weight:800; letter-spacing:.06em; }
+.release-history ul { margin:12px 0 0; padding-left:18px; }
+.release-history li + li { margin-top:8px; }
+.release-history strong { color:var(--text); }
 .confirmation-page { min-height:100vh; display:flex; flex-direction:column; }
 .confirmation-content { width:min(760px, calc(100% - 40px)); margin:auto; padding:84px 0; text-align:center; }
 .confirmation-mark { width:64px; height:64px; display:grid; place-items:center; margin:0 auto 26px; border:1px solid rgba(85,231,255,.58); border-radius:50%; color:var(--cyan); font-size:2rem; font-weight:800; box-shadow:0 0 30px rgba(85,231,255,.18); }
