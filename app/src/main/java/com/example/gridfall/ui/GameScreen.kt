@@ -116,7 +116,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
     var blockBreakerFeedback by remember { mutableStateOf<BlockBreakerFeedback?>(null) }
     var blockBreakerFeedbackToken by remember { mutableStateOf(0) }
     var isBlockBreakerTargeting by remember { mutableStateOf(false) }
-    var scoreEventFeedback by remember { mutableStateOf<ScoreEventFeedback?>(null) }
+    var scoreEventFeedbacks by remember { mutableStateOf<List<ScoreEventFeedback>>(emptyList()) }
     var scoreEventFeedbackToken by remember { mutableStateOf(0) }
     var showRestartConfirmDialog by remember { mutableStateOf(false) }
     var showRiskSpinOverlay by remember {
@@ -736,10 +736,10 @@ fun GameScreen(modifier: Modifier = Modifier) {
         }
     }
 
-    LaunchedEffect(scoreEventFeedback?.token) {
-        if (scoreEventFeedback != null) {
+    LaunchedEffect(scoreEventFeedbacks.lastOrNull()?.token) {
+        if (scoreEventFeedbacks.isNotEmpty()) {
             delay(900)
-            scoreEventFeedback = null
+            scoreEventFeedbacks = emptyList()
         }
     }
 
@@ -808,8 +808,16 @@ fun GameScreen(modifier: Modifier = Modifier) {
         bombPulseFeedback = null
         blockBreakerFeedback = null
         isBlockBreakerTargeting = false
-        scoreEventFeedback = null
+        scoreEventFeedbacks = emptyList()
         isNewBestThisGame = false
+    }
+
+    fun showScoreEventFeedbacks(feedbacks: List<ScoreEventFeedback>) {
+        if (feedbacks.isEmpty()) return
+        scoreEventFeedbacks = feedbacks.map { feedback ->
+            scoreEventFeedbackToken += 1
+            feedback.copy(token = scoreEventFeedbackToken)
+        }
     }
 
     fun finishDrag() {
@@ -826,16 +834,11 @@ fun GameScreen(modifier: Modifier = Modifier) {
         if (jokerType == JokerType.BlockBreaker && target != null && resolution.isValid) {
             val nextState = GameEngine.useBlockBreaker(gameState, target.startRow, target.startCol)
             if (nextState != gameState) {
-                val scoreFeedbackText = if (nextState.board.isEmpty()) {
-                    "Perfect Clear +${nextState.score - gameState.score}"
-                } else {
-                    "Block Breaker +5"
-                }
+                val scoreFeedbacks = createBlockBreakerScoreFeedbacks(gameState, nextState)
                 gameState = nextState
                 blockBreakerFeedbackToken += 1
                 blockBreakerFeedback = BlockBreakerFeedback(target.startRow, target.startCol, blockBreakerFeedbackToken)
-                scoreEventFeedbackToken += 1
-                scoreEventFeedback = ScoreEventFeedback(scoreFeedbackText, FeedbackTone.Warning, scoreEventFeedbackToken)
+                showScoreEventFeedbacks(scoreFeedbacks)
                 if (nextState.score > highScore) {
                     highScore = nextState.score
                     HighScoreStore.save(context, nextState.score)
@@ -871,12 +874,13 @@ fun GameScreen(modifier: Modifier = Modifier) {
 
             if (nextState != gameState) {
                 view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
-                val nextScoreEvent = createScoreEventFeedback(
+                val nextScoreEvents = createScoreEventFeedbacks(
                     board = gameState.board,
                     piece = piece,
                     startRow = target.startRow,
                     startCol = target.startCol,
                     clearResult = clearResult,
+                    previousScore = gameState.score,
                     nextState = nextState
                 )
                 gameState = nextState
@@ -905,10 +909,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                     bombPulseFeedback = feedback.copy(token = bombPulseFeedbackToken)
                 }
 
-                if (nextScoreEvent != null) {
-                    scoreEventFeedbackToken += 1
-                    scoreEventFeedback = nextScoreEvent.copy(token = scoreEventFeedbackToken)
-                }
+                showScoreEventFeedbacks(nextScoreEvents)
 
                 playMoveSound(
                     soundManager = soundManager,
@@ -1051,17 +1052,12 @@ fun GameScreen(modifier: Modifier = Modifier) {
                     if (nextState == gameState) {
                         view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                     } else {
-                        val scoreFeedbackText = if (nextState.board.isEmpty()) {
-                            "Perfect Clear +${nextState.score - gameState.score}"
-                        } else {
-                            "Block Breaker +5"
-                        }
+                        val scoreFeedbacks = createBlockBreakerScoreFeedbacks(gameState, nextState)
                         gameState = nextState
                         isBlockBreakerTargeting = false
                         blockBreakerFeedbackToken += 1
                         blockBreakerFeedback = BlockBreakerFeedback(cell.row, cell.col, blockBreakerFeedbackToken)
-                        scoreEventFeedbackToken += 1
-                        scoreEventFeedback = ScoreEventFeedback(scoreFeedbackText, FeedbackTone.Warning, scoreEventFeedbackToken)
+                        showScoreEventFeedbacks(scoreFeedbacks)
                         if (nextState.score > highScore) {
                             highScore = nextState.score
                             HighScoreStore.save(context, nextState.score)
@@ -1317,14 +1313,19 @@ fun GameScreen(modifier: Modifier = Modifier) {
             )
         }
 
-        scoreEventFeedback?.let { feedback ->
-            ScoreEventChip(
-                feedback = feedback,
+        if (scoreEventFeedbacks.isNotEmpty()) {
+            Column(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .systemBarsPadding()
-                    .padding(top = 160.dp)
-            )
+                    .padding(top = 160.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                scoreEventFeedbacks.forEach { feedback ->
+                    ScoreEventChip(feedback = feedback)
+                }
+            }
         }
 
         val offeredContract = gameState.contractState.offeredContract
@@ -1695,14 +1696,15 @@ private fun previewClearResult(
     return GameEngine.clearLines(placedBoard)
 }
 
-private fun createScoreEventFeedback(
+private fun createScoreEventFeedbacks(
     board: Board,
     piece: Piece,
     startRow: Int,
     startCol: Int,
     clearResult: ClearResult?,
+    previousScore: Int,
     nextState: com.example.gridfall.game.GameState
-): ScoreEventFeedback? {
+): List<ScoreEventFeedback> {
     if (piece.effect == PieceEffect.Bomb || piece.effect == PieceEffect.MegaBomb) {
         val clearedCells = previewBombClearedCellCount(
             board = board,
@@ -1710,23 +1712,36 @@ private fun createScoreEventFeedback(
             startRow = startRow,
             startCol = startCol
         )
+        val feedbacks = mutableListOf<ScoreEventFeedback>()
         if (clearedCells > 0) {
-            return ScoreEventFeedback(
+            feedbacks += ScoreEventFeedback(
                 text = "Bomb Clear +${clearedCells * ScoreSystem.BOMB_CLEAR_POINTS_PER_CELL}",
                 tone = FeedbackTone.Bomb,
                 token = 0
             )
         }
+        if (nextState.board.isEmpty() && clearedCells > 0) {
+            feedbacks += ScoreEventFeedback(
+                text = "Perfect Clear +${ScoreSystem.perfectClearBonusForLevel(LevelSystem.levelForScore(previousScore))}",
+                tone = FeedbackTone.Success,
+                token = 0
+            )
+        }
+        return feedbacks
     }
 
     val lineCount = clearResult?.clearedLineCount ?: 0
     if (lineCount > 0) {
-        val feedbackParts = mutableListOf<String>()
+        val feedbacks = mutableListOf<ScoreEventFeedback>()
         val multiLineBonus = ScoreSystem.calculateMultiLineBonus(lineCount)
         val comboBonus = ScoreSystem.calculateComboBonus(nextState.combo)
 
         if (nextState.board.isEmpty()) {
-            feedbackParts += "Perfect Clear +${ScoreSystem.PERFECT_CLEAR_BONUS}"
+            feedbacks += ScoreEventFeedback(
+                text = "Perfect Clear +${ScoreSystem.perfectClearBonusForLevel(LevelSystem.levelForScore(previousScore))}",
+                tone = FeedbackTone.Success,
+                token = 0
+            )
         }
 
         if (multiLineBonus > 0 && clearResult != null) {
@@ -1738,23 +1753,45 @@ private fun createScoreEventFeedback(
             } else {
                 "Multi Clear"
             }
-            feedbackParts += "$label +$multiLineBonus"
+            feedbacks += ScoreEventFeedback(
+                text = "$label +$multiLineBonus",
+                tone = FeedbackTone.Accent,
+                token = 0
+            )
         }
 
         if (comboBonus > 0) {
-            feedbackParts += "Combo x${nextState.combo} +$comboBonus"
+            feedbacks += ScoreEventFeedback(
+                text = "Combo x${nextState.combo} +$comboBonus",
+                tone = FeedbackTone.Accent,
+                token = 0
+            )
         }
 
-        if (feedbackParts.isNotEmpty()) {
-            return ScoreEventFeedback(
-                text = feedbackParts.joinToString("  "),
-                tone = if (nextState.board.isEmpty()) FeedbackTone.Success else FeedbackTone.Accent,
+        return feedbacks
+    }
+
+    return emptyList()
+}
+
+private fun createBlockBreakerScoreFeedbacks(
+    previousState: GameState,
+    nextState: GameState
+): List<ScoreEventFeedback> {
+    val feedbacks = mutableListOf(
+        ScoreEventFeedback("Block Breaker +${GameEngine.BLOCK_BREAKER_SCORE}", FeedbackTone.Warning, token = 0)
+    )
+    if (nextState.board.isEmpty()) {
+        val perfectClearBonus = nextState.score - previousState.score - GameEngine.BLOCK_BREAKER_SCORE
+        if (perfectClearBonus > 0) {
+            feedbacks += ScoreEventFeedback(
+                text = "Perfect Clear +$perfectClearBonus",
+                tone = FeedbackTone.Success,
                 token = 0
             )
         }
     }
-
-    return null
+    return feedbacks
 }
 
 private fun createBombPulseFeedback(
