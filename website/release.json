@@ -1,11 +1,17 @@
 {
-  "version": "1.3.4",
-  "releasedAt": "2026-07-27",
+  "version": "1.4.0",
+  "releasedAt": "2026-09-11",
   "highlights": [
-    "Undo now covers key game actions, including completed Risk Spins.",
-    "Risk Spin usage is tracked in run stats and leaderboards."
+    "Choose between Rush 7x7, Classic 8x8, and Marathon 10x10 grid layouts.",
+    "Rush adds a rolling next-piece preview, while Marathon offers four-piece batches.",
+    "Grid changes apply immediately with progress-loss confirmation when needed."
   ],
   "history": [
+    {
+      "version": "1.4.0",
+      "releasedAt": "2026-09-11",
+      "summary": "Multiple grid layouts with mode-specific piece hands."
+    },
     {
       "version": "1.3.4",
       "releasedAt": "2026-07-27",
