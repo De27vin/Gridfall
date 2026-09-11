@@ -9,7 +9,10 @@ object GameEngine {
 
         return GameState(
             board = Board.empty(gridLayout.boardSize),
-            currentPieces = PieceGenerator.generateBatch(level = level),
+            currentPieces = PieceGenerator.generateBatch(
+                count = gridLayout.piecesPerBatch,
+                level = level
+            ),
             usedPieceIndices = emptySet(),
             score = 0,
             combo = 0,
@@ -362,7 +365,11 @@ object GameEngine {
             contractScoreDelta = evaluation.scoreDelta
             val finalScore = (scoreAfterPlacement + contractScoreDelta).coerceAtLeast(0)
             val nextLevel = LevelSystem.levelForScore(finalScore)
-            nextPieces = PieceGenerator.generateBatch(level = nextLevel)
+            val piecesPerBatch = GridLayoutPreset.fromBoardSize(state.board.size).piecesPerBatch
+            nextPieces = PieceGenerator.generateBatch(
+                count = piecesPerBatch,
+                level = nextLevel
+            )
             finalContractState = advanceContractBatch(
                 contractState = evaluation.contractState,
                 score = finalScore,

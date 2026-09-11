@@ -27,14 +27,14 @@ object ContractGenerator {
         ContractTemplate(
             id = "no_edge_placement",
             title = "No Borders",
-            description = "Keep all 3 pieces off the edge.",
+            description = "Keep every piece in this batch off the edge.",
             type = ContractType.NoEdgePlacement,
             weight = 1
         ),
         ContractTemplate(
             id = "avoid_center_area",
             title = "Clear Core",
-            description = "Keep all 3 pieces out of the center.",
+            description = "Keep every piece in this batch out of the center.",
             type = ContractType.AvoidCenterArea,
             weight = 1
         ),

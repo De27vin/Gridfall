@@ -133,6 +133,7 @@ fun ContractOfferPopup(
 @Composable
 fun ContractActiveChip(
     contractState: ContractState,
+    piecesPerBatch: Int = 3,
     modifier: Modifier = Modifier
 ) {
     val contract = contractState.activeContract ?: return
@@ -165,7 +166,7 @@ fun ContractActiveChip(
             style = MaterialTheme.typography.labelLarge.retroText(theme)
         )
         Text(
-            text = shortProgressText(contractState),
+            text = shortProgressText(contractState, piecesPerBatch),
             color = theme.textMuted,
             style = MaterialTheme.typography.labelMedium.retroText(theme)
         )
@@ -241,14 +242,14 @@ private fun ContractMiniBadge(
     }
 }
 
-private fun shortProgressText(contractState: ContractState): String {
+private fun shortProgressText(contractState: ContractState, piecesPerBatch: Int): String {
     val contract = contractState.activeContract ?: return ""
 
     return when (contract.type) {
         ContractType.ClearAtLeastOneLine -> "Lines ${contractState.batchClearedLines}/1"
         ContractType.ClearExactlyTwoLines -> "Lines ${contractState.batchClearedLines}/2"
-        ContractType.NoEdgePlacement -> "${contractState.batchPlacedPieces}/3 pieces"
-        ContractType.AvoidCenterArea -> "${contractState.batchPlacedPieces}/3 pieces"
+        ContractType.NoEdgePlacement -> "${contractState.batchPlacedPieces}/$piecesPerBatch pieces"
+        ContractType.AvoidCenterArea -> "${contractState.batchPlacedPieces}/$piecesPerBatch pieces"
         ContractType.ScoreAtLeastTwenty -> "Score ${contractState.batchScoreGained}/20"
     }
 }

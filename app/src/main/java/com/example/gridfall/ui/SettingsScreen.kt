@@ -270,6 +270,7 @@ private fun GridLayoutOptionRow(
             Text(
                 text = buildString {
                     append(preset.description)
+                    append(" · ${preset.piecesPerBatch}-piece hand")
                     if (active) append(" · Current run")
                 },
                 color = if (active) theme.success else theme.textMuted,

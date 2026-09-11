@@ -9,6 +9,7 @@ class GridLayoutPresetTest {
     @Test
     fun presetsExposeThreeDistinctBoardSizes() {
         assertEquals(listOf(7, 8, 10), GridLayoutPreset.entries.map { it.boardSize })
+        assertEquals(listOf(3, 3, 4), GridLayoutPreset.entries.map { it.piecesPerBatch })
         assertEquals(3, GridLayoutPreset.entries.map { it.id }.toSet().size)
     }
 
@@ -24,7 +25,28 @@ class GridLayoutPresetTest {
             val state = GameEngine.createInitialState(preset)
             assertEquals(preset.boardSize, state.board.cells.size)
             assertTrue(state.board.cells.all { it.size == preset.boardSize })
+            assertEquals(preset.piecesPerBatch, state.currentPieces.size)
         }
+    }
+
+    @Test
+    fun marathonRegeneratesFourPiecesAfterCompletingABatch() {
+        val singleCellPiece = PieceLibrary.starterPieces.first()
+        var state = GameEngine.createInitialState(GridLayoutPreset.Marathon).copy(
+            currentPieces = List(GridLayoutPreset.Marathon.piecesPerBatch) { singleCellPiece }
+        )
+
+        repeat(GridLayoutPreset.Marathon.piecesPerBatch) { index ->
+            state = GameEngine.placePiece(
+                state = state,
+                pieceIndex = index,
+                startRow = 0,
+                startCol = index
+            )
+        }
+
+        assertEquals(GridLayoutPreset.Marathon.piecesPerBatch, state.currentPieces.size)
+        assertTrue(state.usedPieceIndices.isEmpty())
     }
 
     @Test

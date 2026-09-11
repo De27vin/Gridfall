@@ -1337,6 +1337,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
         } else if (gameState.contractState.activeContract != null) {
             ContractActiveChip(
                 contractState = gameState.contractState,
+                piecesPerBatch = gameState.currentPieces.size,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .systemBarsPadding()

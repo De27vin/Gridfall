@@ -55,13 +55,12 @@ fun PieceTray(
         modifier = modifier
             .fillMaxWidth()
             .height(116.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(if (pieces.size > 3) 8.dp else 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        repeat(3) { index ->
-            val piece = pieces.getOrNull(index)
+        pieces.forEachIndexed { index, piece ->
             val isUsed = index in usedPieceIndices
-            val isSelectable = piece != null && !isUsed
+            val isSelectable = !isUsed
             val isDragging = draggingPieceIndex == index && isSelectable
             val slotShape = RoundedCornerShape(retroCorner(theme, infernoCorner(theme, 18.dp)))
             var slotTopLeft by remember { mutableStateOf(Offset.Zero) }
@@ -96,13 +95,11 @@ fun PieceTray(
                     }
                     .pointerInput(isSelectable, piece) {
                         if (!isSelectable) return@pointerInput
-                        val draggablePiece = piece ?: return@pointerInput
-
                         detectDragGestures(
                             onDragStart = { offset ->
                                 onPieceDragStarted(
                                     index,
-                                    draggablePiece,
+                                    piece,
                                     slotTopLeft + offset,
                                     offset
                                 )
@@ -115,10 +112,10 @@ fun PieceTray(
                             }
                         )
                     }
-                    .padding(10.dp),
+                    .padding(if (pieces.size > 3) 8.dp else 10.dp),
                 contentAlignment = Alignment.Center
             ) {
-                if (piece != null && !isUsed) {
+                if (!isUsed) {
                     PiecePreview(
                         piece = piece,
                         colors = theme,
