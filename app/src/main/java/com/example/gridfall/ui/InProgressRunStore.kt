@@ -8,6 +8,7 @@ import com.example.gridfall.game.ContractState
 import com.example.gridfall.game.ContractGenerator
 import com.example.gridfall.game.ContractType
 import com.example.gridfall.game.GameState
+import com.example.gridfall.game.GridLayoutPreset
 import com.example.gridfall.game.JokerType
 import com.example.gridfall.game.Piece
 import com.example.gridfall.game.PieceEffect
@@ -151,11 +152,12 @@ object InProgressRunJson {
     }
 
     private fun JSONArray.toBoard(): Board? {
-        if (length() != Board.SIZE) return null
+        val boardSize = length()
+        if (GridLayoutPreset.entries.none { it.boardSize == boardSize }) return null
         val rows = (0 until length()).map { rowIndex ->
             val row = optJSONArray(rowIndex) ?: return null
-            if (row.length() != Board.SIZE) return null
-            List(Board.SIZE) { columnIndex -> row.optInt(columnIndex).coerceAtLeast(0) }
+            if (row.length() != boardSize) return null
+            List(boardSize) { columnIndex -> row.optInt(columnIndex).coerceAtLeast(0) }
         }
         return Board(rows)
     }

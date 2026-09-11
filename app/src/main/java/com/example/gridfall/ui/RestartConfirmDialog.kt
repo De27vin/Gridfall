@@ -22,6 +22,9 @@ import com.example.gridfall.ui.theme.SoftIce
 
 @Composable
 fun RestartConfirmDialog(
+    title: String = "Restart game?",
+    message: String = "Your current run will be lost.",
+    confirmLabel: String = "Restart",
     onCancel: () -> Unit,
     onConfirmRestart: () -> Unit
 ) {
@@ -39,7 +42,7 @@ fun RestartConfirmDialog(
         tonalElevation = 0.dp,
         title = {
             Text(
-                text = "Restart game?",
+                text = title,
                 color = theme.textPrimary,
                 style = MaterialTheme.typography.headlineMedium.retroText(theme)
             )
@@ -47,7 +50,7 @@ fun RestartConfirmDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    text = "Your current run will be lost.",
+                    text = message,
                     color = theme.textSecondary,
                     style = MaterialTheme.typography.bodyMedium.retroText(theme)
                 )
@@ -74,7 +77,10 @@ fun RestartConfirmDialog(
                 ),
                 shape = buttonShape
             ) {
-                Text(text = if (theme.isRetroTheme()) "RESTART" else "Restart", style = MaterialTheme.typography.labelLarge.retroText(theme))
+                Text(
+                    text = if (theme.isRetroTheme()) confirmLabel.uppercase() else confirmLabel,
+                    style = MaterialTheme.typography.labelLarge.retroText(theme)
+                )
             }
         }
     )

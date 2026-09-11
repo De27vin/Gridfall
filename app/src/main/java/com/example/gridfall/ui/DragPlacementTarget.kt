@@ -26,7 +26,8 @@ internal fun calculateDragPlacementResolution(
     val target = calculatePlacementTargetFromVisualPiece(
         piece = piece,
         visualPieceTopLeft = visualPieceTopLeft,
-        boardLayoutInfo = boardLayoutInfo
+        boardLayoutInfo = boardLayoutInfo,
+        boardSize = board.size
     )
 
     return DragPlacementResolution(
@@ -74,23 +75,25 @@ internal fun calculateDragVisualOffset(
 internal fun calculatePlacementTargetFromVisualPiece(
     piece: Piece,
     visualPieceTopLeft: Offset,
-    boardLayoutInfo: BoardLayoutInfo
+    boardLayoutInfo: BoardLayoutInfo,
+    boardSize: Int = Board.SIZE
 ): DragPlacementTarget? {
     if (piece.cells.isEmpty()) return null
 
     val actualBoardOverlap = calculateActualBoardOverlap(
         piece = piece,
         visualPieceTopLeft = visualPieceTopLeft,
-        boardLayoutInfo = boardLayoutInfo
+        boardLayoutInfo = boardLayoutInfo,
+        boardSize = boardSize
     )
     val minimumMeaningfulOverlap = boardLayoutInfo.cellSizePx * boardLayoutInfo.cellSizePx * 0.2f
     if (actualBoardOverlap < minimumMeaningfulOverlap) return null
 
     val bounds = piece.bounds()
     val minStartRow = -bounds.maxRow - 1
-    val maxStartRow = Board.SIZE - bounds.minRow
+    val maxStartRow = boardSize - bounds.minRow
     val minStartCol = -bounds.maxCol - 1
-    val maxStartCol = Board.SIZE - bounds.minCol
+    val maxStartCol = boardSize - bounds.minCol
     var bestTarget: DragPlacementTarget? = null
     var bestOverlap = 0f
 
@@ -174,7 +177,8 @@ internal fun Piece.bounds(): DragPieceBounds {
 private fun calculateActualBoardOverlap(
     piece: Piece,
     visualPieceTopLeft: Offset,
-    boardLayoutInfo: BoardLayoutInfo
+    boardLayoutInfo: BoardLayoutInfo,
+    boardSize: Int
 ): Float {
     val bounds = piece.bounds()
 
@@ -187,8 +191,8 @@ private fun calculateActualBoardOverlap(
         )
 
         var cellOverlap = 0f
-        for (row in 0 until Board.SIZE) {
-            for (col in 0 until Board.SIZE) {
+        for (row in 0 until boardSize) {
+            for (col in 0 until boardSize) {
                 cellOverlap += overlapArea(
                     visualCell,
                     boardCellRect(row, col, boardLayoutInfo)

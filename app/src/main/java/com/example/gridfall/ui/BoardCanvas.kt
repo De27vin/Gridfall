@@ -112,7 +112,7 @@ fun BoardCanvas(
             .onGloballyPositioned { coordinates ->
                 val sizePx = minOf(coordinates.size.width, coordinates.size.height).toFloat()
                 val spacing = 4.dp.value * (sizePx / 300f) // Scale spacing roughly
-                val cellSize = (sizePx - spacing * (Board.SIZE + 1)) / Board.SIZE
+                val cellSize = (sizePx - spacing * (board.size + 1)) / board.size
 
                 onBoardLayoutChanged(
                     BoardLayoutInfo(
@@ -133,11 +133,11 @@ fun BoardCanvas(
                         Modifier.pointerInput(blockBreakerTargetCells) {
                             detectTapGestures { offset ->
                                 val spacing = targetSpacingPx
-                                val cellSize = (size.width - spacing * (Board.SIZE + 1)) / Board.SIZE
+                                val cellSize = (size.width - spacing * (board.size + 1)) / board.size
                                 if (cellSize <= 0f || offset.x < spacing || offset.y < spacing) return@detectTapGestures
                                 val col = ((offset.x - spacing) / (cellSize + spacing)).toInt()
                                 val row = ((offset.y - spacing) / (cellSize + spacing)).toInt()
-                                if (row !in 0 until Board.SIZE || col !in 0 until Board.SIZE) return@detectTapGestures
+                                if (row !in 0 until board.size || col !in 0 until board.size) return@detectTapGestures
                                 val cellX = offset.x - spacing - col * (cellSize + spacing)
                                 val cellY = offset.y - spacing - row * (cellSize + spacing)
                                 if (cellX in 0f..cellSize && cellY in 0f..cellSize) onBlockBreakerCellTapped(Cell(row, col))
@@ -147,12 +147,12 @@ fun BoardCanvas(
                 )
         ) {
             val spacing = 4.dp.toPx()
-            val cellSize = (size.width - spacing * (Board.SIZE + 1)) / Board.SIZE
+            val cellSize = (size.width - spacing * (board.size + 1)) / board.size
             val cornerRadius = CornerRadius(8.dp.toPx(), 8.dp.toPx())
 
             // Draw Grid
-            for (row in 0 until Board.SIZE) {
-                for (col in 0 until Board.SIZE) {
+            for (row in 0 until board.size) {
+                for (col in 0 until board.size) {
                     val cellValue = board.get(row, col)
                     val topLeft = Offset(
                         x = spacing + col * (cellSize + spacing),
@@ -169,7 +169,7 @@ fun BoardCanvas(
 
             // Contract warning zones are guidance only; placement previews draw over them.
             contractWarningCells.forEach { cell ->
-                if (cell.row in 0 until Board.SIZE && cell.col in 0 until Board.SIZE) {
+                if (cell.row in 0 until board.size && cell.col in 0 until board.size) {
                     val topLeft = Offset(
                         x = spacing + cell.col * (cellSize + spacing),
                         y = spacing + cell.row * (cellSize + spacing)
@@ -179,7 +179,7 @@ fun BoardCanvas(
             }
 
             blockBreakerTargetCells.forEach { cell ->
-                if (cell.row in 0 until Board.SIZE && cell.col in 0 until Board.SIZE) {
+                if (cell.row in 0 until board.size && cell.col in 0 until board.size) {
                     val topLeft = Offset(spacing + cell.col * (cellSize + spacing), spacing + cell.row * (cellSize + spacing))
                     drawRoundRect(theme.warning.copy(alpha = 0.12f), topLeft, Size(cellSize, cellSize), cornerRadius)
                     drawRoundRect(theme.warning.copy(alpha = 0.72f), topLeft, Size(cellSize, cellSize), cornerRadius, style = Stroke(width = 1.5.dp.toPx()))
@@ -205,7 +205,7 @@ fun BoardCanvas(
                     preview.isValid
                 ) {
                     val affectedCells = if (preview.piece.effect == PieceEffect.MegaBomb) {
-                        GameEngine.megaBombAffectedCells(preview.originRow, preview.originCol)
+                        GameEngine.megaBombAffectedCells(preview.originRow, preview.originCol, board.size)
                     } else {
                         (preview.originRow - 1..preview.originRow + 1).flatMap { row ->
                             (preview.originCol - 1..preview.originCol + 1).map { col ->
@@ -215,7 +215,7 @@ fun BoardCanvas(
                     }
 
                     affectedCells.forEach { cell ->
-                        if (cell.row in 0 until Board.SIZE && cell.col in 0 until Board.SIZE) {
+                        if (cell.row in 0 until board.size && cell.col in 0 until board.size) {
                             val topLeft = Offset(
                                 x = spacing + cell.col * (cellSize + spacing),
                                 y = spacing + cell.row * (cellSize + spacing)
@@ -250,7 +250,7 @@ fun BoardCanvas(
                     val row = preview.originRow + cell.row
                     val col = preview.originCol + cell.col
 
-                    if (row in 0 until Board.SIZE && col in 0 until Board.SIZE) {
+                    if (row in 0 until board.size && col in 0 until board.size) {
                         val topLeft = Offset(
                             x = spacing + col * (cellSize + spacing),
                             y = spacing + row * (cellSize + spacing)
@@ -312,7 +312,7 @@ fun BoardCanvas(
                     val scanOffset = cellSize * progress
 
                     feedback.clearedRows.forEach { row ->
-                        if (row in 0 until Board.SIZE) {
+                        if (row in 0 until board.size) {
                             val topLeft = Offset(0f, spacing + row * (cellSize + spacing))
                             drawRoundRect(
                                 color = fillColor,
@@ -341,7 +341,7 @@ fun BoardCanvas(
                     }
 
                     feedback.clearedColumns.forEach { col ->
-                        if (col in 0 until Board.SIZE) {
+                        if (col in 0 until board.size) {
                             val topLeft = Offset(spacing + col * (cellSize + spacing), 0f)
                             drawRoundRect(
                                 color = fillColor,
@@ -391,7 +391,7 @@ fun BoardCanvas(
                 val affectedStroke = theme.warning.copy(alpha = 0.48f * fade)
 
                 val affectedCells = if (feedback.isMega) {
-                    GameEngine.megaBombAffectedCells(feedback.centerRow, feedback.centerCol)
+                    GameEngine.megaBombAffectedCells(feedback.centerRow, feedback.centerCol, board.size)
                 } else {
                     (feedback.centerRow - 1..feedback.centerRow + 1).flatMap { row ->
                         (feedback.centerCol - 1..feedback.centerCol + 1).map { col ->
@@ -401,7 +401,7 @@ fun BoardCanvas(
                 }
 
                 affectedCells.forEach { cell ->
-                    if (cell.row in 0 until Board.SIZE && cell.col in 0 until Board.SIZE) {
+                    if (cell.row in 0 until board.size && cell.col in 0 until board.size) {
                         val topLeft = Offset(
                             x = spacing + cell.col * (cellSize + spacing),
                             y = spacing + cell.row * (cellSize + spacing)

@@ -35,6 +35,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.unit.dp
+import com.example.gridfall.game.GridLayoutPreset
 import com.example.gridfall.network.AccountConnectionState
 import com.example.gridfall.ui.theme.ActionCyan
 import com.example.gridfall.ui.theme.BlueGray
@@ -63,9 +64,12 @@ private fun pendingRunsLabel(count: Int): String {
 @Composable
 fun SettingsScreen(
     selectedThemeMode: GridfallThemeMode,
+    selectedGridLayout: GridLayoutPreset,
+    activeBoardSize: Int,
     soundEffectsVolume: Float,
     backgroundMusicVolume: Float,
     onThemeSelected: (GridfallThemeMode) -> Unit,
+    onGridLayoutSelected: (GridLayoutPreset) -> Unit,
     onSoundEffectsVolumeChange: (Float) -> Unit,
     onBackgroundMusicVolumeChange: (Float) -> Unit,
     accountConnectionState: AccountConnectionState,
@@ -140,6 +144,24 @@ fun SettingsScreen(
                 }
             }
 
+            SettingsPanel(title = "Grid Layout") {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        text = "Choose a size. Changing it starts a new run.",
+                        color = theme.textMuted,
+                        style = MaterialTheme.typography.bodySmall.retroText(theme)
+                    )
+                    GridLayoutPreset.entries.forEach { preset ->
+                        GridLayoutOptionRow(
+                            preset = preset,
+                            selected = selectedGridLayout == preset,
+                            active = activeBoardSize == preset.boardSize,
+                            onClick = { onGridLayoutSelected(preset) }
+                        )
+                    }
+                }
+            }
+
             SettingsPanel(title = "Sound") {
                 Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                     VolumeSliderRow(
@@ -178,6 +200,118 @@ fun SettingsScreen(
                 Text(
                     text = if (theme.isRetroTheme()) "RETURN TO GAME" else "Return to Game",
                     style = MaterialTheme.typography.labelLarge.retroText(theme)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun GridLayoutOptionRow(
+    preset: GridLayoutPreset,
+    selected: Boolean,
+    active: Boolean,
+    onClick: () -> Unit
+) {
+    val theme = LocalGridfallColors.current
+    val shape = RoundedCornerShape(retroCorner(theme, infernoCorner(theme, 14.dp)))
+    val borderColor = if (selected) theme.accentStrong else theme.panelBorder.copy(alpha = 0.34f)
+    val backgroundColor = if (selected) {
+        theme.accent.copy(alpha = 0.14f)
+    } else {
+        theme.chipBackground.copy(alpha = 0.62f)
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(backgroundColor)
+            .infernoPanelTexture(theme)
+            .retroPanelTexture(theme)
+            .border(
+                BorderStroke(
+                    if (theme.isRetroTheme() || theme.isInfernoTheme()) 2.dp else 1.dp,
+                    borderColor
+                ),
+                shape
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        GridLayoutPreview(
+            boardSize = preset.boardSize,
+            selected = selected,
+            modifier = Modifier.size(48.dp)
+        )
+
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = if (theme.isRetroTheme()) preset.title.uppercase() else preset.title,
+                    color = if (selected) theme.textPrimary else theme.textSecondary,
+                    style = MaterialTheme.typography.bodyLarge.retroText(theme)
+                )
+                Text(
+                    text = preset.sizeLabel,
+                    color = if (selected) theme.accentStrong else theme.textMuted,
+                    style = MaterialTheme.typography.labelLarge.retroText(theme)
+                )
+            }
+            Text(
+                text = buildString {
+                    append(preset.description)
+                    if (active) append(" · Current run")
+                },
+                color = if (active) theme.success else theme.textMuted,
+                style = MaterialTheme.typography.labelSmall.retroText(theme)
+            )
+        }
+    }
+}
+
+@Composable
+private fun GridLayoutPreview(
+    boardSize: Int,
+    selected: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val theme = LocalGridfallColors.current
+    Canvas(modifier = modifier) {
+        val gap = size.minDimension * 0.035f
+        val cellSize = (size.minDimension - gap * (boardSize + 1)) / boardSize
+        val cellColor = if (selected) theme.accentStrong else theme.emptyCellBorder
+        drawRoundRect(
+            color = theme.boardInner,
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.minDimension * 0.10f)
+        )
+        repeat(boardSize) { row ->
+            repeat(boardSize) { col ->
+                val topLeft = Offset(
+                    x = gap + col * (cellSize + gap),
+                    y = gap + row * (cellSize + gap)
+                )
+                drawRoundRect(
+                    color = theme.emptyCell,
+                    topLeft = topLeft,
+                    size = androidx.compose.ui.geometry.Size(cellSize, cellSize),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(cellSize * 0.16f)
+                )
+                drawRoundRect(
+                    color = cellColor.copy(alpha = if (selected) 0.58f else 0.34f),
+                    topLeft = topLeft,
+                    size = androidx.compose.ui.geometry.Size(cellSize, cellSize),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(cellSize * 0.16f),
+                    style = Stroke(width = (cellSize * 0.08f).coerceAtLeast(0.5f))
                 )
             }
         }

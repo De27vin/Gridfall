@@ -22,6 +22,18 @@ import org.junit.Test
 
 class InProgressRunStoreTest {
     @Test
+    fun roundTripsNonClassicBoardSize() {
+        val saved = SavedInProgressRun(
+            gameState = gameState().copy(board = Board.empty(10).fill(9, 9, 3))
+        )
+
+        val restored = InProgressRunJson.decode(InProgressRunJson.encode(saved))
+
+        assertEquals(10, restored?.gameState?.board?.size)
+        assertEquals(3, restored?.gameState?.board?.get(9, 9))
+    }
+
+    @Test
     fun roundTripsInProgressRunIncludingRevertSnapshotAndMemorySession() {
         val previousMove = gameState(score = 5_042, inventory = listOf(JokerType.Revert))
         val currentState = gameState(

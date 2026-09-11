@@ -63,6 +63,7 @@ import com.example.gridfall.game.Cell
 import com.example.gridfall.game.ClearResult
 import com.example.gridfall.game.GameEngine
 import com.example.gridfall.game.GameState
+import com.example.gridfall.game.GridLayoutPreset
 import com.example.gridfall.game.JokerType
 import com.example.gridfall.game.LevelSystem
 import com.example.gridfall.game.Piece
@@ -102,8 +103,13 @@ fun GameScreen(modifier: Modifier = Modifier) {
     val lifecycleOwner = view.findViewTreeLifecycleOwner()
     val inProgressRunStore = remember { InProgressRunStore(context) }
     val restoredInProgressRun = remember { inProgressRunStore.load() }
+    var selectedGridLayout by remember {
+        mutableStateOf(GridLayoutPreferenceStore.load(context))
+    }
     var gameState by remember {
-        mutableStateOf(restoredInProgressRun?.gameState ?: GameEngine.createInitialState())
+        mutableStateOf(
+            restoredInProgressRun?.gameState ?: GameEngine.createInitialState(selectedGridLayout)
+        )
     }
     var dragState by remember { mutableStateOf(DragState()) }
     var boardLayoutInfo by remember { mutableStateOf<BoardLayoutInfo?>(null) }
@@ -119,6 +125,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
     var scoreEventFeedbacks by remember { mutableStateOf<List<ScoreEventFeedback>>(emptyList()) }
     var scoreEventFeedbackToken by remember { mutableStateOf(0) }
     var showRestartConfirmDialog by remember { mutableStateOf(false) }
+    var pendingGridLayout by remember { mutableStateOf<GridLayoutPreset?>(null) }
     var showRiskSpinOverlay by remember {
         mutableStateOf(restoredInProgressRun?.riskSpinMemorySession != null)
     }
@@ -794,15 +801,18 @@ fun GameScreen(modifier: Modifier = Modifier) {
         }
     }
 
-    fun restartGame() {
+    fun restartGame(
+        gridLayout: GridLayoutPreset = selectedGridLayout,
+        keepSettingsOpen: Boolean = false
+    ) {
         inProgressRunStore.clear()
         showRestartConfirmDialog = false
         showRiskSpinOverlay = false
         showRiskSpinOptions = false
         riskSpinMemorySession = null
         riskSpinPaidCost = null
-        showSettingsScreen = false
-        gameState = GameEngine.createInitialState()
+        showSettingsScreen = keepSettingsOpen
+        gameState = GameEngine.createInitialState(gridLayout)
         dragState = DragState()
         lineClearFeedback = null
         bombPulseFeedback = null
@@ -945,11 +955,29 @@ fun GameScreen(modifier: Modifier = Modifier) {
         if (showSettingsScreen) {
             SettingsScreen(
                 selectedThemeMode = selectedThemeMode,
+                selectedGridLayout = selectedGridLayout,
+                activeBoardSize = gameState.board.size,
                 soundEffectsVolume = soundEffectsVolume,
                 backgroundMusicVolume = backgroundMusicVolume,
                 onThemeSelected = { theme ->
                     selectedThemeMode = theme
                     ThemePreferenceStore.save(context, theme)
+                },
+                onGridLayoutSelected = { gridLayout ->
+                    when {
+                        gameState.board.size == gridLayout.boardSize -> {
+                            selectedGridLayout = gridLayout
+                            GridLayoutPreferenceStore.save(context, gridLayout)
+                        }
+                        InProgressRunJson.hasProgress(gameState, riskSpinMemorySession) -> {
+                            pendingGridLayout = gridLayout
+                        }
+                        else -> {
+                            selectedGridLayout = gridLayout
+                            GridLayoutPreferenceStore.save(context, gridLayout)
+                            restartGame(gridLayout = gridLayout, keepSettingsOpen = true)
+                        }
+                    }
                 },
                 onSoundEffectsVolumeChange = { volume ->
                     soundEffectsVolume = volume
@@ -1066,7 +1094,10 @@ fun GameScreen(modifier: Modifier = Modifier) {
                         view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
                     }
                 },
-                contractWarningCells = contractWarningCells(gameState.contractState),
+                contractWarningCells = contractWarningCells(
+                    gameState.contractState,
+                    gameState.board.size
+                ),
                 onBoardLayoutChanged = { layoutInfo ->
                     boardLayoutInfo = layoutInfo
                 },
@@ -1394,7 +1425,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 onLeaderboard = {
                     openLeaderboardDialog()
                 },
-                onRestart = ::restartGame
+                onRestart = { restartGame() }
         )
     } else if (!showSettingsScreen && !showLeaderboardScreen && showRiskSpinOverlay && showRiskSpinOptions) {
         RiskSpinDialog(
@@ -1428,6 +1459,26 @@ fun GameScreen(modifier: Modifier = Modifier) {
                     }
                     restartGame()
                     offerSavePromptIfNeeded()
+                }
+            )
+        }
+
+        pendingGridLayout?.let { gridLayout ->
+            RestartConfirmDialog(
+                title = "Switch to ${gridLayout.title} ${gridLayout.sizeLabel}?",
+                message = "Your current run will end and the new grid will start.",
+                confirmLabel = "Switch",
+                onCancel = {
+                    pendingGridLayout = null
+                },
+                onConfirmRestart = {
+                    if (RunSubmissionPolicy.shouldSubmitConfirmedRestartRun(gameState)) {
+                        submitEndedRunOnce(gameState)
+                    }
+                    selectedGridLayout = gridLayout
+                    GridLayoutPreferenceStore.save(context, gridLayout)
+                    pendingGridLayout = null
+                    restartGame(gridLayout = gridLayout, keepSettingsOpen = true)
                 }
             )
         }
@@ -1647,7 +1698,7 @@ private fun createPlacementPreview(
 
 private fun occupiedBoardCells(board: Board): Set<Cell> {
     return buildSet {
-        for (row in 0 until Board.SIZE) for (col in 0 until Board.SIZE) {
+        for (row in 0 until board.size) for (col in 0 until board.size) {
             if (!board.isEmpty(row, col)) add(Cell(row, col))
         }
     }
@@ -1720,6 +1771,7 @@ private fun createScoreEventFeedbacks(
                 token = 0
             )
         }
+
         if (nextState.board.isEmpty() && clearedCells > 0) {
             feedbacks += ScoreEventFeedback(
                 text = "Perfect Clear +${ScoreSystem.perfectClearBonusForLevel(LevelSystem.levelForScore(previousScore))}",
@@ -1823,7 +1875,7 @@ private fun previewBombClearedCellCount(
     var clearedCells = 0
 
     val affectedCells = if (piece.effect == PieceEffect.MegaBomb) {
-        GameEngine.megaBombAffectedCells(centerRow, centerCol)
+        GameEngine.megaBombAffectedCells(centerRow, centerCol, board.size)
     } else {
         (centerRow - 1..centerRow + 1).flatMap { row ->
             (centerCol - 1..centerCol + 1).map { col ->
