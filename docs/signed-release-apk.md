@@ -36,6 +36,7 @@ variables → Actions**:
 - `ANDROID_STORE_PASSWORD`
 - `ANDROID_KEY_ALIAS`
 - `ANDROID_KEY_PASSWORD`
+- `GOOGLE_SERVICES_JSON_BASE64`
 - `CLOUDFLARE_API_TOKEN`
 - `CLOUDFLARE_ACCOUNT_ID`
 - `CLOUDFLARE_R2_BUCKET`
@@ -45,6 +46,12 @@ secret on Linux with:
 
 ```bash
 base64 -w 0 keystore/gridfall-release.keystore
+```
+
+Create the Firebase configuration secret with:
+
+```bash
+base64 -w 0 app/google-services.json
 ```
 
 After the secrets are configured, publish a release with:
