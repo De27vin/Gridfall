@@ -141,7 +141,7 @@ suspend fun getLeaderboards(
             if (!response.isSuccessful) {
                 throw IOException("GET /leaderboards failed with HTTP ${response.code}")
             }
-            parseLeaderboardsResponse(body)
+            parseLeaderboardsResponse(body, safeBoardSize)
         }
     }
 
@@ -216,7 +216,10 @@ suspend fun getLeaderboards(
         )
     }
 
-    private fun parseLeaderboardsResponse(rawJson: String): LeaderboardsResponse {
+    internal fun parseLeaderboardsResponse(
+        rawJson: String,
+        requestedBoardSize: Int
+    ): LeaderboardsResponse {
         val json = JSONObject(rawJson)
         val me = json.optJSONObject("me")?.let { stats ->
             YourStatsDto(
@@ -230,6 +233,24 @@ suspend fun getLeaderboards(
                 totalRiskSpinsUsed = stats.optInt("totalRiskSpinsUsed")
             )
         }
+        val responseBoardSize = json.optInt("boardSize", 0)
+        if (requestedBoardSize != 8 && responseBoardSize != requestedBoardSize) {
+            return LeaderboardsResponse(
+                me = me?.copy(
+                    bestScore = 0,
+                    bestLevel = 1,
+                    totalPoints = 0,
+                    gamesPlayed = 0,
+                    totalLinesCleared = 0,
+                    totalContractsCompleted = 0,
+                    totalRiskSpinsUsed = 0
+                ),
+                leaderboards = emptyLeaderboardSections()
+            )
+        }
+        if (responseBoardSize != 0 && responseBoardSize != requestedBoardSize) {
+            throw IOException("Leaderboard response did not match the requested grid")
+        }
         val sections = json.optJSONObject("leaderboards") ?: JSONObject()
         return LeaderboardsResponse(
             me = me,
@@ -242,6 +263,14 @@ suspend fun getLeaderboards(
             )
         )
     }
+
+    private fun emptyLeaderboardSections() = LeaderboardSectionsDto(
+        bestScore = LeaderboardSectionDto(emptyList(), null),
+        totalPoints = LeaderboardSectionDto(emptyList(), null),
+        linesCleared = LeaderboardSectionDto(emptyList(), null),
+        contractsCompleted = LeaderboardSectionDto(emptyList(), null),
+        riskSpinsUsed = LeaderboardSectionDto(emptyList(), null)
+    )
 
     private fun parseLeaderboardSection(section: JSONObject?): LeaderboardSectionDto {
         val entries = section?.optJSONArray("entries")

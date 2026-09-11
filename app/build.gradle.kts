@@ -36,8 +36,8 @@ android {
         applicationId = "com.example.gridfall"
         minSdk = 26
         targetSdk = 36
-        versionCode = 11
-        versionName = "1.4.2"
+        versionCode = 12
+        versionName = "1.4.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

@@ -1,12 +1,17 @@
 {
-  "version": "1.4.2",
+  "version": "1.4.3",
   "releasedAt": "2026-09-11",
   "highlights": [
-    "Separate rankings for Rush 7x7, Classic 8x8, and Marathon 10x10.",
-    "Switch grid leaderboards without leaving the leaderboard screen.",
-    "Score, points, lines, contracts, and Risk Spin rankings are tracked per grid."
+    "Rush and Marathon no longer display Classic leaderboard results on older servers.",
+    "Separate rankings remain available for every grid layout.",
+    "Existing leaderboard history stays assigned to Classic 8x8."
   ],
   "history": [
+    {
+      "version": "1.4.3",
+      "releasedAt": "2026-09-11",
+      "summary": "Prevented Classic results from appearing on other grid leaderboards."
+    },
     {
       "version": "1.4.2",
       "releasedAt": "2026-09-11",
