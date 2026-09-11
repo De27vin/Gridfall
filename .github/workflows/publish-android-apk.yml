@@ -70,6 +70,6 @@ jobs:
             r2 object put ${{ secrets.CLOUDFLARE_R2_BUCKET }}/gridfall.apk
             --file app/build/outputs/apk/release/app-release.apk
             --content-type application/vnd.android.package-archive
-            --content-disposition 'attachment; filename="gridfall.apk"'
-            --cache-control 'public, max-age=300'
+            --content-disposition=attachment
+            --cache-control=public,max-age=300
             --remote
