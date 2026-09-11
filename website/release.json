@@ -1,12 +1,17 @@
 {
-  "version": "1.4.0",
+  "version": "1.4.1",
   "releasedAt": "2026-09-11",
   "highlights": [
-    "Choose between Rush 7x7, Classic 8x8, and Marathon 10x10 grid layouts.",
-    "Rush adds a rolling next-piece preview, while Marathon offers four-piece batches.",
-    "Grid changes apply immediately with progress-loss confirmation when needed."
+    "Improved layouts for foldable phones, tablets, landscape, and split-screen windows.",
+    "The game now resizes around the available screen height instead of stretching or clipping.",
+    "Active runs remain intact while folding, unfolding, or resizing the app."
   ],
   "history": [
+    {
+      "version": "1.4.1",
+      "releasedAt": "2026-09-11",
+      "summary": "Adaptive layouts for foldables, tablets, and unusual screen formats."
+    },
     {
       "version": "1.4.0",
       "releasedAt": "2026-09-11",
