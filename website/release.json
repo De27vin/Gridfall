@@ -1,12 +1,17 @@
 {
-  "version": "1.4.1",
+  "version": "1.4.2",
   "releasedAt": "2026-09-11",
   "highlights": [
-    "Improved layouts for foldable phones, tablets, landscape, and split-screen windows.",
-    "The game now resizes around the available screen height instead of stretching or clipping.",
-    "Active runs remain intact while folding, unfolding, or resizing the app."
+    "Separate rankings for Rush 7x7, Classic 8x8, and Marathon 10x10.",
+    "Switch grid leaderboards without leaving the leaderboard screen.",
+    "Score, points, lines, contracts, and Risk Spin rankings are tracked per grid."
   ],
   "history": [
+    {
+      "version": "1.4.2",
+      "releasedAt": "2026-09-11",
+      "summary": "Independent leaderboards for every grid layout."
+    },
     {
       "version": "1.4.1",
       "releasedAt": "2026-09-11",

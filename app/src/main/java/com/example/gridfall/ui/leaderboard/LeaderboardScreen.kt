@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.unit.dp
 import com.example.gridfall.network.AccountConnectionState
+import com.example.gridfall.game.GridLayoutPreset
 import com.example.gridfall.ui.infernoAppTexture
 import com.example.gridfall.ui.infernoCorner
 import com.example.gridfall.ui.infernoPanelTexture
@@ -37,6 +38,7 @@ fun LeaderboardScreen(
     accountConnectionState: AccountConnectionState,
     pendingRunCount: Int,
     onRefresh: () -> Unit,
+    onGridLayoutSelected: (GridLayoutPreset) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -106,6 +108,7 @@ fun LeaderboardScreen(
         ) {
             LeaderboardContent(
                 state = state,
+                onGridLayoutSelected = onGridLayoutSelected,
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)

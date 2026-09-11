@@ -11,6 +11,7 @@ describe("submitRunSchema", () => {
       bombsUsed: 3,
       megaBombsUsed: 1,
       riskSpinsUsed: 6,
+      boardSize: 10,
       durationSeconds: 480,
       appVersion: "1.0.0"
     });
@@ -32,6 +33,7 @@ describe("submitRunSchema", () => {
     const parsed = submitRunSchema.parse({ score: 100, level: 2 });
 
     expect(parsed.riskSpinsUsed).toBe(0);
+    expect(parsed.boardSize).toBe(8);
     expect(summarizeRunStats(parsed).totalRiskSpinsUsed).toBe(0);
   });
 
@@ -40,5 +42,6 @@ describe("submitRunSchema", () => {
     expect(() => submitRunSchema.parse({ score: 10_000_001, level: 1 })).toThrow();
     expect(() => submitRunSchema.parse({ score: 10, level: 0 })).toThrow();
     expect(() => submitRunSchema.parse({ score: 10, level: 1, riskSpinsUsed: -1 })).toThrow();
+    expect(() => submitRunSchema.parse({ score: 10, level: 1, boardSize: 9 })).toThrow();
   });
 });

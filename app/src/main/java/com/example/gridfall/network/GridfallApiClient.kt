@@ -124,11 +124,13 @@ class GridfallApiClient(
 
 suspend fun getLeaderboards(
         firebaseIdToken: String?,
+        boardSize: Int = 8,
         limit: Int = 10
     ): LeaderboardsResponse = withContext(Dispatchers.IO) {
         val safeLimit = limit.coerceIn(1, 100)
+        val safeBoardSize = boardSize.takeIf { it == 7 || it == 8 || it == 10 } ?: 8
         val builder = Request.Builder()
-            .url(apiConfig.endpoint("/leaderboards?limit=$safeLimit"))
+            .url(apiConfig.endpoint("/leaderboards?limit=$safeLimit&boardSize=$safeBoardSize"))
             .get()
         firebaseIdToken?.takeIf { it.isNotBlank() }?.let { token ->
             builder.header("Authorization", "Bearer $token")

@@ -109,6 +109,7 @@ object PendingRunSubmissionJson {
             .put("bombsUsed", request.bombsUsed)
             .put("megaBombsUsed", request.megaBombsUsed)
             .put("riskSpinsUsed", request.riskSpinsUsed)
+            .put("boardSize", request.boardSize)
             .put("durationSeconds", request.durationSeconds)
             .put("appVersion", request.appVersion)
             .put("createdAt", createdAtMillis)
@@ -130,6 +131,7 @@ object PendingRunSubmissionJson {
                 bombsUsed = optInt("bombsUsed"),
                 megaBombsUsed = optInt("megaBombsUsed"),
                 riskSpinsUsed = optInt("riskSpinsUsed"),
+                boardSize = optInt("boardSize", 8),
                 durationSeconds = optInt("durationSeconds"),
                 appVersion = optString("appVersion").takeIf { it.isNotBlank() } ?: "1.0"
             ),

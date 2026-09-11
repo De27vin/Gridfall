@@ -157,6 +157,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
     var showLeaderboardDialog by remember { mutableStateOf(false) }
     var showLeaderboardScreen by remember { mutableStateOf(false) }
     var leaderboardUiState by remember { mutableStateOf(LeaderboardUiState()) }
+    var leaderboardLoadToken by remember { mutableStateOf(0) }
     var wasRiskSpinAvailable by remember { mutableStateOf(false) }
 
     BackHandler(enabled = showSettingsScreen || showLeaderboardScreen) {
@@ -561,6 +562,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
             bombsUsed = endedState.runStats.bombsUsed,
             megaBombsUsed = endedState.runStats.megaBombsUsed,
             riskSpinsUsed = endedState.runStats.riskSpinsUsed,
+            boardSize = endedState.board.size,
             durationSeconds = endedState.runStats.durationSeconds(),
             appVersion = appVersionName(context)
         )
@@ -620,29 +622,41 @@ fun GameScreen(modifier: Modifier = Modifier) {
         }
     }
 
-    fun loadLeaderboard() {
-        leaderboardUiState = LeaderboardUiState(isLoading = true)
+    fun loadLeaderboard(gridLayout: GridLayoutPreset = leaderboardUiState.gridLayout) {
+        leaderboardLoadToken += 1
+        val loadToken = leaderboardLoadToken
+        leaderboardUiState = LeaderboardUiState(isLoading = true, gridLayout = gridLayout)
         coroutineScope.launch {
-            leaderboardUiState = try {
+            val nextState = try {
                 val token = runCatching { authManager.getFreshIdToken() }.getOrNull()
-                LeaderboardUiState(response = apiClient.getLeaderboards(firebaseIdToken = token, limit = 10))
+                LeaderboardUiState(
+                    response = apiClient.getLeaderboards(
+                        firebaseIdToken = token,
+                        boardSize = gridLayout.boardSize,
+                        limit = 10
+                    ),
+                    gridLayout = gridLayout
+                )
             } catch (error: Exception) {
                 Log.w(ACCOUNT_LOG_TAG, "Leaderboard unavailable: ${error.message}")
-                LeaderboardUiState(error = "Could not load leaderboard")
+                LeaderboardUiState(error = "Could not load leaderboard", gridLayout = gridLayout)
+            }
+            if (loadToken == leaderboardLoadToken) {
+                leaderboardUiState = nextState
             }
         }
     }
 
     fun openLeaderboardDialog() {
         showLeaderboardDialog = true
-        loadLeaderboard()
+        loadLeaderboard(GridLayoutPreset.fromBoardSize(gameState.board.size))
     }
 
     fun openLeaderboardScreen() {
         showSettingsScreen = false
         showLeaderboardDialog = false
         showLeaderboardScreen = true
-        loadLeaderboard()
+        loadLeaderboard(GridLayoutPreset.fromBoardSize(gameState.board.size))
     }
 
     LaunchedEffect(Unit) {
@@ -1028,6 +1042,9 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 pendingRunCount = pendingRunCount,
                 onRefresh = {
                     loadLeaderboard()
+                },
+                onGridLayoutSelected = { gridLayout ->
+                    loadLeaderboard(gridLayout)
                 },
                 onBack = {
                     showLeaderboardScreen = false
@@ -1516,6 +1533,9 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 pendingRunCount = pendingRunCount,
                 onRefresh = {
                     loadLeaderboard()
+                },
+                onGridLayoutSelected = { gridLayout ->
+                    loadLeaderboard(gridLayout)
                 },
                 onDismiss = {
                     showLeaderboardDialog = false

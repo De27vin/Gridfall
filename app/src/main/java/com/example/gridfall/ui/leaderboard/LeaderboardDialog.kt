@@ -19,8 +19,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -39,6 +39,7 @@ import com.example.gridfall.network.dto.LeaderboardSectionsDto
 import com.example.gridfall.network.dto.LeaderboardsResponse
 import com.example.gridfall.network.dto.LeaderboardType
 import com.example.gridfall.network.dto.YourStatsDto
+import com.example.gridfall.game.GridLayoutPreset
 import com.example.gridfall.ui.infernoCorner
 import com.example.gridfall.ui.infernoPanelTexture
 import com.example.gridfall.ui.isInfernoTheme
@@ -52,7 +53,8 @@ import java.util.Locale
 data class LeaderboardUiState(
     val isLoading: Boolean = false,
     val response: LeaderboardsResponse? = null,
-    val error: String? = null
+    val error: String? = null,
+    val gridLayout: GridLayoutPreset = GridLayoutPreset.Classic
 )
 
 @Composable
@@ -61,6 +63,7 @@ fun LeaderboardDialog(
     accountConnectionState: AccountConnectionState,
     pendingRunCount: Int,
     onRefresh: () -> Unit,
+    onGridLayoutSelected: (GridLayoutPreset) -> Unit,
     onDismiss: () -> Unit
 ) {
     val theme = LocalGridfallColors.current
@@ -84,6 +87,7 @@ fun LeaderboardDialog(
                 LeaderboardStatus(accountConnectionState, pendingRunCount)
                 LeaderboardContent(
                     state = state,
+                    onGridLayoutSelected = onGridLayoutSelected,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 220.dp, max = 440.dp)
                 )
             }
@@ -113,14 +117,49 @@ fun LeaderboardStatus(account: AccountConnectionState, pendingRunCount: Int) {
 }
 
 @Composable
-fun LeaderboardContent(state: LeaderboardUiState, modifier: Modifier = Modifier) {
+fun LeaderboardContent(
+    state: LeaderboardUiState,
+    onGridLayoutSelected: (GridLayoutPreset) -> Unit,
+    modifier: Modifier = Modifier
+) {
     val theme = LocalGridfallColors.current
-    Box(modifier = modifier, contentAlignment = Alignment.Center) {
-        when {
-            state.isLoading -> CircularProgressIndicator(color = theme.accentStrong)
-            state.error != null -> StateText(state.error, theme.warning)
-            state.response == null -> StateText("Leaderboard is unavailable.", theme.textSecondary)
-            else -> LeaderboardData(state.response, Modifier.fillMaxSize())
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        GridLeaderboardTabs(state.gridLayout, onGridLayoutSelected)
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            when {
+                state.isLoading -> CircularProgressIndicator(color = theme.accentStrong)
+                state.error != null -> StateText(state.error, theme.warning)
+                state.response == null -> StateText("Leaderboard is unavailable.", theme.textSecondary)
+                else -> LeaderboardData(state.response, Modifier.fillMaxSize())
+            }
+        }
+    }
+}
+
+@Composable
+private fun GridLeaderboardTabs(
+    selected: GridLayoutPreset,
+    onSelected: (GridLayoutPreset) -> Unit
+) {
+    val theme = LocalGridfallColors.current
+    PrimaryTabRow(
+        selectedTabIndex = GridLayoutPreset.entries.indexOf(selected),
+        containerColor = theme.chipBackground.copy(alpha = 0.70f),
+        contentColor = theme.accentStrong
+    ) {
+        GridLayoutPreset.entries.forEach { preset ->
+            Tab(
+                selected = selected == preset,
+                onClick = { onSelected(preset) },
+                text = {
+                    Text(
+                        text = "${preset.title} ${preset.sizeLabel}",
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.labelSmall.retroText(theme)
+                    )
+                }
+            )
         }
     }
 }
@@ -140,7 +179,7 @@ private fun LeaderboardData(response: LeaderboardsResponse, modifier: Modifier) 
                 style = MaterialTheme.typography.bodySmall.retroText(theme)
             )
         }
-        TabRow(
+        PrimaryTabRow(
             selectedTabIndex = LeaderboardType.entries.indexOf(selectedType),
             containerColor = theme.chipBackground.copy(alpha = 0.70f),
             contentColor = theme.accentStrong

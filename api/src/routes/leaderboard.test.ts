@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  aggregateGridRuns,
   higherRankWhere,
   isCurrentUserInTop,
   leaderboardOrderBy,
-  publicProfileWhere
+  publicProfileWhere,
+  rankGridStats
 } from "./leaderboard";
 
 describe("risk spin leaderboard configuration", () => {
@@ -45,5 +47,34 @@ describe("risk spin leaderboard configuration", () => {
         { totalRiskSpinsUsed: 8, bestScore: { gt: 500 } }
       ])
     });
+  });
+});
+
+describe("grid-specific leaderboard ranking", () => {
+  const runs = [
+    { userId: "rush", username: "RushPlayer", score: 700, level: 5, linesCleared: 8, contractsCompleted: 1, riskSpinsUsed: 2 },
+    { userId: "rush", username: "RushPlayer", score: 500, level: 8, linesCleared: 4, contractsCompleted: 2, riskSpinsUsed: 1 },
+    { userId: "classic", username: "ClassicPlayer", score: 900, level: 6, linesCleared: 3, contractsCompleted: 0, riskSpinsUsed: 5 }
+  ];
+
+  it("aggregates a user's runs without mixing best score and best level", () => {
+    const rush = aggregateGridRuns(runs).find((entry) => entry.userId === "rush");
+
+    expect(rush).toMatchObject({
+      bestScore: 700,
+      bestLevel: 5,
+      gamesPlayed: 2,
+      totalPoints: 1200,
+      totalLinesCleared: 12,
+      totalContractsCompleted: 3,
+      totalRiskSpinsUsed: 3
+    });
+  });
+
+  it("ranks independently by the selected statistic", () => {
+    const stats = aggregateGridRuns(runs);
+
+    expect(rankGridStats("bestScore", stats)[0].username).toBe("ClassicPlayer");
+    expect(rankGridStats("totalPoints", stats)[0].username).toBe("RushPlayer");
   });
 });

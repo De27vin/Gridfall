@@ -7,7 +7,8 @@ import { prisma } from "../db";
 import { getOrCreateUserWithProfile } from "../services/usersService";
 
 const leaderboardQuerySchema = z.object({
-  limit: z.coerce.number().int().min(1).max(100).default(10)
+  limit: z.coerce.number().int().min(1).max(100).default(10),
+  boardSize: z.coerce.number().int().refine((size) => [7, 8, 10].includes(size)).default(8)
 });
 
 export const publicProfileWhere: Prisma.PlayerProfileWhereInput = {
@@ -29,6 +30,28 @@ interface LeaderboardEntry {
   totalContractsCompleted: number;
   totalRiskSpinsUsed: number;
   isInTop?: boolean;
+}
+
+interface GridRunRecord {
+  userId: string;
+  username: string | null;
+  score: number;
+  level: number;
+  linesCleared: number;
+  contractsCompleted: number;
+  riskSpinsUsed: number;
+}
+
+export interface GridLeaderboardStats {
+  userId: string;
+  username: string;
+  bestScore: number;
+  bestLevel: number;
+  gamesPlayed: number;
+  totalPoints: number;
+  totalLinesCleared: number;
+  totalContractsCompleted: number;
+  totalRiskSpinsUsed: number;
 }
 
 export const leaderboardRoutes: FastifyPluginAsync = async (app) => {
@@ -60,18 +83,45 @@ export const leaderboardRoutes: FastifyPluginAsync = async (app) => {
     const current = request.authUser
       ? await getOrCreateUserWithProfile(request.authUser)
       : null;
-    const limit = query.data.limit;
-
-    const sections = await Promise.all([
-      buildSection("bestScore", limit, current?.profile ?? null, current?.user ?? null),
-      buildSection("totalPoints", limit, current?.profile ?? null, current?.user ?? null),
-      buildSection("linesCleared", limit, current?.profile ?? null, current?.user ?? null),
-      buildSection("contractsCompleted", limit, current?.profile ?? null, current?.user ?? null),
-      buildSection("riskSpinsUsed", limit, current?.profile ?? null, current?.user ?? null)
+    const { limit, boardSize } = query.data;
+    const runSelect = {
+      userId: true,
+      score: true,
+      level: true,
+      linesCleared: true,
+      contractsCompleted: true,
+      riskSpinsUsed: true,
+      user: { select: { username: true } }
+    } satisfies Prisma.RunSelect;
+    const [publicRuns, currentRuns] = await Promise.all([
+      prisma.run.findMany({
+        where: {
+          boardSize,
+          validationStatus: "accepted",
+          user: { username: { not: null }, mergedIntoUserId: null }
+        },
+        select: runSelect
+      }),
+      current
+        ? prisma.run.findMany({
+          where: { boardSize, validationStatus: "accepted", userId: current.user.id },
+          select: runSelect
+        })
+        : Promise.resolve([])
     ]);
+    const publicStats = aggregateGridRuns(publicRuns.map(toGridRunRecord));
+    const currentStats = aggregateGridRuns(currentRuns.map(toGridRunRecord))[0] ?? null;
+    const sections = ([
+      "bestScore",
+      "totalPoints",
+      "linesCleared",
+      "contractsCompleted",
+      "riskSpinsUsed"
+    ] as LeaderboardType[]).map((type) => buildGridSection(type, publicStats, currentStats, limit));
 
     return {
-      me: current ? toStats(current.profile, current.user) : null,
+      boardSize,
+      me: current ? toGridStats(currentStats, current.user) : null,
       leaderboards: {
         bestScore: sections[0],
         totalPoints: sections[1],
@@ -82,6 +132,110 @@ export const leaderboardRoutes: FastifyPluginAsync = async (app) => {
     };
   });
 };
+
+function toGridRunRecord(run: {
+  userId: string;
+  user: { username: string | null };
+  score: number;
+  level: number;
+  linesCleared: number;
+  contractsCompleted: number;
+  riskSpinsUsed: number;
+}): GridRunRecord {
+  return { ...run, username: run.user.username };
+}
+
+export function aggregateGridRuns(runs: GridRunRecord[]): GridLeaderboardStats[] {
+  const byUser = new Map<string, GridLeaderboardStats>();
+  for (const run of runs) {
+    const stats = byUser.get(run.userId) ?? {
+      userId: run.userId,
+      username: run.username ?? "You",
+      bestScore: 0,
+      bestLevel: 1,
+      gamesPlayed: 0,
+      totalPoints: 0,
+      totalLinesCleared: 0,
+      totalContractsCompleted: 0,
+      totalRiskSpinsUsed: 0
+    };
+    if (run.score > stats.bestScore || (run.score === stats.bestScore && run.level > stats.bestLevel)) {
+      stats.bestScore = run.score;
+      stats.bestLevel = run.level;
+    }
+    stats.gamesPlayed += 1;
+    stats.totalPoints += run.score;
+    stats.totalLinesCleared += run.linesCleared;
+    stats.totalContractsCompleted += run.contractsCompleted;
+    stats.totalRiskSpinsUsed += run.riskSpinsUsed;
+    byUser.set(run.userId, stats);
+  }
+  return [...byUser.values()];
+}
+
+export function rankGridStats(type: LeaderboardType, stats: GridLeaderboardStats[]): GridLeaderboardStats[] {
+  const value = (entry: GridLeaderboardStats) => {
+    switch (type) {
+      case "bestScore": return entry.bestScore;
+      case "totalPoints": return entry.totalPoints;
+      case "linesCleared": return entry.totalLinesCleared;
+      case "contractsCompleted": return entry.totalContractsCompleted;
+      case "riskSpinsUsed": return entry.totalRiskSpinsUsed;
+    }
+  };
+  return [...stats].sort((left, right) =>
+    value(right) - value(left) ||
+    right.bestScore - left.bestScore ||
+    right.bestLevel - left.bestLevel ||
+    left.username.localeCompare(right.username) ||
+    left.userId.localeCompare(right.userId)
+  );
+}
+
+function buildGridSection(
+  type: LeaderboardType,
+  stats: GridLeaderboardStats[],
+  currentStats: GridLeaderboardStats | null,
+  limit: number
+) {
+  const ranked = rankGridStats(type, stats);
+  const entries = ranked.slice(0, limit).map((entry, index) => gridStatsToEntry(entry, index + 1));
+  const currentRank = currentStats
+    ? ranked.findIndex((entry) => entry.userId === currentStats.userId) + 1
+    : 0;
+  return {
+    entries,
+    me: currentStats && currentRank > 0
+      ? { ...gridStatsToEntry(currentStats, currentRank), isInTop: currentRank <= limit }
+      : null
+  };
+}
+
+function gridStatsToEntry(stats: GridLeaderboardStats, rank: number): LeaderboardEntry {
+  return {
+    rank,
+    username: stats.username,
+    bestScore: stats.bestScore,
+    bestLevel: stats.bestLevel,
+    totalPoints: stats.totalPoints,
+    totalLinesCleared: stats.totalLinesCleared,
+    totalContractsCompleted: stats.totalContractsCompleted,
+    totalRiskSpinsUsed: stats.totalRiskSpinsUsed
+  };
+}
+
+function toGridStats(stats: GridLeaderboardStats | null, user: User) {
+  return {
+    username: user.username,
+    bestScore: stats?.bestScore ?? 0,
+    bestLevel: stats?.bestLevel ?? 1,
+    totalPoints: stats?.totalPoints ?? 0,
+    gamesPlayed: stats?.gamesPlayed ?? 0,
+    totalLinesCleared: stats?.totalLinesCleared ?? 0,
+    totalContractsCompleted: stats?.totalContractsCompleted ?? 0,
+    totalRiskSpinsUsed: stats?.totalRiskSpinsUsed ?? 0
+  };
+}
 
 async function optionalFirebaseAuth(request: FastifyRequest, reply: { code: (statusCode: number) => { send: (payload: unknown) => unknown } }) {
   const authorization = request.headers.authorization;
@@ -95,40 +249,6 @@ async function optionalFirebaseAuth(request: FastifyRequest, reply: { code: (sta
   } catch {
     return reply.code(401).send({ error: "Invalid Firebase token" });
   }
-}
-
-async function buildSection(
-  type: LeaderboardType,
-  limit: number,
-  currentProfile: PlayerProfile | null,
-  currentUser: User | null
-) {
-  const profiles = await prisma.playerProfile.findMany({
-    where: publicProfileWhere,
-    include: { user: true },
-    orderBy: leaderboardOrderBy(type),
-    take: limit
-  });
-  const entries = profiles.map((profile, index) => toEntry(profile, profile.user, index + 1));
-
-  if (!currentProfile || !currentUser?.username || currentUser.mergedIntoUserId) {
-    return { entries, me: null };
-  }
-
-  const higherCount = await prisma.playerProfile.count({
-    where: {
-      AND: [publicProfileWhere, higherRankWhere(type, currentProfile)]
-    }
-  });
-  const isInTop = isCurrentUserInTop(entries, currentUser.username);
-
-  return {
-    entries,
-    me: {
-      ...toEntry(currentProfile, currentUser, higherCount + 1),
-      isInTop
-    }
-  };
 }
 
 export function leaderboardOrderBy(type: LeaderboardType): Prisma.PlayerProfileOrderByWithRelationInput[] {
@@ -198,19 +318,6 @@ function toEntry(profile: PlayerProfile, user: User, rank: number): LeaderboardE
     bestScore: profile.bestScore,
     bestLevel: profile.bestLevel,
     totalPoints: profile.totalPoints,
-    totalLinesCleared: profile.totalLinesCleared,
-    totalContractsCompleted: profile.totalContractsCompleted,
-    totalRiskSpinsUsed: profile.totalRiskSpinsUsed
-  };
-}
-
-function toStats(profile: PlayerProfile, user: User) {
-  return {
-    username: user.username,
-    bestScore: profile.bestScore,
-    bestLevel: profile.bestLevel,
-    totalPoints: profile.totalPoints,
-    gamesPlayed: profile.gamesPlayed,
     totalLinesCleared: profile.totalLinesCleared,
     totalContractsCompleted: profile.totalContractsCompleted,
     totalRiskSpinsUsed: profile.totalRiskSpinsUsed

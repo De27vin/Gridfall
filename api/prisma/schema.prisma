@@ -53,6 +53,7 @@ model Run {
   bombsUsed          Int      @default(0)
   megaBombsUsed      Int      @default(0)
   riskSpinsUsed      Int      @default(0)
+  boardSize          Int      @default(8)
   durationSeconds    Int?
   appVersion         String?
   validationStatus   String   @default("accepted")
@@ -61,6 +62,7 @@ model Run {
 
   @@index([userId])
   @@index([score])
+  @@index([boardSize, score])
 }
 
 model GuestMergeToken {

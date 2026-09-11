@@ -9,6 +9,7 @@ export const submitRunSchema = z.object({
   bombsUsed: z.number().int().min(0).max(10_000).default(0),
   megaBombsUsed: z.number().int().min(0).max(10_000).default(0),
   riskSpinsUsed: z.number().int().min(0).max(10_000).default(0),
+  boardSize: z.union([z.literal(7), z.literal(8), z.literal(10)]).default(8),
   durationSeconds: z.number().int().min(0).max(604_800).nullable().optional(),
   appVersion: z.string().trim().max(64).nullable().optional()
 });
@@ -33,6 +34,7 @@ export async function saveRunAndUpdateProfile(userId: string, input: SubmitRunIn
         bombsUsed: input.bombsUsed,
         megaBombsUsed: input.megaBombsUsed,
         riskSpinsUsed: input.riskSpinsUsed,
+        boardSize: input.boardSize,
         durationSeconds: input.durationSeconds,
         appVersion: input.appVersion
       }

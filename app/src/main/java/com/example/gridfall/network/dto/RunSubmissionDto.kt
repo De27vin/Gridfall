@@ -10,6 +10,7 @@ data class RunSubmissionRequest(
     val bombsUsed: Int,
     val megaBombsUsed: Int,
     val riskSpinsUsed: Int = 0,
+    val boardSize: Int = 8,
     val durationSeconds: Int,
     val appVersion: String
 ) {
@@ -22,6 +23,7 @@ data class RunSubmissionRequest(
             "bombsUsed" to bombsUsed,
             "megaBombsUsed" to megaBombsUsed,
             "riskSpinsUsed" to riskSpinsUsed,
+            "boardSize" to boardSize,
             "durationSeconds" to durationSeconds,
             "appVersion" to appVersion
         )
