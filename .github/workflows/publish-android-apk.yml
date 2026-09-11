@@ -1,0 +1,72 @@
+name: Publish Android APK
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-android-apk
+  cancel-in-progress: false
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Restore release signing files
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          test -n "$KEYSTORE_BASE64"
+          test -n "$STORE_PASSWORD"
+          test -n "$KEY_ALIAS"
+          test -n "$KEY_PASSWORD"
+          mkdir -p keystore
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > keystore/gridfall-release.keystore
+          printf 'storeFile=keystore/gridfall-release.keystore\n' > keystore.properties
+          printf 'storePassword=%s\n' "$STORE_PASSWORD" >> keystore.properties
+          printf 'keyAlias=%s\n' "$KEY_ALIAS" >> keystore.properties
+          printf 'keyPassword=%s\n' "$KEY_PASSWORD" >> keystore.properties
+
+      - name: Test and build signed release APK
+        run: ./gradlew :app:testDebugUnitTest :app:assembleRelease --console=plain
+
+      - name: Keep APK as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gridfall-${{ github.ref_name }}
+          path: app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+
+      - name: Upload APK to Cloudflare R2
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: >-
+            r2 object put ${{ secrets.CLOUDFLARE_R2_BUCKET }}/gridfall.apk
+            --file app/build/outputs/apk/release/app-release.apk
+            --content-type application/vnd.android.package-archive
+            --content-disposition 'attachment; filename="gridfall.apk"'
+            --cache-control 'public, max-age=300'
+            --remote
