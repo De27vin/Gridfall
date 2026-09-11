@@ -1412,6 +1412,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
             )
         }
     }
+    }
 
         if (!showSettingsScreen && !showLeaderboardScreen && gameState.isGameOver) {
             LaunchedEffect(gameState.isGameOver, savePromptDismissed, accountConnectionState.isAnonymous) {
@@ -1551,7 +1552,6 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 onLogin = ::loginAccount,
                 onSaveUsername = ::saveUsername
             )
-        }
         }
     }
 }
