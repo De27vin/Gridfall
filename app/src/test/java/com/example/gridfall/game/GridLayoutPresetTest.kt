@@ -9,7 +9,7 @@ class GridLayoutPresetTest {
     @Test
     fun presetsExposeThreeDistinctBoardSizes() {
         assertEquals(listOf(7, 8, 10), GridLayoutPreset.entries.map { it.boardSize })
-        assertEquals(listOf(3, 3, 4), GridLayoutPreset.entries.map { it.piecesPerBatch })
+        assertEquals(listOf(2, 3, 4), GridLayoutPreset.entries.map { it.piecesPerBatch })
         assertEquals(3, GridLayoutPreset.entries.map { it.id }.toSet().size)
     }
 
@@ -26,7 +26,42 @@ class GridLayoutPresetTest {
             assertEquals(preset.boardSize, state.board.cells.size)
             assertTrue(state.board.cells.all { it.size == preset.boardSize })
             assertEquals(preset.piecesPerBatch, state.currentPieces.size)
+            assertEquals(preset.showsNextPiecePreview, state.nextPiece != null)
         }
+    }
+
+    @Test
+    fun rushPromotesThePreviewImmediatelyAfterEveryPlacement() {
+        val singleCellPiece = PieceLibrary.starterPieces.first()
+        val previewPiece = PieceLibrary.starterPieces.last()
+        val untouchedPiece = singleCellPiece.copy(id = "untouched")
+        val initialState = GameEngine.createInitialState(GridLayoutPreset.Rush).copy(
+            currentPieces = listOf(singleCellPiece, untouchedPiece),
+            nextPiece = previewPiece
+        )
+
+        val afterFirstPlacement = GameEngine.placePiece(
+            state = initialState,
+            pieceIndex = 0,
+            startRow = 0,
+            startCol = 0
+        )
+
+        assertEquals(previewPiece, afterFirstPlacement.currentPieces[0])
+        assertEquals(untouchedPiece, afterFirstPlacement.currentPieces[1])
+        assertEquals(1, afterFirstPlacement.placementsInCurrentBatch)
+        assertTrue(afterFirstPlacement.usedPieceIndices.isEmpty())
+        assertTrue(afterFirstPlacement.nextPiece != null)
+
+        val afterSecondPlacement = GameEngine.placePiece(
+            state = afterFirstPlacement,
+            pieceIndex = 1,
+            startRow = 2,
+            startCol = 0
+        )
+
+        assertEquals(0, afterSecondPlacement.placementsInCurrentBatch)
+        assertTrue(afterSecondPlacement.usedPieceIndices.isEmpty())
     }
 
     @Test

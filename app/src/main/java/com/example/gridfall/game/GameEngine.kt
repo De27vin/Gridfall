@@ -6,14 +6,16 @@ object GameEngine {
     const val BLOCK_BREAKER_SCORE = 5
     fun createInitialState(gridLayout: GridLayoutPreset = GridLayoutPreset.Classic): GameState {
         val level = LevelSystem.levelForScore(0)
+        val generatedPieces = PieceGenerator.generateBatch(
+            count = gridLayout.piecesPerBatch + if (gridLayout.showsNextPiecePreview) 1 else 0,
+            level = level
+        )
 
         return GameState(
             board = Board.empty(gridLayout.boardSize),
-            currentPieces = PieceGenerator.generateBatch(
-                count = gridLayout.piecesPerBatch,
-                level = level
-            ),
+            currentPieces = generatedPieces.take(gridLayout.piecesPerBatch),
             usedPieceIndices = emptySet(),
+            nextPiece = generatedPieces.getOrNull(gridLayout.piecesPerBatch),
             score = 0,
             combo = 0,
             isGameOver = false,
@@ -319,8 +321,11 @@ object GameEngine {
         random: Random = Random.Default
     ): GameState {
         if (state.isGameOver) return state
+        val gridLayout = GridLayoutPreset.fromBoardSize(state.board.size)
+        val usesRollingHand = gridLayout.showsNextPiecePreview
         if (pieceIndex !in state.currentPieces.indices) return state
-        if (pieceIndex in state.usedPieceIndices) return state
+        if (usesRollingHand && pieceIndex >= gridLayout.piecesPerBatch) return state
+        if (!usesRollingHand && pieceIndex in state.usedPieceIndices) return state
 
         val piece = state.currentPieces[pieceIndex]
         if (!canPlace(state.board, piece, startRow, startCol)) return state
@@ -342,8 +347,21 @@ object GameEngine {
             scoreGained = placementResult.scoreGained
         )
         val immediateContractEvaluation = evaluateImmediateContractFailure(updatedContractState)
-        val nextUsedPieceIndices = state.usedPieceIndices + pieceIndex
-        val allPiecesUsed = state.currentPieces.indices.all { it in nextUsedPieceIndices }
+        val nextUsedPieceIndices = if (usesRollingHand) {
+            emptySet()
+        } else {
+            state.usedPieceIndices + pieceIndex
+        }
+        val nextPlacementsInBatch = if (usesRollingHand) {
+            state.placementsInCurrentBatch + 1
+        } else {
+            0
+        }
+        val allPiecesUsed = if (usesRollingHand) {
+            nextPlacementsInBatch >= gridLayout.piecesPerBatch
+        } else {
+            state.currentPieces.indices.all { it in nextUsedPieceIndices }
+        }
         val scoreAfterPlacement = (
             state.score +
                 placementResult.scoreGained +
@@ -365,11 +383,14 @@ object GameEngine {
             contractScoreDelta = evaluation.scoreDelta
             val finalScore = (scoreAfterPlacement + contractScoreDelta).coerceAtLeast(0)
             val nextLevel = LevelSystem.levelForScore(finalScore)
-            val piecesPerBatch = GridLayoutPreset.fromBoardSize(state.board.size).piecesPerBatch
-            nextPieces = PieceGenerator.generateBatch(
-                count = piecesPerBatch,
-                level = nextLevel
-            )
+            nextPieces = if (usesRollingHand) {
+                state.currentPieces
+            } else {
+                PieceGenerator.generateBatch(
+                    count = gridLayout.piecesPerBatch,
+                    level = nextLevel
+                )
+            }
             finalContractState = advanceContractBatch(
                 contractState = evaluation.contractState,
                 score = finalScore,
@@ -400,23 +421,49 @@ object GameEngine {
             advancedRiskSpinState = state.riskSpinState
         }
 
-        val availablePieces = nextPieces.filterIndexed { index, _ ->
-            index !in finalUsedPieceIndices
-        }
         val finalRiskSpinState = advancedRiskSpinState.copy(
             previousMoveSnapshot = previousSnapshot,
             hasUsedRevertSinceLastMove = false
         )
+        val finalScore = (scoreAfterPlacement + contractScoreDelta).coerceAtLeast(0)
+        val finalLevel = LevelSystem.levelForScore(finalScore)
+        val finalPieces: List<Piece>
+        val finalNextPiece: Piece?
+        if (usesRollingHand) {
+            val promotedPiece = state.nextPiece ?: PieceGenerator.generateBatch(
+                count = 1,
+                level = finalLevel,
+                random = random
+            ).first()
+            finalPieces = state.currentPieces
+                .take(gridLayout.piecesPerBatch)
+                .toMutableList()
+                .also { pieces -> pieces[pieceIndex] = promotedPiece }
+            finalNextPiece = PieceGenerator.generateBatch(
+                count = 1,
+                level = finalLevel,
+                random = random
+            ).first()
+        } else {
+            finalPieces = nextPieces
+            finalNextPiece = null
+        }
+        val availablePieces = if (usesRollingHand) {
+            finalPieces
+        } else {
+            finalPieces.filterIndexed { index, _ -> index !in finalUsedPieceIndices }
+        }
         val isGameOver = !hasAnyValidMove(
             placementResult.board,
             availablePieces + placeableJokerPieces(finalRiskSpinState.inventory)
         )
 
-        val finalScore = (scoreAfterPlacement + contractScoreDelta).coerceAtLeast(0)
         return state.copy(
             board = placementResult.board,
-            currentPieces = nextPieces,
+            currentPieces = finalPieces,
             usedPieceIndices = finalUsedPieceIndices,
+            nextPiece = finalNextPiece,
+            placementsInCurrentBatch = if (usesRollingHand && !allPiecesUsed) nextPlacementsInBatch else 0,
             score = finalScore,
             maxScoreReached = maxOf(state.maxScoreReached, finalScore),
             combo = placementResult.nextCombo,

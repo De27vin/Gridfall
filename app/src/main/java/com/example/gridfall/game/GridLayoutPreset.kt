@@ -5,13 +5,15 @@ enum class GridLayoutPreset(
     val title: String,
     val boardSize: Int,
     val piecesPerBatch: Int,
+    val showsNextPiecePreview: Boolean,
     val description: String
 ) {
     Rush(
         id = "rush_7",
         title = "Rush",
         boardSize = 7,
-        piecesPerBatch = 3,
+        piecesPerBatch = 2,
+        showsNextPiecePreview = true,
         description = "Tight and fast"
     ),
     Classic(
@@ -19,6 +21,7 @@ enum class GridLayoutPreset(
         title = "Classic",
         boardSize = 8,
         piecesPerBatch = 3,
+        showsNextPiecePreview = false,
         description = "The balanced original"
     ),
     Marathon(
@@ -26,6 +29,7 @@ enum class GridLayoutPreset(
         title = "Marathon",
         boardSize = 10,
         piecesPerBatch = 4,
+        showsNextPiecePreview = false,
         description = "More room to build"
     );
 

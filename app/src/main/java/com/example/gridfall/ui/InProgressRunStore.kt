@@ -12,6 +12,7 @@ import com.example.gridfall.game.GridLayoutPreset
 import com.example.gridfall.game.JokerType
 import com.example.gridfall.game.Piece
 import com.example.gridfall.game.PieceEffect
+import com.example.gridfall.game.PieceGenerator
 import com.example.gridfall.game.PieceRarity
 import com.example.gridfall.game.RiskSpinMemoryField
 import com.example.gridfall.game.RiskSpinMemorySession
@@ -101,6 +102,8 @@ object InProgressRunJson {
             .put("board", board.toJson())
             .put("pieces", JSONArray().also { array -> currentPieces.forEach { array.put(it.toJson()) } })
             .put("usedPieceIndices", JSONArray().also { array -> usedPieceIndices.sorted().forEach(array::put) })
+            .put("nextPiece", nextPiece?.toJson() ?: JSONObject.NULL)
+            .put("placementsInCurrentBatch", placementsInCurrentBatch)
             .put("score", score)
             .put("maxScoreReached", maxScoreReached)
             .put("combo", combo)
@@ -112,19 +115,49 @@ object InProgressRunJson {
 
     private fun JSONObject.toGameState(allowRevertSnapshot: Boolean = true): GameState? {
         val board = optJSONArray("board")?.toBoard() ?: return null
-        val pieces = optJSONArray("pieces")?.toPieces() ?: return null
+        val savedPieces = optJSONArray("pieces")?.toPieces() ?: return null
         val usedIndices = optJSONArray("usedPieceIndices")
             ?.let { array -> (0 until array.length()).mapTo(mutableSetOf()) { array.optInt(it) } }
             ?: emptySet()
-        if (usedIndices.any { it !in pieces.indices }) return null
+        if (usedIndices.any { it !in savedPieces.indices }) return null
 
         val score = optInt("score").coerceAtLeast(0)
+        val gridLayout = GridLayoutPreset.fromBoardSize(board.size)
+        val savedNextPiece = optJSONObject("nextPiece")?.toPiece()
+        val rollingQueue = if (gridLayout.showsNextPiecePreview && savedNextPiece == null) {
+            val availableSavedPieces = savedPieces.filterIndexed { index, _ -> index !in usedIndices }
+            val missingPieceCount = (gridLayout.piecesPerBatch + 1 - availableSavedPieces.size)
+                .coerceAtLeast(0)
+            availableSavedPieces + PieceGenerator.generateBatch(
+                count = missingPieceCount,
+                level = com.example.gridfall.game.LevelSystem.levelForScore(score)
+            )
+        } else {
+            emptyList()
+        }
+        val pieces = if (rollingQueue.isNotEmpty()) {
+            rollingQueue.take(gridLayout.piecesPerBatch)
+        } else {
+            savedPieces
+        }
+        val nextPiece = when {
+            savedNextPiece != null -> savedNextPiece
+            rollingQueue.isNotEmpty() -> rollingQueue.getOrNull(gridLayout.piecesPerBatch)
+            else -> null
+        }
         val restoredContractState = optJSONObject("contractState")?.toContractState() ?: ContractState()
 
         return GameState(
             board = board,
             currentPieces = pieces,
-            usedPieceIndices = usedIndices,
+            usedPieceIndices = if (gridLayout.showsNextPiecePreview) emptySet() else usedIndices,
+            nextPiece = nextPiece,
+            placementsInCurrentBatch = if (gridLayout.showsNextPiecePreview) {
+                optInt("placementsInCurrentBatch", usedIndices.size)
+                    .coerceIn(0, gridLayout.piecesPerBatch - 1)
+            } else {
+                0
+            },
             score = score,
             maxScoreReached = maxOf(
                 optInt("maxScoreReached", score).coerceAtLeast(0),

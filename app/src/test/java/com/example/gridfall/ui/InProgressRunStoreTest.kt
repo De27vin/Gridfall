@@ -34,6 +34,27 @@ class InProgressRunStoreTest {
     }
 
     @Test
+    fun roundTripsRushPreviewAndBatchProgress() {
+        val rushState = GameState(
+            board = Board.empty(7).fill(0, 0, 1),
+            currentPieces = listOf(piece("choice-1"), piece("choice-2")),
+            usedPieceIndices = emptySet(),
+            nextPiece = piece("preview"),
+            placementsInCurrentBatch = 1,
+            score = 1,
+            combo = 0,
+            isGameOver = false,
+            runStats = RunStats(runId = "rush", startedAtEpochMillis = 1)
+        )
+
+        val restored = InProgressRunJson.decode(
+            InProgressRunJson.encode(SavedInProgressRun(gameState = rushState))
+        )
+
+        assertEquals(rushState, restored?.gameState)
+    }
+
+    @Test
     fun roundTripsInProgressRunIncludingRevertSnapshotAndMemorySession() {
         val previousMove = gameState(score = 5_042, inventory = listOf(JokerType.Revert))
         val currentState = gameState(

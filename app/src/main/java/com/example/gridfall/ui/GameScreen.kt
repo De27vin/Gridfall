@@ -1108,6 +1108,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
 
             PieceTray(
                 pieces = gameState.currentPieces,
+                nextPiece = gameState.nextPiece,
                 usedPieceIndices = gameState.usedPieceIndices,
                 draggingPieceIndex = dragState.pieceIndex,
                 onPieceDragStarted = { pieceIndex, piece, position, startOffset ->
@@ -1337,7 +1338,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
         } else if (gameState.contractState.activeContract != null) {
             ContractActiveChip(
                 contractState = gameState.contractState,
-                piecesPerBatch = gameState.currentPieces.size,
+                piecesPerBatch = GridLayoutPreset.fromBoardSize(gameState.board.size).piecesPerBatch,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .systemBarsPadding()

@@ -6,6 +6,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,6 +14,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -41,6 +44,7 @@ import kotlin.math.min
 @Composable
 fun PieceTray(
     pieces: List<Piece>,
+    nextPiece: Piece? = null,
     usedPieceIndices: Set<Int>,
     draggingPieceIndex: Int?,
     onPieceDragStarted: (pieceIndex: Int, piece: Piece, position: Offset, startOffset: Offset) -> Unit,
@@ -122,6 +126,42 @@ fun PieceTray(
                         modifier = Modifier
                             .fillMaxSize()
                             .alpha(if (isDragging) 0.35f else 1f)
+                    )
+                }
+            }
+        }
+
+        if (nextPiece != null) {
+            val previewShape = RoundedCornerShape(retroCorner(theme, infernoCorner(theme, 12.dp)))
+            Column(
+                modifier = Modifier.weight(0.7f),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "NEXT",
+                    color = theme.textMuted,
+                    style = MaterialTheme.typography.labelSmall.retroText(theme)
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(1f)
+                        .clip(previewShape)
+                        .background(theme.boardInner.copy(alpha = 0.42f))
+                        .border(
+                            width = 1.dp,
+                            color = theme.panelBorder.copy(alpha = 0.38f),
+                            shape = previewShape
+                        )
+                        .padding(12.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    PiecePreview(
+                        piece = nextPiece,
+                        colors = theme,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .alpha(0.72f)
                     )
                 }
             }
