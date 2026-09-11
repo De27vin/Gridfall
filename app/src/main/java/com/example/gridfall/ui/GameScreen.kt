@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -19,6 +20,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.activity.compose.BackHandler
 import androidx.compose.material3.Button
@@ -1032,7 +1035,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 modifier = modifier
             )
         } else {
-            Box(
+            BoxWithConstraints(
                 modifier = modifier
                     .fillMaxSize()
                     .background(
@@ -1043,10 +1046,14 @@ fun GameScreen(modifier: Modifier = Modifier) {
                     .infernoAppTexture(activeThemeColors)
                     .retroAppTexture(activeThemeColors)
             ) {
+        val gameContentMaxWidth = (maxHeight - 460.dp).coerceIn(280.dp, 480.dp)
         Column(
             modifier = Modifier
-                .fillMaxSize()
+                .align(Alignment.TopCenter)
+                .widthIn(max = gameContentMaxWidth)
+                .fillMaxWidth()
                 .systemBarsPadding()
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp, vertical = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Top
