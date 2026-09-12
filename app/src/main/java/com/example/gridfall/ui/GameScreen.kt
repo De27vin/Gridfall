@@ -117,7 +117,18 @@ fun GameScreen(modifier: Modifier = Modifier) {
     }
     var dragState by remember { mutableStateOf(DragState()) }
     var boardLayoutInfo by remember { mutableStateOf<BoardLayoutInfo?>(null) }
-    var highScore by remember { mutableStateOf(HighScoreStore.load(context)) }
+    var highScore by remember {
+        mutableStateOf(
+            if (gameState.board.isCustom) {
+                0
+            } else {
+                HighScoreStore.load(
+                    context,
+                    GridLayoutPreset.fromBoardSize(gameState.board.size)
+                )
+            }
+        )
+    }
     var isNewBestThisGame by remember { mutableStateOf(false) }
     var lineClearFeedback by remember { mutableStateOf<LineClearFeedback?>(null) }
     var lineClearFeedbackToken by remember { mutableStateOf(0) }
@@ -236,8 +247,12 @@ fun GameScreen(modifier: Modifier = Modifier) {
 
     fun syncHighScoreFromBackend(backendUser: MeResponse) {
         val accountHighScore = HighScoreStore.accountBestScore(backendUser.profile.bestScore)
-        highScore = accountHighScore
-        HighScoreStore.save(context, accountHighScore)
+        HighScoreStore.save(context, GridLayoutPreset.Classic, accountHighScore)
+        highScore = if (gameState.board.isCustom) {
+            0
+        } else {
+            HighScoreStore.load(context, GridLayoutPreset.fromBoardSize(gameState.board.size))
+        }
     }
 
     fun refreshPendingRunCount() {
@@ -451,7 +466,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
 
                 val authSession = authManager.loginWithEmailPassword(email, password)
                 highScore = 0
-                HighScoreStore.save(context, 0)
+                HighScoreStore.clear(context)
                 var token = authManager.getFreshIdToken()
                 var backendUser = apiClient.getMe(token)
 
@@ -527,7 +542,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
             try {
                 val authSession = authManager.logoutToAnonymous()
                 highScore = 0
-                HighScoreStore.save(context, 0)
+                HighScoreStore.clear(context)
                 refreshAccountState(authSession)
                 showLogoutConfirmDialog = false
             } catch (error: Exception) {
@@ -850,6 +865,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
         } else {
             GameEngine.createInitialState(gridLayout)
         }
+        highScore = if (isCustomMap) 0 else HighScoreStore.load(context, gridLayout)
         dragState = DragState()
         lineClearFeedback = null
         bombPulseFeedback = null
@@ -888,7 +904,11 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 showScoreEventFeedbacks(scoreFeedbacks)
                 if (!nextState.board.isCustom && nextState.score > highScore) {
                     highScore = nextState.score
-                    HighScoreStore.save(context, nextState.score)
+                    HighScoreStore.save(
+                        context,
+                        GridLayoutPreset.fromBoardSize(nextState.board.size),
+                        nextState.score
+                    )
                     isNewBestThisGame = true
                 }
                 view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
@@ -934,7 +954,11 @@ fun GameScreen(modifier: Modifier = Modifier) {
 
                 if (!nextState.board.isCustom && nextState.score > highScore) {
                     highScore = nextState.score
-                    HighScoreStore.save(context, nextState.score)
+                    HighScoreStore.save(
+                        context,
+                        GridLayoutPreset.fromBoardSize(nextState.board.size),
+                        nextState.score
+                    )
                     isNewBestThisGame = true
                 }
 
@@ -1170,7 +1194,11 @@ fun GameScreen(modifier: Modifier = Modifier) {
                         showScoreEventFeedbacks(scoreFeedbacks)
                         if (!nextState.board.isCustom && nextState.score > highScore) {
                             highScore = nextState.score
-                            HighScoreStore.save(context, nextState.score)
+                            HighScoreStore.save(
+                                context,
+                                GridLayoutPreset.fromBoardSize(nextState.board.size),
+                                nextState.score
+                            )
                             isNewBestThisGame = true
                         }
                         view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
