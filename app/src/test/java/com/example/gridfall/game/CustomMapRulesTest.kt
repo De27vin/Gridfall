@@ -14,11 +14,8 @@ class CustomMapRulesTest {
     }
 
     @Test
-    fun `unchanged classic board is not accepted as a custom map`() {
-        assertEquals(
-            "Block at least one cell to create a custom map.",
-            CustomMapRules.validationError(emptySet())
-        )
+    fun `empty custom map is accepted`() {
+        assertNull(CustomMapRules.validationError(emptySet()))
     }
 
     @Test

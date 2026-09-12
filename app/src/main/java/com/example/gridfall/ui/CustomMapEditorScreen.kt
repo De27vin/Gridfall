@@ -263,8 +263,12 @@ private fun CustomMapEditorGrid(
                         (size.width - gap * (columns + 1)) / columns,
                         (size.height - gap * (rows + 1)) / rows
                     )
-                    val col = ((offset.x - gap) / (cellSize + gap)).toInt()
-                    val row = ((offset.y - gap) / (cellSize + gap)).toInt()
+                    val gridWidth = gap * (columns + 1) + cellSize * columns
+                    val gridHeight = gap * (rows + 1) + cellSize * rows
+                    val startX = (size.width - gridWidth) / 2f + gap
+                    val startY = (size.height - gridHeight) / 2f + gap
+                    val col = ((offset.x - startX) / (cellSize + gap)).toInt()
+                    val row = ((offset.y - startY) / (cellSize + gap)).toInt()
                     if (row in 0 until rows && col in 0 until columns) {
                         onCellTapped(Cell(row, col))
                     }
@@ -276,12 +280,16 @@ private fun CustomMapEditorGrid(
             (size.width - gap * (columns + 1)) / columns,
             (size.height - gap * (rows + 1)) / rows
         )
+        val gridWidth = gap * (columns + 1) + cellSize * columns
+        val gridHeight = gap * (rows + 1) + cellSize * rows
+        val startX = (size.width - gridWidth) / 2f + gap
+        val startY = (size.height - gridHeight) / 2f + gap
         repeat(rows) { row ->
             repeat(columns) { col ->
                 val blocked = Cell(row, col) in blockedCells
                 val topLeft = Offset(
-                    gap + col * (cellSize + gap),
-                    gap + row * (cellSize + gap)
+                    startX + col * (cellSize + gap),
+                    startY + row * (cellSize + gap)
                 )
                 drawRoundRect(
                     color = theme.emptyCell,
