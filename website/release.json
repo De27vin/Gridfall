@@ -1,5 +1,5 @@
 {
-  "version": "1.5.0",
+  "version": "1.5.1",
   "releasedAt": "2026-09-12",
   "highlights": [
     "Design custom maps by blocking individual fields in the new map editor.",
@@ -8,7 +8,7 @@
   ],
   "history": [
     {
-      "version": "1.5.0",
+      "version": "1.5.1",
       "releasedAt": "2026-09-12",
       "summary": "Custom map editor with expandable rectangular boards."
     },

@@ -6,11 +6,12 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.widthIn
@@ -250,13 +251,16 @@ private fun CustomMapEditorGrid(
 ) {
     val theme = LocalGridfallColors.current
     val shape = RoundedCornerShape(18.dp)
-    Canvas(
-        modifier = modifier
-            .aspectRatio(columns.toFloat() / rows.toFloat())
-            .background(theme.boardInner, shape)
-            .border(1.dp, theme.panelBorder, shape)
-            .padding(8.dp)
-            .pointerInput(blockedCells) {
+    BoxWithConstraints(modifier = modifier) {
+        val previewHeight = minOf(400.dp, maxWidth * (rows.toFloat() / columns.toFloat()))
+        Canvas(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(previewHeight)
+                .background(theme.boardInner, shape)
+                .border(1.dp, theme.panelBorder, shape)
+                .padding(8.dp)
+                .pointerInput(blockedCells) {
                 detectTapGestures { offset ->
                     val gap = size.width * 0.012f
                     val cellSize = minOf(
@@ -273,8 +277,8 @@ private fun CustomMapEditorGrid(
                         onCellTapped(Cell(row, col))
                     }
                 }
-            }
-    ) {
+                }
+        ) {
         val gap = size.width * 0.012f
         val cellSize = minOf(
             (size.width - gap * (columns + 1)) / columns,
@@ -320,6 +324,7 @@ private fun CustomMapEditorGrid(
                     )
                 }
             }
+        }
         }
     }
 }
