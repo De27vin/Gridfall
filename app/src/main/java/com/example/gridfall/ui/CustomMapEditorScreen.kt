@@ -108,7 +108,7 @@ fun CustomMapEditorScreen(
             ) {
                 LaneControl(
                     label = "Horizontal",
-                    canRemove = rows > CustomMapRules.BOARD_SIZE,
+                    canRemove = rows > CustomMapRules.MIN_BOARD_SIZE,
                     canAdd = rows < CustomMapRules.MAX_ROWS,
                     onRemove = {
                         rows -= 1
@@ -119,7 +119,7 @@ fun CustomMapEditorScreen(
                 )
                 LaneControl(
                     label = "Vertical",
-                    canRemove = columns > CustomMapRules.BOARD_SIZE,
+                    canRemove = columns > CustomMapRules.MIN_BOARD_SIZE,
                     canAdd = columns < CustomMapRules.MAX_COLUMNS,
                     onRemove = {
                         columns -= 1
