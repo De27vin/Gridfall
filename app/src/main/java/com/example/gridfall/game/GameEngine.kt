@@ -4,7 +4,10 @@ import kotlin.random.Random
 
 object GameEngine {
     const val BLOCK_BREAKER_SCORE = 5
-    fun createInitialState(gridLayout: GridLayoutPreset = GridLayoutPreset.Classic): GameState {
+    fun createInitialState(
+        gridLayout: GridLayoutPreset = GridLayoutPreset.Classic,
+        blockedCells: Set<Cell> = emptySet()
+    ): GameState {
         val level = LevelSystem.levelForScore(0)
         val generatedPieces = PieceGenerator.generateBatch(
             count = gridLayout.piecesPerBatch + if (gridLayout.showsNextPiecePreview) 1 else 0,
@@ -12,7 +15,11 @@ object GameEngine {
         )
 
         return GameState(
-            board = Board.empty(gridLayout.boardSize),
+            board = Board.empty(
+                rows = gridLayout.boardSize,
+                blockedCells = blockedCells,
+                isCustom = blockedCells.isNotEmpty()
+            ),
             currentPieces = generatedPieces.take(gridLayout.piecesPerBatch),
             usedPieceIndices = emptySet(),
             nextPiece = generatedPieces.getOrNull(gridLayout.piecesPerBatch),
@@ -21,6 +28,17 @@ object GameEngine {
             isGameOver = false,
             contractState = ContractState(),
             runStats = RunStats.newRun()
+        )
+    }
+
+    fun createCustomState(design: CustomMapDesign): GameState {
+        return createInitialState(GridLayoutPreset.Classic).copy(
+            board = Board.empty(
+                rows = design.rows,
+                columns = design.columns,
+                blockedCells = design.blockedCells,
+                isCustom = true
+            )
         )
     }
 
@@ -96,18 +114,16 @@ object GameEngine {
     }
 
     fun findFullRows(board: Board): List<Int> {
-        return (0 until board.size).filter { row ->
-            (0 until board.size).all { col ->
-                board.get(row, col) != 0
-            }
+        return (0 until board.rowCount).filter { row ->
+            val playableColumns = (0 until board.columnCount).filter { col -> board.isPlayable(row, col) }
+            playableColumns.isNotEmpty() && playableColumns.all { col -> board.get(row, col) != 0 }
         }
     }
 
     fun findFullColumns(board: Board): List<Int> {
-        return (0 until board.size).filter { col ->
-            (0 until board.size).all { row ->
-                board.get(row, col) != 0
-            }
+        return (0 until board.columnCount).filter { col ->
+            val playableRows = (0 until board.rowCount).filter { row -> board.isPlayable(row, col) }
+            playableRows.isNotEmpty() && playableRows.all { row -> board.get(row, col) != 0 }
         }
     }
 
@@ -118,9 +134,9 @@ object GameEngine {
         val clearedColumnSet = clearedColumns.toSet()
 
         var clearedBoard = board
-        for (row in 0 until board.size) {
-            for (col in 0 until board.size) {
-                if (row in clearedRowSet || col in clearedColumnSet) {
+        for (row in 0 until board.rowCount) {
+            for (col in 0 until board.columnCount) {
+                if (board.isPlayable(row, col) && (row in clearedRowSet || col in clearedColumnSet)) {
                     clearedBoard = clearedBoard.set(row, col, 0)
                 }
             }
@@ -288,8 +304,8 @@ object GameEngine {
         pieces: List<Piece>
     ): Boolean {
         return pieces.any { piece ->
-            (0 until board.size).any { row ->
-                (0 until board.size).any { col ->
+            (0 until board.rowCount).any { row ->
+                (0 until board.columnCount).any { col ->
                     canPlace(board, piece, row, col)
                 }
             }
@@ -299,15 +315,18 @@ object GameEngine {
     fun megaBombAffectedCells(
         row: Int,
         col: Int,
-        boardSize: Int = Board.SIZE
+        boardRows: Int = Board.SIZE,
+        boardColumns: Int = boardRows
     ): Set<Cell> {
-        val maxOrigin = (boardSize - MEGA_BOMB_SIZE).coerceAtLeast(0)
-        val affectedSize = MEGA_BOMB_SIZE.coerceAtMost(boardSize)
-        val originRow = (row - 1).coerceIn(0, maxOrigin)
-        val originCol = (col - 1).coerceIn(0, maxOrigin)
+        val maxRowOrigin = (boardRows - MEGA_BOMB_SIZE).coerceAtLeast(0)
+        val maxColumnOrigin = (boardColumns - MEGA_BOMB_SIZE).coerceAtLeast(0)
+        val affectedRows = MEGA_BOMB_SIZE.coerceAtMost(boardRows)
+        val affectedColumns = MEGA_BOMB_SIZE.coerceAtMost(boardColumns)
+        val originRow = (row - 1).coerceIn(0, maxRowOrigin)
+        val originCol = (col - 1).coerceIn(0, maxColumnOrigin)
 
-        return (originRow until originRow + affectedSize).flatMap { affectedRow ->
-            (originCol until originCol + affectedSize).map { affectedCol ->
+        return (originRow until originRow + affectedRows).flatMap { affectedRow ->
+            (originCol until originCol + affectedColumns).map { affectedCol ->
                 Cell(affectedRow, affectedCol)
             }
         }.toSet()
@@ -321,7 +340,9 @@ object GameEngine {
         random: Random = Random.Default
     ): GameState {
         if (state.isGameOver) return state
-        val gridLayout = GridLayoutPreset.fromBoardSize(state.board.size)
+        val gridLayout = if (state.board.isCustom) GridLayoutPreset.Classic else {
+            GridLayoutPreset.fromBoardSize(state.board.rowCount)
+        }
         val usesRollingHand = gridLayout.showsNextPiecePreview
         if (pieceIndex !in state.currentPieces.indices) return state
         if (usesRollingHand && pieceIndex >= gridLayout.piecesPerBatch) return state
@@ -342,7 +363,7 @@ object GameEngine {
             piece = piece,
             startRow = startRow,
             startCol = startCol,
-            boardSize = state.board.size,
+                boardSize = minOf(state.board.rowCount, state.board.columnCount),
             clearedLineCount = placementResult.clearedLineCount,
             scoreGained = placementResult.scoreGained
         )
@@ -497,7 +518,7 @@ object GameEngine {
             piece = piece,
             startRow = startRow,
             startCol = startCol,
-            boardSize = state.board.size,
+            boardSize = minOf(state.board.rowCount, state.board.columnCount),
             clearedLineCount = placementResult.clearedLineCount,
             scoreGained = placementResult.scoreGained
         )
@@ -539,7 +560,7 @@ object GameEngine {
 
     fun useBlockBreaker(state: GameState, row: Int, col: Int): GameState {
         if (state.isGameOver || JokerType.BlockBreaker !in state.riskSpinState.inventory) return state
-        if (!state.board.isInside(row, col) || state.board.isEmpty(row, col)) return state
+        if (!state.board.isPlayable(row, col) || state.board.get(row, col) == 0) return state
 
         val previousSnapshot = snapshotBeforeMove(state)
         val nextBoard = state.board.set(row, col, 0)
@@ -678,7 +699,12 @@ object GameEngine {
         var updatedBoard = board
         var clearedCellCount = 0
 
-        megaBombAffectedCells(placedRow, placedCol, board.size).forEach { cell ->
+        megaBombAffectedCells(
+            row = placedRow,
+            col = placedCol,
+            boardRows = board.rowCount,
+            boardColumns = board.columnCount
+        ).forEach { cell ->
             if (board.get(cell.row, cell.col) != 0) {
                 updatedBoard = updatedBoard.set(cell.row, cell.col, 0)
                 clearedCellCount += 1

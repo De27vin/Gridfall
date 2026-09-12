@@ -1,12 +1,17 @@
 {
-  "version": "1.4.3",
-  "releasedAt": "2026-09-11",
+  "version": "1.5.0",
+  "releasedAt": "2026-09-12",
   "highlights": [
-    "Rush and Marathon no longer display Classic leaderboard results on older servers.",
-    "Separate rankings remain available for every grid layout.",
-    "Existing leaderboard history stays assigned to Classic 8x8."
+    "Design custom maps by blocking individual fields in the new map editor.",
+    "Expand custom boards horizontally or vertically up to 10x10.",
+    "Custom maps support rectangular gameplay and save/resume while staying unranked."
   ],
   "history": [
+    {
+      "version": "1.5.0",
+      "releasedAt": "2026-09-12",
+      "summary": "Custom map editor with expandable rectangular boards."
+    },
     {
       "version": "1.4.3",
       "releasedAt": "2026-09-11",

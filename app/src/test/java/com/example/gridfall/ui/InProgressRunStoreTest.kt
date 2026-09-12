@@ -34,6 +34,29 @@ class InProgressRunStoreTest {
     }
 
     @Test
+    fun roundTripsCustomMapShape() {
+        val blockedCells = setOf(Cell(0, 0), Cell(0, 7), Cell(7, 0), Cell(7, 7))
+        val saved = SavedInProgressRun(
+            gameState = gameState().copy(
+                board = Board.empty(
+                    rows = 9,
+                    columns = 10,
+                    blockedCells = blockedCells,
+                    isCustom = true
+                ).fill(3, 3, 2)
+            )
+        )
+
+        val restored = InProgressRunJson.decode(InProgressRunJson.encode(saved))
+
+        assertEquals(blockedCells, restored?.gameState?.board?.blockedCells)
+        assertEquals(9, restored?.gameState?.board?.rowCount)
+        assertEquals(10, restored?.gameState?.board?.columnCount)
+        assertTrue(restored?.gameState?.board?.isCustom == true)
+        assertEquals(2, restored?.gameState?.board?.get(3, 3))
+    }
+
+    @Test
     fun roundTripsRushPreviewAndBatchProgress() {
         val rushState = GameState(
             board = Board.empty(7).fill(0, 0, 1),

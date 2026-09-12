@@ -27,7 +27,8 @@ internal fun calculateDragPlacementResolution(
         piece = piece,
         visualPieceTopLeft = visualPieceTopLeft,
         boardLayoutInfo = boardLayoutInfo,
-        boardSize = board.size
+        boardRows = board.rowCount,
+        boardColumns = board.columnCount
     )
 
     return DragPlacementResolution(
@@ -36,7 +37,7 @@ internal fun calculateDragPlacementResolution(
             piece.cells.all { cell ->
                 val row = target.startRow + cell.row
                 val col = target.startCol + cell.col
-                board.isInside(row, col) && !board.isEmpty(row, col)
+                board.isPlayable(row, col) && board.get(row, col) != 0
             }
         } else {
             GameEngine.canPlace(
@@ -76,7 +77,8 @@ internal fun calculatePlacementTargetFromVisualPiece(
     piece: Piece,
     visualPieceTopLeft: Offset,
     boardLayoutInfo: BoardLayoutInfo,
-    boardSize: Int = Board.SIZE
+    boardRows: Int = Board.SIZE,
+    boardColumns: Int = boardRows
 ): DragPlacementTarget? {
     if (piece.cells.isEmpty()) return null
 
@@ -84,16 +86,17 @@ internal fun calculatePlacementTargetFromVisualPiece(
         piece = piece,
         visualPieceTopLeft = visualPieceTopLeft,
         boardLayoutInfo = boardLayoutInfo,
-        boardSize = boardSize
+        boardRows = boardRows,
+        boardColumns = boardColumns
     )
     val minimumMeaningfulOverlap = boardLayoutInfo.cellSizePx * boardLayoutInfo.cellSizePx * 0.2f
     if (actualBoardOverlap < minimumMeaningfulOverlap) return null
 
     val bounds = piece.bounds()
     val minStartRow = -bounds.maxRow - 1
-    val maxStartRow = boardSize - bounds.minRow
+    val maxStartRow = boardRows - bounds.minRow
     val minStartCol = -bounds.maxCol - 1
-    val maxStartCol = boardSize - bounds.minCol
+    val maxStartCol = boardColumns - bounds.minCol
     var bestTarget: DragPlacementTarget? = null
     var bestOverlap = 0f
 
@@ -178,7 +181,8 @@ private fun calculateActualBoardOverlap(
     piece: Piece,
     visualPieceTopLeft: Offset,
     boardLayoutInfo: BoardLayoutInfo,
-    boardSize: Int
+    boardRows: Int,
+    boardColumns: Int
 ): Float {
     val bounds = piece.bounds()
 
@@ -191,8 +195,8 @@ private fun calculateActualBoardOverlap(
         )
 
         var cellOverlap = 0f
-        for (row in 0 until boardSize) {
-            for (col in 0 until boardSize) {
+        for (row in 0 until boardRows) {
+            for (col in 0 until boardColumns) {
                 cellOverlap += overlapArea(
                     visualCell,
                     boardCellRect(row, col, boardLayoutInfo)

@@ -57,6 +57,7 @@ import androidx.lifecycle.findViewTreeLifecycleOwner
 import com.example.gridfall.audio.GridfallSoundManager
 import com.example.gridfall.audio.SoundPreferenceStore
 import com.example.gridfall.game.ContractGenerator
+import com.example.gridfall.game.CustomMapDesign
 import com.example.gridfall.audio.ThemeSoundEvent
 import com.example.gridfall.auth.AuthPromptStore
 import com.example.gridfall.auth.GridfallAuthManager
@@ -140,6 +141,8 @@ fun GameScreen(modifier: Modifier = Modifier) {
         mutableStateOf(restoredInProgressRun?.riskSpinPaidCost)
     }
     var showSettingsScreen by remember { mutableStateOf(false) }
+    var showCustomMapEditor by remember { mutableStateOf(false) }
+    var pendingCustomMap by remember { mutableStateOf<CustomMapDesign?>(null) }
     var selectedThemeMode by remember { mutableStateOf(ThemePreferenceStore.load(context)) }
     var soundEffectsVolume by remember { mutableStateOf(SoundPreferenceStore.loadSoundEffectsVolume(context)) }
     var backgroundMusicVolume by remember { mutableStateOf(SoundPreferenceStore.loadBackgroundMusicVolume(context)) }
@@ -160,8 +163,9 @@ fun GameScreen(modifier: Modifier = Modifier) {
     var leaderboardLoadToken by remember { mutableStateOf(0) }
     var wasRiskSpinAvailable by remember { mutableStateOf(false) }
 
-    BackHandler(enabled = showSettingsScreen || showLeaderboardScreen) {
+    BackHandler(enabled = showCustomMapEditor || showSettingsScreen || showLeaderboardScreen) {
         when {
+            showCustomMapEditor -> showCustomMapEditor = false
             showSettingsScreen -> showSettingsScreen = false
             showLeaderboardScreen -> showLeaderboardScreen = false
         }
@@ -569,6 +573,14 @@ fun GameScreen(modifier: Modifier = Modifier) {
     }
 
     fun submitEndedRunOnce(endedState: GameState) {
+        if (endedState.board.isCustom) {
+            runSyncState = RunSyncState(
+                runId = endedState.runStats.runId,
+                status = RunSyncStatus.Synced,
+                message = "Custom runs are not ranked"
+            )
+            return
+        }
         val runId = endedState.runStats.runId
         val decision = runSubmissionRegistry.markSubmittedOnce(runId)
         runSubmissionRegistry = decision.registry
@@ -820,6 +832,10 @@ fun GameScreen(modifier: Modifier = Modifier) {
 
     fun restartGame(
         gridLayout: GridLayoutPreset = selectedGridLayout,
+        blockedCells: Set<Cell> = gameState.board.blockedCells,
+        customRows: Int = gameState.board.rowCount,
+        customColumns: Int = gameState.board.columnCount,
+        isCustomMap: Boolean = gameState.board.isCustom,
         keepSettingsOpen: Boolean = false
     ) {
         inProgressRunStore.clear()
@@ -829,7 +845,11 @@ fun GameScreen(modifier: Modifier = Modifier) {
         riskSpinMemorySession = null
         riskSpinPaidCost = null
         showSettingsScreen = keepSettingsOpen
-        gameState = GameEngine.createInitialState(gridLayout)
+        gameState = if (isCustomMap) {
+            GameEngine.createCustomState(CustomMapDesign(customRows, customColumns, blockedCells))
+        } else {
+            GameEngine.createInitialState(gridLayout)
+        }
         dragState = DragState()
         lineClearFeedback = null
         bombPulseFeedback = null
@@ -866,7 +886,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 blockBreakerFeedbackToken += 1
                 blockBreakerFeedback = BlockBreakerFeedback(target.startRow, target.startCol, blockBreakerFeedbackToken)
                 showScoreEventFeedbacks(scoreFeedbacks)
-                if (nextState.score > highScore) {
+                if (!nextState.board.isCustom && nextState.score > highScore) {
                     highScore = nextState.score
                     HighScoreStore.save(context, nextState.score)
                     isNewBestThisGame = true
@@ -912,7 +932,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 )
                 gameState = nextState
 
-                if (nextState.score > highScore) {
+                if (!nextState.board.isCustom && nextState.score > highScore) {
                     highScore = nextState.score
                     HighScoreStore.save(context, nextState.score)
                     isNewBestThisGame = true
@@ -969,11 +989,37 @@ fun GameScreen(modifier: Modifier = Modifier) {
     }
 
     CompositionLocalProvider(LocalGridfallColors provides activeThemeColors) {
-        if (showSettingsScreen) {
+        if (showCustomMapEditor) {
+            CustomMapEditorScreen(
+                initialRows = if (gameState.board.isCustom) gameState.board.rowCount else 8,
+                initialColumns = if (gameState.board.isCustom) gameState.board.columnCount else 8,
+                initialBlockedCells = gameState.board.blockedCells,
+                onBack = { showCustomMapEditor = false },
+                onStartMap = { design ->
+                    if (InProgressRunJson.hasProgress(gameState, riskSpinMemorySession)) {
+                        pendingCustomMap = design
+                    } else {
+                        selectedGridLayout = GridLayoutPreset.Classic
+                        GridLayoutPreferenceStore.save(context, GridLayoutPreset.Classic)
+                        showCustomMapEditor = false
+                        restartGame(
+                            gridLayout = GridLayoutPreset.Classic,
+                            blockedCells = design.blockedCells,
+                            customRows = design.rows,
+                            customColumns = design.columns,
+                            isCustomMap = true,
+                            keepSettingsOpen = true
+                        )
+                    }
+                },
+                modifier = modifier
+            )
+        } else if (showSettingsScreen) {
             SettingsScreen(
                 selectedThemeMode = selectedThemeMode,
                 selectedGridLayout = selectedGridLayout,
                 activeBoardSize = gameState.board.size,
+                activeIsCustomMap = gameState.board.isCustom,
                 soundEffectsVolume = soundEffectsVolume,
                 backgroundMusicVolume = backgroundMusicVolume,
                 onThemeSelected = { theme ->
@@ -982,7 +1028,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 },
                 onGridLayoutSelected = { gridLayout ->
                     when {
-                        gameState.board.size == gridLayout.boardSize -> {
+                        !gameState.board.isCustom && gameState.board.size == gridLayout.boardSize -> {
                             selectedGridLayout = gridLayout
                             GridLayoutPreferenceStore.save(context, gridLayout)
                         }
@@ -992,9 +1038,17 @@ fun GameScreen(modifier: Modifier = Modifier) {
                         else -> {
                             selectedGridLayout = gridLayout
                             GridLayoutPreferenceStore.save(context, gridLayout)
-                            restartGame(gridLayout = gridLayout, keepSettingsOpen = true)
+                            restartGame(
+                                gridLayout = gridLayout,
+                                blockedCells = emptySet(),
+                                isCustomMap = false,
+                                keepSettingsOpen = true
+                            )
                         }
                     }
+                },
+                onCustomMapClick = {
+                    showCustomMapEditor = true
                 },
                 onSoundEffectsVolumeChange = { volume ->
                     soundEffectsVolume = volume
@@ -1110,7 +1164,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                         blockBreakerFeedbackToken += 1
                         blockBreakerFeedback = BlockBreakerFeedback(cell.row, cell.col, blockBreakerFeedbackToken)
                         showScoreEventFeedbacks(scoreFeedbacks)
-                        if (nextState.score > highScore) {
+                        if (!nextState.board.isCustom && nextState.score > highScore) {
                             highScore = nextState.score
                             HighScoreStore.save(context, nextState.score)
                             isNewBestThisGame = true
@@ -1120,7 +1174,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 },
                 contractWarningCells = contractWarningCells(
                     gameState.contractState,
-                    gameState.board.size
+                    minOf(gameState.board.rowCount, gameState.board.columnCount)
                 ),
                 onBoardLayoutChanged = { layoutInfo ->
                     boardLayoutInfo = layoutInfo
@@ -1505,7 +1559,38 @@ fun GameScreen(modifier: Modifier = Modifier) {
                     selectedGridLayout = gridLayout
                     GridLayoutPreferenceStore.save(context, gridLayout)
                     pendingGridLayout = null
-                    restartGame(gridLayout = gridLayout, keepSettingsOpen = true)
+                    restartGame(
+                        gridLayout = gridLayout,
+                        blockedCells = emptySet(),
+                        isCustomMap = false,
+                        keepSettingsOpen = true
+                    )
+                }
+            )
+        }
+
+        pendingCustomMap?.let { design ->
+            RestartConfirmDialog(
+                title = "Start custom map?",
+                message = "Your current run will end. Custom-map scores are not ranked.",
+                confirmLabel = "Start",
+                onCancel = { pendingCustomMap = null },
+                onConfirmRestart = {
+                    if (RunSubmissionPolicy.shouldSubmitConfirmedRestartRun(gameState)) {
+                        submitEndedRunOnce(gameState)
+                    }
+                    selectedGridLayout = GridLayoutPreset.Classic
+                    GridLayoutPreferenceStore.save(context, GridLayoutPreset.Classic)
+                    pendingCustomMap = null
+                    showCustomMapEditor = false
+                    restartGame(
+                        gridLayout = GridLayoutPreset.Classic,
+                        blockedCells = design.blockedCells,
+                        customRows = design.rows,
+                        customColumns = design.columns,
+                        isCustomMap = true,
+                        keepSettingsOpen = true
+                    )
                 }
             )
         }
@@ -1727,8 +1812,8 @@ private fun createPlacementPreview(
 
 private fun occupiedBoardCells(board: Board): Set<Cell> {
     return buildSet {
-        for (row in 0 until board.size) for (col in 0 until board.size) {
-            if (!board.isEmpty(row, col)) add(Cell(row, col))
+        for (row in 0 until board.rowCount) for (col in 0 until board.columnCount) {
+            if (board.isPlayable(row, col) && board.get(row, col) != 0) add(Cell(row, col))
         }
     }
 }
@@ -1904,7 +1989,12 @@ private fun previewBombClearedCellCount(
     var clearedCells = 0
 
     val affectedCells = if (piece.effect == PieceEffect.MegaBomb) {
-        GameEngine.megaBombAffectedCells(centerRow, centerCol, board.size)
+        GameEngine.megaBombAffectedCells(
+            row = centerRow,
+            col = centerCol,
+            boardRows = board.rowCount,
+            boardColumns = board.columnCount
+        )
     } else {
         (centerRow - 1..centerRow + 1).flatMap { row ->
             (centerCol - 1..centerCol + 1).map { col ->

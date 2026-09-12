@@ -100,6 +100,14 @@ object InProgressRunJson {
     private fun GameState.toJson(includeRevertSnapshot: Boolean = true): JSONObject {
         return JSONObject()
             .put("board", board.toJson())
+            .put("blockedCells", JSONArray().also { array ->
+                board.blockedCells
+                    .sortedWith(compareBy<Cell> { it.row }.thenBy { it.col })
+                    .forEach { cell ->
+                        array.put(JSONObject().put("row", cell.row).put("col", cell.col))
+                    }
+            })
+            .put("customMap", board.isCustom)
             .put("pieces", JSONArray().also { array -> currentPieces.forEach { array.put(it.toJson()) } })
             .put("usedPieceIndices", JSONArray().also { array -> usedPieceIndices.sorted().forEach(array::put) })
             .put("nextPiece", nextPiece?.toJson() ?: JSONObject.NULL)
@@ -114,7 +122,14 @@ object InProgressRunJson {
     }
 
     private fun JSONObject.toGameState(allowRevertSnapshot: Boolean = true): GameState? {
-        val board = optJSONArray("board")?.toBoard() ?: return null
+        val baseBoard = optJSONArray("board")?.toBoard() ?: return null
+        val blockedCells = optJSONArray("blockedCells")
+            ?.toCells(baseBoard.rowCount, baseBoard.columnCount)
+            ?: emptySet()
+        val board = baseBoard.copy(
+            blockedCells = blockedCells,
+            isCustom = optBoolean("customMap", blockedCells.isNotEmpty())
+        )
         val savedPieces = optJSONArray("pieces")?.toPieces() ?: return null
         val usedIndices = optJSONArray("usedPieceIndices")
             ?.let { array -> (0 until array.length()).mapTo(mutableSetOf()) { array.optInt(it) } }
@@ -122,7 +137,9 @@ object InProgressRunJson {
         if (usedIndices.any { it !in savedPieces.indices }) return null
 
         val score = optInt("score").coerceAtLeast(0)
-        val gridLayout = GridLayoutPreset.fromBoardSize(board.size)
+        val gridLayout = if (board.isCustom) GridLayoutPreset.Classic else {
+            GridLayoutPreset.fromBoardSize(board.rowCount)
+        }
         val savedNextPiece = optJSONObject("nextPiece")?.toPiece()
         val rollingQueue = if (gridLayout.showsNextPiecePreview && savedNextPiece == null) {
             val availableSavedPieces = savedPieces.filterIndexed { index, _ -> index !in usedIndices }
@@ -185,14 +202,25 @@ object InProgressRunJson {
     }
 
     private fun JSONArray.toBoard(): Board? {
-        val boardSize = length()
-        if (GridLayoutPreset.entries.none { it.boardSize == boardSize }) return null
+        val rowCount = length()
+        if (rowCount !in 7..10) return null
+        val columnCount = optJSONArray(0)?.length() ?: return null
+        if (columnCount !in 7..10) return null
         val rows = (0 until length()).map { rowIndex ->
             val row = optJSONArray(rowIndex) ?: return null
-            if (row.length() != boardSize) return null
-            List(boardSize) { columnIndex -> row.optInt(columnIndex).coerceAtLeast(0) }
+            if (row.length() != columnCount) return null
+            List(columnCount) { columnIndex -> row.optInt(columnIndex).coerceAtLeast(0) }
         }
         return Board(rows)
+    }
+
+    private fun JSONArray.toCells(rowCount: Int, columnCount: Int): Set<Cell>? {
+        return (0 until length()).mapTo(mutableSetOf()) { index ->
+            val json = optJSONObject(index) ?: return null
+            Cell(json.optInt("row"), json.optInt("col")).also { cell ->
+                if (cell.row !in 0 until rowCount || cell.col !in 0 until columnCount) return null
+            }
+        }
     }
 
     private fun Piece.toJson(): JSONObject {

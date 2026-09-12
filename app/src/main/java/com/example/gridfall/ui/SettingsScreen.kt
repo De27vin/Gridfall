@@ -38,6 +38,8 @@ import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.unit.dp
 import com.example.gridfall.game.GridLayoutPreset
+import com.example.gridfall.game.Cell
+import com.example.gridfall.game.CustomMapRules
 import com.example.gridfall.network.AccountConnectionState
 import com.example.gridfall.ui.theme.ActionCyan
 import com.example.gridfall.ui.theme.BlueGray
@@ -68,10 +70,12 @@ fun SettingsScreen(
     selectedThemeMode: GridfallThemeMode,
     selectedGridLayout: GridLayoutPreset,
     activeBoardSize: Int,
+    activeIsCustomMap: Boolean,
     soundEffectsVolume: Float,
     backgroundMusicVolume: Float,
     onThemeSelected: (GridfallThemeMode) -> Unit,
     onGridLayoutSelected: (GridLayoutPreset) -> Unit,
+    onCustomMapClick: () -> Unit,
     onSoundEffectsVolumeChange: (Float) -> Unit,
     onBackgroundMusicVolumeChange: (Float) -> Unit,
     accountConnectionState: AccountConnectionState,
@@ -159,11 +163,15 @@ fun SettingsScreen(
                     GridLayoutPreset.entries.forEach { preset ->
                         GridLayoutOptionRow(
                             preset = preset,
-                            selected = selectedGridLayout == preset,
-                            active = activeBoardSize == preset.boardSize,
+                            selected = !activeIsCustomMap && selectedGridLayout == preset,
+                            active = !activeIsCustomMap && activeBoardSize == preset.boardSize,
                             onClick = { onGridLayoutSelected(preset) }
                         )
                     }
+                    CustomMapOptionRow(
+                        active = activeIsCustomMap,
+                        onClick = onCustomMapClick
+                    )
                 }
             }
 
@@ -207,6 +215,63 @@ fun SettingsScreen(
                     style = MaterialTheme.typography.labelLarge.retroText(theme)
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun CustomMapOptionRow(
+    active: Boolean,
+    onClick: () -> Unit
+) {
+    val theme = LocalGridfallColors.current
+    val shape = RoundedCornerShape(retroCorner(theme, infernoCorner(theme, 14.dp)))
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(if (active) theme.accent.copy(alpha = 0.14f) else theme.chipBackground.copy(alpha = 0.62f))
+            .infernoPanelTexture(theme)
+            .retroPanelTexture(theme)
+            .border(
+                BorderStroke(
+                    if (theme.isRetroTheme() || theme.isInfernoTheme()) 2.dp else 1.dp,
+                    if (active) theme.accentStrong else theme.panelBorder.copy(alpha = 0.34f)
+                ),
+                shape
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        GridLayoutPreview(
+            boardSize = CustomMapRules.BOARD_SIZE,
+            selected = active,
+            blockedCells = CustomMapRules.diamondBlockedCells(),
+            modifier = Modifier.size(48.dp)
+        )
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = if (theme.isRetroTheme()) "CUSTOM MAP" else "Custom Map",
+                    color = if (active) theme.textPrimary else theme.textSecondary,
+                    style = MaterialTheme.typography.bodyLarge.retroText(theme)
+                )
+                Text(
+                    text = "EDITOR",
+                    color = if (active) theme.accentStrong else theme.textMuted,
+                    style = MaterialTheme.typography.labelLarge.retroText(theme)
+                )
+            }
+            Text(
+                text = "Design an unranked 8×8 board${if (active) " · Current run" else ""}",
+                color = if (active) theme.success else theme.textMuted,
+                style = MaterialTheme.typography.labelSmall.retroText(theme)
+            )
         }
     }
 }
@@ -293,6 +358,7 @@ private fun GridLayoutOptionRow(
 private fun GridLayoutPreview(
     boardSize: Int,
     selected: Boolean,
+    blockedCells: Set<Cell> = emptySet(),
     modifier: Modifier = Modifier
 ) {
     val theme = LocalGridfallColors.current
@@ -306,18 +372,19 @@ private fun GridLayoutPreview(
         )
         repeat(boardSize) { row ->
             repeat(boardSize) { col ->
+                val blocked = Cell(row, col) in blockedCells
                 val topLeft = Offset(
                     x = gap + col * (cellSize + gap),
                     y = gap + row * (cellSize + gap)
                 )
                 drawRoundRect(
-                    color = theme.emptyCell,
+                    color = if (blocked) androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.50f) else theme.emptyCell,
                     topLeft = topLeft,
                     size = androidx.compose.ui.geometry.Size(cellSize, cellSize),
                     cornerRadius = androidx.compose.ui.geometry.CornerRadius(cellSize * 0.16f)
                 )
                 drawRoundRect(
-                    color = cellColor.copy(alpha = if (selected) 0.58f else 0.34f),
+                    color = cellColor.copy(alpha = if (blocked) 0.16f else if (selected) 0.58f else 0.34f),
                     topLeft = topLeft,
                     size = androidx.compose.ui.geometry.Size(cellSize, cellSize),
                     cornerRadius = androidx.compose.ui.geometry.CornerRadius(cellSize * 0.16f),
