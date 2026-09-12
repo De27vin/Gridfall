@@ -106,16 +106,26 @@ fun CustomMapEditorScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                LaneButton(
-                    label = "+ Horizontal",
-                    enabled = rows < CustomMapRules.MAX_ROWS,
-                    onClick = { rows += 1 },
+                LaneControl(
+                    label = "Horizontal",
+                    canRemove = rows > CustomMapRules.BOARD_SIZE,
+                    canAdd = rows < CustomMapRules.MAX_ROWS,
+                    onRemove = {
+                        rows -= 1
+                        blockedCells = blockedCells.filter { it.row < rows }.toSet()
+                    },
+                    onAdd = { rows += 1 },
                     modifier = Modifier.weight(1f)
                 )
-                LaneButton(
-                    label = "+ Vertical",
-                    enabled = columns < CustomMapRules.MAX_COLUMNS,
-                    onClick = { columns += 1 },
+                LaneControl(
+                    label = "Vertical",
+                    canRemove = columns > CustomMapRules.BOARD_SIZE,
+                    canAdd = columns < CustomMapRules.MAX_COLUMNS,
+                    onRemove = {
+                        columns -= 1
+                        blockedCells = blockedCells.filter { it.col < columns }.toSet()
+                    },
+                    onAdd = { columns += 1 },
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -183,23 +193,50 @@ fun CustomMapEditorScreen(
 }
 
 @Composable
-private fun LaneButton(
+private fun LaneControl(
     label: String,
-    enabled: Boolean,
-    onClick: () -> Unit,
+    canRemove: Boolean,
+    canAdd: Boolean,
+    onRemove: () -> Unit,
+    onAdd: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val theme = LocalGridfallColors.current
-    OutlinedButton(
-        onClick = onClick,
-        enabled = enabled,
-        colors = ButtonDefaults.outlinedButtonColors(
-            containerColor = theme.chipBackground,
-            contentColor = theme.accentStrong
-        ),
-        modifier = modifier
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        Text(label, style = MaterialTheme.typography.labelSmall.retroText(theme))
+        OutlinedButton(
+            onClick = onRemove,
+            enabled = canRemove,
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
+            colors = ButtonDefaults.outlinedButtonColors(
+                containerColor = theme.chipBackground,
+                contentColor = theme.accentStrong
+            ),
+            modifier = Modifier.weight(1f)
+        ) { Text("−", style = MaterialTheme.typography.titleMedium.retroText(theme)) }
+        Box(
+            modifier = Modifier.weight(2f),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                label,
+                color = theme.textPrimary,
+                style = MaterialTheme.typography.labelMedium.retroText(theme)
+            )
+        }
+        OutlinedButton(
+            onClick = onAdd,
+            enabled = canAdd,
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
+            colors = ButtonDefaults.outlinedButtonColors(
+                containerColor = theme.chipBackground,
+                contentColor = theme.accentStrong
+            ),
+            modifier = Modifier.weight(1f)
+        ) { Text("+", style = MaterialTheme.typography.titleMedium.retroText(theme)) }
     }
 }
 
