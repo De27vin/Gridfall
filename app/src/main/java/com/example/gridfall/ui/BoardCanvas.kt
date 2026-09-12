@@ -35,6 +35,38 @@ import com.example.gridfall.game.PieceEffect
 import com.example.gridfall.ui.theme.GridfallColors
 import com.example.gridfall.ui.theme.*
 
+private data class BoardGridGeometry(
+    val cellSize: Float,
+    val spacing: Float,
+    val outerOffsetX: Float,
+    val outerOffsetY: Float
+) {
+    val cellStartX: Float get() = outerOffsetX + spacing
+    val cellStartY: Float get() = outerOffsetY + spacing
+    val stride: Float get() = cellSize + spacing
+}
+
+private fun boardGridGeometry(
+    width: Float,
+    height: Float,
+    rows: Int,
+    columns: Int,
+    spacing: Float
+): BoardGridGeometry {
+    val cellSize = minOf(
+        (width - spacing * (columns + 1)) / columns,
+        (height - spacing * (rows + 1)) / rows
+    )
+    val gridWidth = cellSize * columns + spacing * (columns + 1)
+    val gridHeight = cellSize * rows + spacing * (rows + 1)
+    return BoardGridGeometry(
+        cellSize = cellSize,
+        spacing = spacing,
+        outerOffsetX = (width - gridWidth) / 2f,
+        outerOffsetY = (height - gridHeight) / 2f
+    )
+}
+
 @Composable
 fun BoardCanvas(
     board: Board,
@@ -111,18 +143,23 @@ fun BoardCanvas(
             .blockworldWellTexture(theme)
             .onGloballyPositioned { coordinates ->
                 val sizePx = minOf(coordinates.size.width, coordinates.size.height).toFloat()
-                val spacing = 4.dp.value * (sizePx / 300f) // Scale spacing roughly
-                val cellSize = minOf(
-                    (coordinates.size.width - spacing * (board.columnCount + 1)) / board.columnCount,
-                    (coordinates.size.height - spacing * (board.rowCount + 1)) / board.rowCount
+                val geometry = boardGridGeometry(
+                    width = coordinates.size.width.toFloat(),
+                    height = coordinates.size.height.toFloat(),
+                    rows = board.rowCount,
+                    columns = board.columnCount,
+                    spacing = with(density) { 4.dp.toPx() }
                 )
 
                 onBoardLayoutChanged(
                     BoardLayoutInfo(
-                        topLeft = coordinates.positionInRoot(),
+                        topLeft = coordinates.positionInRoot() + Offset(
+                            geometry.outerOffsetX,
+                            geometry.outerOffsetY
+                        ),
                         sizePx = sizePx,
-                        cellSizePx = cellSize,
-                        spacingPx = spacing
+                        cellSizePx = geometry.cellSize,
+                        spacingPx = geometry.spacing
                     )
                 )
             }
@@ -135,28 +172,39 @@ fun BoardCanvas(
                     if (blockBreakerTargetCells.isNotEmpty()) {
                         Modifier.pointerInput(blockBreakerTargetCells) {
                             detectTapGestures { offset ->
-                                val spacing = targetSpacingPx
-                                val cellSize = minOf(
-                                    (size.width - spacing * (board.columnCount + 1)) / board.columnCount,
-                                    (size.height - spacing * (board.rowCount + 1)) / board.rowCount
+                                val geometry = boardGridGeometry(
+                                    width = size.width.toFloat(),
+                                    height = size.height.toFloat(),
+                                    rows = board.rowCount,
+                                    columns = board.columnCount,
+                                    spacing = targetSpacingPx
                                 )
-                                if (cellSize <= 0f || offset.x < spacing || offset.y < spacing) return@detectTapGestures
-                                val col = ((offset.x - spacing) / (cellSize + spacing)).toInt()
-                                val row = ((offset.y - spacing) / (cellSize + spacing)).toInt()
+                                if (geometry.cellSize <= 0f ||
+                                    offset.x < geometry.cellStartX ||
+                                    offset.y < geometry.cellStartY
+                                ) return@detectTapGestures
+                                val col = ((offset.x - geometry.cellStartX) / geometry.stride).toInt()
+                                val row = ((offset.y - geometry.cellStartY) / geometry.stride).toInt()
                                 if (row !in 0 until board.rowCount || col !in 0 until board.columnCount) return@detectTapGestures
-                                val cellX = offset.x - spacing - col * (cellSize + spacing)
-                                val cellY = offset.y - spacing - row * (cellSize + spacing)
-                                if (cellX in 0f..cellSize && cellY in 0f..cellSize) onBlockBreakerCellTapped(Cell(row, col))
+                                val cellX = offset.x - geometry.cellStartX - col * geometry.stride
+                                val cellY = offset.y - geometry.cellStartY - row * geometry.stride
+                                if (cellX in 0f..geometry.cellSize && cellY in 0f..geometry.cellSize) {
+                                    onBlockBreakerCellTapped(Cell(row, col))
+                                }
                             }
                         }
                     } else Modifier
                 )
         ) {
-            val spacing = 4.dp.toPx()
-            val cellSize = minOf(
-                (size.width - spacing * (board.columnCount + 1)) / board.columnCount,
-                (size.height - spacing * (board.rowCount + 1)) / board.rowCount
+            val geometry = boardGridGeometry(
+                width = size.width,
+                height = size.height,
+                rows = board.rowCount,
+                columns = board.columnCount,
+                spacing = 4.dp.toPx()
             )
+            val spacing = geometry.spacing
+            val cellSize = geometry.cellSize
             val cornerRadius = CornerRadius(8.dp.toPx(), 8.dp.toPx())
 
             // Draw Grid
@@ -164,8 +212,8 @@ fun BoardCanvas(
                 for (col in 0 until board.columnCount) {
                     val cellValue = board.get(row, col)
                     val topLeft = Offset(
-                        x = spacing + col * (cellSize + spacing),
-                        y = spacing + row * (cellSize + spacing)
+                        x = geometry.cellStartX + col * geometry.stride,
+                        y = geometry.cellStartY + row * geometry.stride
                     )
 
                     if (!board.isPlayable(row, col)) {
@@ -182,8 +230,8 @@ fun BoardCanvas(
             contractWarningCells.forEach { cell ->
                 if (board.isPlayable(cell.row, cell.col)) {
                     val topLeft = Offset(
-                        x = spacing + cell.col * (cellSize + spacing),
-                        y = spacing + cell.row * (cellSize + spacing)
+                        x = geometry.cellStartX + cell.col * geometry.stride,
+                        y = geometry.cellStartY + cell.row * geometry.stride
                     )
                     drawContractWarningCell(topLeft, cellSize, theme)
                 }
@@ -191,7 +239,10 @@ fun BoardCanvas(
 
             blockBreakerTargetCells.forEach { cell ->
                 if (cell.row in 0 until board.rowCount && cell.col in 0 until board.columnCount) {
-                    val topLeft = Offset(spacing + cell.col * (cellSize + spacing), spacing + cell.row * (cellSize + spacing))
+                    val topLeft = Offset(
+                        geometry.cellStartX + cell.col * geometry.stride,
+                        geometry.cellStartY + cell.row * geometry.stride
+                    )
                     drawRoundRect(theme.warning.copy(alpha = 0.12f), topLeft, Size(cellSize, cellSize), cornerRadius)
                     drawRoundRect(theme.warning.copy(alpha = 0.72f), topLeft, Size(cellSize, cellSize), cornerRadius, style = Stroke(width = 1.5.dp.toPx()))
                 }
@@ -233,8 +284,8 @@ fun BoardCanvas(
                     affectedCells.forEach { cell ->
                         if (cell.row in 0 until board.rowCount && cell.col in 0 until board.columnCount) {
                             val topLeft = Offset(
-                                x = spacing + cell.col * (cellSize + spacing),
-                                y = spacing + cell.row * (cellSize + spacing)
+                                x = geometry.cellStartX + cell.col * geometry.stride,
+                                y = geometry.cellStartY + cell.row * geometry.stride
                             )
                             drawRoundRect(
                                 color = previewFill,
@@ -268,8 +319,8 @@ fun BoardCanvas(
 
                     if (row in 0 until board.rowCount && col in 0 until board.columnCount) {
                         val topLeft = Offset(
-                            x = spacing + col * (cellSize + spacing),
-                            y = spacing + row * (cellSize + spacing)
+                            x = geometry.cellStartX + col * geometry.stride,
+                            y = geometry.cellStartY + row * geometry.stride
                         )
 
                         drawRoundRect(
@@ -329,24 +380,28 @@ fun BoardCanvas(
 
                     feedback.clearedRows.forEach { row ->
                         if (row in 0 until board.rowCount) {
-                            val topLeft = Offset(0f, spacing + row * (cellSize + spacing))
+                            val topLeft = Offset(
+                                geometry.outerOffsetX,
+                                geometry.cellStartY + row * geometry.stride
+                            )
+                            val gridWidth = cellSize * board.columnCount + spacing * (board.columnCount + 1)
                             drawRoundRect(
                                 color = fillColor,
                                 topLeft = topLeft,
-                                size = Size(size.width, cellSize),
+                                size = Size(gridWidth, cellSize),
                                 cornerRadius = cornerRadius
                             )
                             drawRoundRect(
                                 color = strokeColor,
                                 topLeft = topLeft,
-                                size = Size(size.width, cellSize),
+                                size = Size(gridWidth, cellSize),
                                 cornerRadius = cornerRadius,
                                 style = Stroke(width = 1.5.dp.toPx())
                             )
                             drawRect(
                                 color = glowColor,
                                 topLeft = topLeft + Offset(0f, cellSize * 0.26f),
-                                size = Size(size.width, cellSize * 0.48f)
+                                size = Size(gridWidth, cellSize * 0.48f)
                             )
                             drawRect(
                                 color = railColor,
@@ -358,24 +413,28 @@ fun BoardCanvas(
 
                     feedback.clearedColumns.forEach { col ->
                         if (col in 0 until board.columnCount) {
-                            val topLeft = Offset(spacing + col * (cellSize + spacing), 0f)
+                            val topLeft = Offset(
+                                geometry.cellStartX + col * geometry.stride,
+                                geometry.outerOffsetY
+                            )
+                            val gridHeight = cellSize * board.rowCount + spacing * (board.rowCount + 1)
                             drawRoundRect(
                                 color = fillColor,
                                 topLeft = topLeft,
-                                size = Size(cellSize, size.height),
+                                size = Size(cellSize, gridHeight),
                                 cornerRadius = cornerRadius
                             )
                             drawRoundRect(
                                 color = strokeColor,
                                 topLeft = topLeft,
-                                size = Size(cellSize, size.height),
+                                size = Size(cellSize, gridHeight),
                                 cornerRadius = cornerRadius,
                                 style = Stroke(width = 1.5.dp.toPx())
                             )
                             drawRect(
                                 color = glowColor,
                                 topLeft = topLeft + Offset(cellSize * 0.26f, 0f),
-                                size = Size(cellSize * 0.48f, size.height)
+                                size = Size(cellSize * 0.48f, gridHeight)
                             )
                             drawRect(
                                 color = railColor,
@@ -390,7 +449,10 @@ fun BoardCanvas(
             blockBreakerFeedback?.let { feedback ->
                 val progress = blockBreakerPulse.value.coerceIn(0f, 1f)
                 val fade = (1f - progress).coerceIn(0f, 1f)
-                val center = Offset(spacing + feedback.col * (cellSize + spacing) + cellSize / 2f, spacing + feedback.row * (cellSize + spacing) + cellSize / 2f)
+                val center = Offset(
+                    geometry.cellStartX + feedback.col * geometry.stride + cellSize / 2f,
+                    geometry.cellStartY + feedback.row * geometry.stride + cellSize / 2f
+                )
                 drawCircle(theme.warning.copy(alpha = 0.78f * fade), cellSize * (0.20f + progress * 0.62f), center, style = Stroke(width = (cellSize * 0.10f * fade).coerceAtLeast(1.dp.toPx())))
                 val crack = cellSize * (0.18f + progress * 0.16f)
                 drawLine(theme.textPrimary.copy(alpha = 0.72f * fade), center - Offset(crack, crack), center + Offset(crack, crack), strokeWidth = 1.5.dp.toPx())
@@ -400,8 +462,8 @@ fun BoardCanvas(
             bombPulseFeedback?.let { feedback ->
                 val progress = bombPulse.value.coerceIn(0f, 1f)
                 val fade = (1f - progress).coerceIn(0f, 1f)
-                val centerX = spacing + feedback.centerCol * (cellSize + spacing) + cellSize / 2f
-                val centerY = spacing + feedback.centerRow * (cellSize + spacing) + cellSize / 2f
+                val centerX = geometry.cellStartX + feedback.centerCol * geometry.stride + cellSize / 2f
+                val centerY = geometry.cellStartY + feedback.centerRow * geometry.stride + cellSize / 2f
                 val center = Offset(centerX, centerY)
                 val affectedFill = theme.bombInner.copy(alpha = 0.20f * fade)
                 val affectedStroke = theme.warning.copy(alpha = 0.48f * fade)
@@ -424,8 +486,8 @@ fun BoardCanvas(
                 affectedCells.forEach { cell ->
                     if (board.isPlayable(cell.row, cell.col)) {
                         val topLeft = Offset(
-                            x = spacing + cell.col * (cellSize + spacing),
-                            y = spacing + cell.row * (cellSize + spacing)
+                            x = geometry.cellStartX + cell.col * geometry.stride,
+                            y = geometry.cellStartY + cell.row * geometry.stride
                         )
                         drawRoundRect(
                             color = affectedFill,

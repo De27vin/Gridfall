@@ -1145,6 +1145,10 @@ fun GameScreen(modifier: Modifier = Modifier) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            val boardWidthFraction = minOf(
+                1f,
+                gameState.board.columnCount.toFloat() / gameState.board.rowCount.toFloat()
+            )
             BoardCanvas(
                 board = gameState.board,
                 placementPreview = placementPreview,
@@ -1179,7 +1183,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 onBoardLayoutChanged = { layoutInfo ->
                     boardLayoutInfo = layoutInfo
                 },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(boardWidthFraction)
             )
 
             Spacer(modifier = Modifier.height(16.dp))
