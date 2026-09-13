@@ -23,12 +23,18 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -40,6 +46,8 @@ import androidx.compose.ui.unit.dp
 import com.example.gridfall.game.GridLayoutPreset
 import com.example.gridfall.game.Cell
 import com.example.gridfall.game.CustomMapRules
+import com.example.gridfall.game.CustomMapDesign
+import com.example.gridfall.game.SavedCustomMap
 import com.example.gridfall.network.AccountConnectionState
 import com.example.gridfall.ui.theme.ActionCyan
 import com.example.gridfall.ui.theme.BlueGray
@@ -71,11 +79,16 @@ fun SettingsScreen(
     selectedGridLayout: GridLayoutPreset,
     activeBoardSize: Int,
     activeIsCustomMap: Boolean,
+    activeCustomMapDesign: CustomMapDesign?,
+    savedCustomMaps: List<SavedCustomMap>,
     soundEffectsVolume: Float,
     backgroundMusicVolume: Float,
     onThemeSelected: (GridfallThemeMode) -> Unit,
     onGridLayoutSelected: (GridLayoutPreset) -> Unit,
     onCustomMapClick: () -> Unit,
+    onSavedMapPlay: (SavedCustomMap) -> Unit,
+    onSavedMapEdit: (SavedCustomMap) -> Unit,
+    onSavedMapDelete: (SavedCustomMap) -> Unit,
     onSoundEffectsVolumeChange: (Float) -> Unit,
     onBackgroundMusicVolumeChange: (Float) -> Unit,
     accountConnectionState: AccountConnectionState,
@@ -93,6 +106,7 @@ fun SettingsScreen(
     modifier: Modifier = Modifier
 ) {
     val theme = LocalGridfallColors.current
+    var mapPendingDelete by remember { mutableStateOf<SavedCustomMap?>(null) }
 
     Box(
         modifier = modifier
@@ -172,6 +186,29 @@ fun SettingsScreen(
                         active = activeIsCustomMap,
                         onClick = onCustomMapClick
                     )
+                    Text(
+                        text = "Saved Maps",
+                        color = theme.textSecondary,
+                        style = MaterialTheme.typography.titleSmall.retroText(theme),
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                    if (savedCustomMaps.isEmpty()) {
+                        Text(
+                            text = "No saved maps yet. Create one in the map editor.",
+                            color = theme.textMuted,
+                            style = MaterialTheme.typography.bodySmall.retroText(theme)
+                        )
+                    } else {
+                        savedCustomMaps.forEach { savedMap ->
+                            SavedMapOptionRow(
+                                savedMap = savedMap,
+                                active = activeCustomMapDesign == savedMap.design,
+                                onPlay = { onSavedMapPlay(savedMap) },
+                                onEdit = { onSavedMapEdit(savedMap) },
+                                onDelete = { mapPendingDelete = savedMap }
+                            )
+                        }
+                    }
                 }
             }
 
@@ -216,6 +253,35 @@ fun SettingsScreen(
                 )
             }
         }
+    }
+
+    mapPendingDelete?.let { savedMap ->
+        AlertDialog(
+            onDismissRequest = { mapPendingDelete = null },
+            containerColor = theme.dialogBackground,
+            title = { Text("Delete ${savedMap.name}?", color = theme.textPrimary) },
+            text = {
+                Text(
+                    "This removes the saved layout. A running game using it is not affected.",
+                    color = theme.textSecondary
+                )
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { mapPendingDelete = null }) { Text("Cancel") }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onSavedMapDelete(savedMap)
+                        mapPendingDelete = null
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = theme.danger,
+                        contentColor = theme.textPrimary
+                    )
+                ) { Text("Delete") }
+            }
+        )
     }
 }
 
@@ -268,10 +334,121 @@ private fun CustomMapOptionRow(
                 )
             }
             Text(
-                text = "Design an unranked 8×8 board${if (active) " · Current run" else ""}",
+                text = "Design an unranked 3×3–10×10 board${if (active) " · Current run" else ""}",
                 color = if (active) theme.success else theme.textMuted,
                 style = MaterialTheme.typography.labelSmall.retroText(theme)
             )
+        }
+    }
+}
+
+@Composable
+private fun SavedMapOptionRow(
+    savedMap: SavedCustomMap,
+    active: Boolean,
+    onPlay: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
+) {
+    val theme = LocalGridfallColors.current
+    val shape = RoundedCornerShape(retroCorner(theme, infernoCorner(theme, 14.dp)))
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(if (active) theme.accent.copy(alpha = 0.14f) else theme.chipBackground.copy(alpha = 0.62f))
+            .infernoPanelTexture(theme)
+            .retroPanelTexture(theme)
+            .border(
+                BorderStroke(
+                    if (theme.isRetroTheme() || theme.isInfernoTheme()) 2.dp else 1.dp,
+                    if (active) theme.accentStrong else theme.panelBorder.copy(alpha = 0.34f)
+                ),
+                shape
+            )
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        SavedMapPreview(savedMap.design, Modifier.size(52.dp))
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = savedMap.name,
+                    color = if (active) theme.textPrimary else theme.textSecondary,
+                    style = MaterialTheme.typography.bodyLarge.retroText(theme)
+                )
+                Text(
+                    text = "${savedMap.design.columns}×${savedMap.design.rows}",
+                    color = if (active) theme.accentStrong else theme.textMuted,
+                    style = MaterialTheme.typography.labelLarge.retroText(theme)
+                )
+            }
+            if (active) {
+                Text(
+                    text = "Current run",
+                    color = theme.success,
+                    style = MaterialTheme.typography.labelSmall.retroText(theme)
+                )
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+                SavedMapAction("Play", theme.accentStrong, onPlay)
+                SavedMapAction("Edit", theme.textSecondary, onEdit)
+                SavedMapAction("Delete", theme.danger, onDelete)
+            }
+        }
+    }
+}
+
+@Composable
+private fun SavedMapAction(label: String, color: androidx.compose.ui.graphics.Color, onClick: () -> Unit) {
+    val theme = LocalGridfallColors.current
+    Text(
+        text = label,
+        color = color,
+        style = MaterialTheme.typography.labelMedium.retroText(theme),
+        modifier = Modifier.clickable(onClick = onClick).padding(vertical = 4.dp)
+    )
+}
+
+@Composable
+private fun SavedMapPreview(design: CustomMapDesign, modifier: Modifier = Modifier) {
+    val theme = LocalGridfallColors.current
+    Canvas(modifier = modifier) {
+        val gap = size.minDimension * 0.035f
+        val cellSize = minOf(
+            (size.width - gap * (design.columns + 1)) / design.columns,
+            (size.height - gap * (design.rows + 1)) / design.rows
+        )
+        val gridWidth = cellSize * design.columns + gap * (design.columns + 1)
+        val gridHeight = cellSize * design.rows + gap * (design.rows + 1)
+        val startX = (size.width - gridWidth) / 2f + gap
+        val startY = (size.height - gridHeight) / 2f + gap
+        drawRoundRect(
+            color = theme.boardInner,
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.minDimension * 0.10f)
+        )
+        repeat(design.rows) { row ->
+            repeat(design.columns) { col ->
+                val blocked = Cell(row, col) in design.blockedCells
+                val topLeft = Offset(
+                    startX + col * (cellSize + gap),
+                    startY + row * (cellSize + gap)
+                )
+                drawRoundRect(
+                    color = if (blocked) theme.danger.copy(alpha = 0.72f) else theme.emptyCell,
+                    topLeft = topLeft,
+                    size = androidx.compose.ui.geometry.Size(cellSize, cellSize),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(cellSize * 0.16f)
+                )
+            }
         }
     }
 }

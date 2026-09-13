@@ -73,6 +73,7 @@ import com.example.gridfall.game.LevelSystem
 import com.example.gridfall.game.Piece
 import com.example.gridfall.game.PieceEffect
 import com.example.gridfall.game.RiskSpinMemorySession
+import com.example.gridfall.game.SavedCustomMap
 import com.example.gridfall.game.ScoreSystem
 import com.example.gridfall.network.AccountConnectionState
 import com.example.gridfall.network.ApiConfig
@@ -107,6 +108,9 @@ fun GameScreen(modifier: Modifier = Modifier) {
     val lifecycleOwner = view.findViewTreeLifecycleOwner()
     val inProgressRunStore = remember { InProgressRunStore(context) }
     val restoredInProgressRun = remember { inProgressRunStore.load() }
+    val savedCustomMapStore = remember { SavedCustomMapStore(context) }
+    var savedCustomMaps by remember { mutableStateOf(savedCustomMapStore.load()) }
+    var editingSavedMap by remember { mutableStateOf<SavedCustomMap?>(null) }
     var selectedGridLayout by remember {
         mutableStateOf(GridLayoutPreferenceStore.load(context))
     }
@@ -176,7 +180,10 @@ fun GameScreen(modifier: Modifier = Modifier) {
 
     BackHandler(enabled = showCustomMapEditor || showSettingsScreen || showLeaderboardScreen) {
         when {
-            showCustomMapEditor -> showCustomMapEditor = false
+            showCustomMapEditor -> {
+                editingSavedMap = null
+                showCustomMapEditor = false
+            }
             showSettingsScreen -> showSettingsScreen = false
             showLeaderboardScreen -> showLeaderboardScreen = false
         }
@@ -875,6 +882,25 @@ fun GameScreen(modifier: Modifier = Modifier) {
         isNewBestThisGame = false
     }
 
+    fun requestCustomMapStart(design: CustomMapDesign) {
+        if (InProgressRunJson.hasProgress(gameState, riskSpinMemorySession)) {
+            pendingCustomMap = design
+        } else {
+            selectedGridLayout = GridLayoutPreset.Classic
+            GridLayoutPreferenceStore.save(context, GridLayoutPreset.Classic)
+            showCustomMapEditor = false
+            editingSavedMap = null
+            restartGame(
+                gridLayout = GridLayoutPreset.Classic,
+                blockedCells = design.blockedCells,
+                customRows = design.rows,
+                customColumns = design.columns,
+                isCustomMap = true,
+                keepSettingsOpen = true
+            )
+        }
+    }
+
     fun showScoreEventFeedbacks(feedbacks: List<ScoreEventFeedback>) {
         if (feedbacks.isEmpty()) return
         scoreEventFeedbacks = feedbacks.map { feedback ->
@@ -1014,36 +1040,45 @@ fun GameScreen(modifier: Modifier = Modifier) {
 
     CompositionLocalProvider(LocalGridfallColors provides activeThemeColors) {
         if (showCustomMapEditor) {
+            val editorDesign = editingSavedMap?.design
             CustomMapEditorScreen(
-                initialRows = if (gameState.board.isCustom) gameState.board.rowCount else 8,
-                initialColumns = if (gameState.board.isCustom) gameState.board.columnCount else 8,
-                initialBlockedCells = gameState.board.blockedCells,
-                onBack = { showCustomMapEditor = false },
-                onStartMap = { design ->
-                    if (InProgressRunJson.hasProgress(gameState, riskSpinMemorySession)) {
-                        pendingCustomMap = design
-                    } else {
-                        selectedGridLayout = GridLayoutPreset.Classic
-                        GridLayoutPreferenceStore.save(context, GridLayoutPreset.Classic)
-                        showCustomMapEditor = false
-                        restartGame(
-                            gridLayout = GridLayoutPreset.Classic,
-                            blockedCells = design.blockedCells,
-                            customRows = design.rows,
-                            customColumns = design.columns,
-                            isCustomMap = true,
-                            keepSettingsOpen = true
-                        )
-                    }
+                initialRows = editorDesign?.rows
+                    ?: if (gameState.board.isCustom) gameState.board.rowCount else 8,
+                initialColumns = editorDesign?.columns
+                    ?: if (gameState.board.isCustom) gameState.board.columnCount else 8,
+                initialBlockedCells = editorDesign?.blockedCells ?: gameState.board.blockedCells,
+                initialMapName = editingSavedMap?.name,
+                suggestedMapName = "Map ${savedCustomMaps.size + 1}",
+                onBack = {
+                    editingSavedMap = null
+                    showCustomMapEditor = false
+                },
+                onStartMap = ::requestCustomMapStart,
+                onSaveMap = { name, design ->
+                    val savedMap = editingSavedMap?.copy(name = name, design = design)
+                        ?: savedCustomMapStore.create(name, design)
+                    savedCustomMaps = savedCustomMapStore.save(savedMap)
+                    editingSavedMap = savedMap
                 },
                 modifier = modifier
             )
         } else if (showSettingsScreen) {
+            val activeCustomMapDesign = if (gameState.board.isCustom) {
+                CustomMapDesign(
+                    rows = gameState.board.rowCount,
+                    columns = gameState.board.columnCount,
+                    blockedCells = gameState.board.blockedCells
+                )
+            } else {
+                null
+            }
             SettingsScreen(
                 selectedThemeMode = selectedThemeMode,
                 selectedGridLayout = selectedGridLayout,
                 activeBoardSize = gameState.board.size,
                 activeIsCustomMap = gameState.board.isCustom,
+                activeCustomMapDesign = activeCustomMapDesign,
+                savedCustomMaps = savedCustomMaps,
                 soundEffectsVolume = soundEffectsVolume,
                 backgroundMusicVolume = backgroundMusicVolume,
                 onThemeSelected = { theme ->
@@ -1072,7 +1107,17 @@ fun GameScreen(modifier: Modifier = Modifier) {
                     }
                 },
                 onCustomMapClick = {
+                    editingSavedMap = null
                     showCustomMapEditor = true
+                },
+                onSavedMapPlay = { savedMap -> requestCustomMapStart(savedMap.design) },
+                onSavedMapEdit = { savedMap ->
+                    editingSavedMap = savedMap
+                    showCustomMapEditor = true
+                },
+                onSavedMapDelete = { savedMap ->
+                    savedCustomMaps = savedCustomMapStore.delete(savedMap.id)
+                    if (editingSavedMap?.id == savedMap.id) editingSavedMap = null
                 },
                 onSoundEffectsVolumeChange = { volume ->
                     soundEffectsVolume = volume
@@ -1615,6 +1660,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                     GridLayoutPreferenceStore.save(context, GridLayoutPreset.Classic)
                     pendingCustomMap = null
                     showCustomMapEditor = false
+                    editingSavedMap = null
                     restartGame(
                         gridLayout = GridLayoutPreset.Classic,
                         blockedCells = design.blockedCells,

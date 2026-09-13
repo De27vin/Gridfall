@@ -23,6 +23,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -48,8 +49,11 @@ fun CustomMapEditorScreen(
     initialRows: Int,
     initialColumns: Int,
     initialBlockedCells: Set<Cell>,
+    initialMapName: String? = null,
+    suggestedMapName: String = "Custom Map",
     onBack: () -> Unit,
     onStartMap: (CustomMapDesign) -> Unit,
+    onSaveMap: (String, CustomMapDesign) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val theme = LocalGridfallColors.current
@@ -57,6 +61,11 @@ fun CustomMapEditorScreen(
     var columns by remember(initialColumns) { mutableStateOf(initialColumns) }
     var blockedCells by remember(initialBlockedCells) { mutableStateOf(initialBlockedCells) }
     var showResetConfirmation by remember { mutableStateOf(false) }
+    var showSaveDialog by remember { mutableStateOf(false) }
+    var mapName by remember(initialMapName, suggestedMapName) {
+        mutableStateOf(initialMapName ?: suggestedMapName)
+    }
+    var savedMessage by remember { mutableStateOf<String?>(null) }
     val validationError = CustomMapRules.validationError(blockedCells, rows, columns)
     val playableCount = rows * columns - blockedCells.size
 
@@ -147,16 +156,36 @@ fun CustomMapEditorScreen(
                 style = MaterialTheme.typography.bodySmall.retroText(theme)
             )
 
-            Button(
-                onClick = { onStartMap(CustomMapDesign(rows, columns, blockedCells)) },
-                enabled = validationError == null,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = theme.button,
-                    contentColor = theme.textPrimary
-                ),
-                modifier = Modifier.fillMaxWidth()
+            savedMessage?.let { message ->
+                Text(
+                    text = message,
+                    color = theme.accentStrong,
+                    style = MaterialTheme.typography.bodySmall.retroText(theme)
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text("Start Custom Map")
+                OutlinedButton(
+                    onClick = { showSaveDialog = true },
+                    enabled = validationError == null,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(if (initialMapName == null) "Save Map" else "Update Map")
+                }
+                Button(
+                    onClick = { onStartMap(CustomMapDesign(rows, columns, blockedCells)) },
+                    enabled = validationError == null,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = theme.button,
+                        contentColor = theme.textPrimary
+                    ),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Start Map")
+                }
             }
         }
     }
@@ -188,6 +217,45 @@ fun CustomMapEditorScreen(
                         contentColor = theme.textPrimary
                     )
                 ) { Text("Reset") }
+            }
+        )
+    }
+
+    if (showSaveDialog) {
+        AlertDialog(
+            onDismissRequest = { showSaveDialog = false },
+            containerColor = theme.dialogBackground,
+            title = {
+                Text(
+                    if (initialMapName == null) "Save custom map" else "Update custom map",
+                    color = theme.textPrimary
+                )
+            },
+            text = {
+                OutlinedTextField(
+                    value = mapName,
+                    onValueChange = { mapName = it.take(24) },
+                    label = { Text("Map name") },
+                    singleLine = true
+                )
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showSaveDialog = false }) { Text("Cancel") }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val savedName = mapName.trim().ifBlank { suggestedMapName }
+                        mapName = savedName
+                        onSaveMap(savedName, CustomMapDesign(rows, columns, blockedCells))
+                        savedMessage = "Saved as $savedName"
+                        showSaveDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = theme.button,
+                        contentColor = theme.textPrimary
+                    )
+                ) { Text("Save") }
             }
         )
     }

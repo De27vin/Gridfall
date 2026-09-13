@@ -57,6 +57,6 @@ base64 -w 0 app/google-services.json
 After the secrets are configured, publish a release with:
 
 ```bash
-git tag v1.5.2
-git push origin v1.5.2
+git tag v1.5.3
+git push origin v1.5.3
 ```

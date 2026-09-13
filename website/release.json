@@ -1,16 +1,16 @@
 {
-  "version": "1.5.2",
-  "releasedAt": "2026-09-12",
+  "version": "1.5.3",
+  "releasedAt": "2026-09-13",
   "highlights": [
     "Design custom maps by blocking individual fields in the new map editor.",
     "Expand custom boards horizontally or vertically up to 10x10.",
-    "Custom maps support rectangular gameplay and save/resume while staying unranked."
+    "Save, edit, replay, and delete custom layouts from the new Saved Maps section."
   ],
   "history": [
     {
-      "version": "1.5.2",
-      "releasedAt": "2026-09-12",
-      "summary": "Custom map editor with expandable rectangular boards."
+      "version": "1.5.3",
+      "releasedAt": "2026-09-13",
+      "summary": "Persistent saved custom maps with play, edit, and delete controls."
     },
     {
       "version": "1.4.3",
