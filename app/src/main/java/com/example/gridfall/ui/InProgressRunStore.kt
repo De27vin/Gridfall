@@ -7,12 +7,15 @@ import com.example.gridfall.game.Contract
 import com.example.gridfall.game.ContractState
 import com.example.gridfall.game.ContractGenerator
 import com.example.gridfall.game.ContractType
+import com.example.gridfall.game.CustomBlockRules
+import com.example.gridfall.game.CustomMapRules
 import com.example.gridfall.game.GameState
 import com.example.gridfall.game.GridLayoutPreset
 import com.example.gridfall.game.JokerType
 import com.example.gridfall.game.Piece
 import com.example.gridfall.game.PieceEffect
 import com.example.gridfall.game.PieceGenerator
+import com.example.gridfall.game.PieceLibrary
 import com.example.gridfall.game.PieceRarity
 import com.example.gridfall.game.RiskSpinMemoryField
 import com.example.gridfall.game.RiskSpinMemorySession
@@ -108,6 +111,7 @@ object InProgressRunJson {
                     }
             })
             .put("customMap", board.isCustom)
+            .put("customBlockCells", customBlockCells.toJson())
             .put("pieces", JSONArray().also { array -> currentPieces.forEach { array.put(it.toJson()) } })
             .put("usedPieceIndices", JSONArray().also { array -> usedPieceIndices.sorted().forEach(array::put) })
             .put("nextPiece", nextPiece?.toJson() ?: JSONObject.NULL)
@@ -137,6 +141,16 @@ object InProgressRunJson {
         if (usedIndices.any { it !in savedPieces.indices }) return null
 
         val score = optInt("score").coerceAtLeast(0)
+        val customBlockCells = optJSONArray("customBlockCells")
+            ?.toCells(CustomBlockRules.EDITOR_SIZE, CustomBlockRules.EDITOR_SIZE)
+            ?.takeIf {
+                CustomBlockRules.validationError(it, board.rowCount, board.columnCount) == null
+            }
+            ?.let(CustomBlockRules::normalize)
+            ?: emptySet()
+        val piecePool = PieceLibrary.starterPieces + listOfNotNull(
+            CustomBlockRules.toPiece(customBlockCells)
+        )
         val gridLayout = if (board.isCustom) GridLayoutPreset.Classic else {
             GridLayoutPreset.fromBoardSize(board.rowCount)
         }
@@ -147,7 +161,8 @@ object InProgressRunJson {
                 .coerceAtLeast(0)
             availableSavedPieces + PieceGenerator.generateBatch(
                 count = missingPieceCount,
-                level = com.example.gridfall.game.LevelSystem.levelForScore(score)
+                level = com.example.gridfall.game.LevelSystem.levelForScore(score),
+                availablePieces = piecePool
             )
         } else {
             emptyList()
@@ -182,6 +197,7 @@ object InProgressRunJson {
             ),
             combo = optInt("combo").coerceAtLeast(0),
             isGameOver = optBoolean("isGameOver"),
+            customBlockCells = customBlockCells,
             contractState = if (score < ContractGenerator.CONTRACT_UNLOCK_SCORE) {
                 ContractState()
             } else {
@@ -203,9 +219,9 @@ object InProgressRunJson {
 
     private fun JSONArray.toBoard(): Board? {
         val rowCount = length()
-        if (rowCount !in 7..10) return null
+        if (rowCount !in CustomMapRules.MIN_BOARD_SIZE..CustomMapRules.MAX_ROWS) return null
         val columnCount = optJSONArray(0)?.length() ?: return null
-        if (columnCount !in 7..10) return null
+        if (columnCount !in CustomMapRules.MIN_BOARD_SIZE..CustomMapRules.MAX_COLUMNS) return null
         val rows = (0 until length()).map { rowIndex ->
             val row = optJSONArray(rowIndex) ?: return null
             if (row.length() != columnCount) return null
@@ -219,6 +235,14 @@ object InProgressRunJson {
             val json = optJSONObject(index) ?: return null
             Cell(json.optInt("row"), json.optInt("col")).also { cell ->
                 if (cell.row !in 0 until rowCount || cell.col !in 0 until columnCount) return null
+            }
+        }
+    }
+
+    private fun Set<Cell>.toJson(): JSONArray {
+        return JSONArray().also { array ->
+            sortedWith(compareBy(Cell::row, Cell::col)).forEach { cell ->
+                array.put(JSONObject().put("row", cell.row).put("col", cell.col))
             }
         }
     }

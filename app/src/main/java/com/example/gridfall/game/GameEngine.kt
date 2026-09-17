@@ -6,12 +6,18 @@ object GameEngine {
     const val BLOCK_BREAKER_SCORE = 5
     fun createInitialState(
         gridLayout: GridLayoutPreset = GridLayoutPreset.Classic,
-        blockedCells: Set<Cell> = emptySet()
+        blockedCells: Set<Cell> = emptySet(),
+        customBlockCells: Set<Cell> = emptySet()
     ): GameState {
         val level = LevelSystem.levelForScore(0)
+        val normalizedCustomBlock = customBlockCells
+            .takeIf { CustomBlockRules.validationError(it) == null }
+            ?.let(CustomBlockRules::normalize)
+            ?: emptySet()
         val generatedPieces = PieceGenerator.generateBatch(
             count = gridLayout.piecesPerBatch + if (gridLayout.showsNextPiecePreview) 1 else 0,
-            level = level
+            level = level,
+            availablePieces = piecePool(normalizedCustomBlock)
         )
 
         return GameState(
@@ -26,13 +32,20 @@ object GameEngine {
             score = 0,
             combo = 0,
             isGameOver = false,
+            customBlockCells = normalizedCustomBlock,
             contractState = ContractState(),
             runStats = RunStats.newRun()
         )
     }
 
     fun createCustomState(design: CustomMapDesign): GameState {
-        return createInitialState(GridLayoutPreset.Classic).copy(
+        val customBlockCells = design.customBlockCells.takeIf {
+            CustomBlockRules.validationError(it, design.rows, design.columns) == null
+        } ?: emptySet()
+        return createInitialState(
+            gridLayout = GridLayoutPreset.Classic,
+            customBlockCells = customBlockCells
+        ).copy(
             board = Board.empty(
                 rows = design.rows,
                 columns = design.columns,
@@ -409,7 +422,8 @@ object GameEngine {
             } else {
                 PieceGenerator.generateBatch(
                     count = gridLayout.piecesPerBatch,
-                    level = nextLevel
+                    level = nextLevel,
+                    availablePieces = piecePool(state.customBlockCells)
                 )
             }
             finalContractState = advanceContractBatch(
@@ -454,6 +468,7 @@ object GameEngine {
             val promotedPiece = state.nextPiece ?: PieceGenerator.generateBatch(
                 count = 1,
                 level = finalLevel,
+                availablePieces = piecePool(state.customBlockCells),
                 random = random
             ).first()
             finalPieces = state.currentPieces
@@ -463,6 +478,7 @@ object GameEngine {
             finalNextPiece = PieceGenerator.generateBatch(
                 count = 1,
                 level = finalLevel,
+                availablePieces = piecePool(state.customBlockCells),
                 random = random
             ).first()
         } else {
@@ -920,6 +936,11 @@ object GameEngine {
         return inventory.mapNotNull { jokerType ->
             jokerType.toPiece()
         }
+    }
+
+    private fun piecePool(customBlockCells: Set<Cell>): List<Piece> {
+        val customPiece = CustomBlockRules.toPiece(customBlockCells)
+        return if (customPiece == null) PieceLibrary.starterPieces else PieceLibrary.starterPieces + customPiece
     }
 
     private fun removeOneJoker(

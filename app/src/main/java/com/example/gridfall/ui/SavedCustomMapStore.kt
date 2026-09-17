@@ -2,6 +2,7 @@ package com.example.gridfall.ui
 
 import android.content.Context
 import com.example.gridfall.game.Cell
+import com.example.gridfall.game.CustomBlockRules
 import com.example.gridfall.game.CustomMapDesign
 import com.example.gridfall.game.CustomMapRules
 import com.example.gridfall.game.SavedCustomMap
@@ -28,12 +29,15 @@ class SavedCustomMapStore(private val context: Context) {
         return SavedCustomMap(
             id = UUID.randomUUID().toString(),
             name = normalizedName(name),
-            design = design
+            design = normalizedDesign(design)
         )
     }
 
     fun save(savedMap: SavedCustomMap): List<SavedCustomMap> {
-        val normalized = savedMap.copy(name = normalizedName(savedMap.name))
+        val normalized = savedMap.copy(
+            name = normalizedName(savedMap.name),
+            design = normalizedDesign(savedMap.design)
+        )
         val maps = load().toMutableList()
         val existingIndex = maps.indexOfFirst { it.id == normalized.id }
         if (existingIndex >= 0) maps[existingIndex] = normalized else maps.add(normalized)
@@ -63,6 +67,11 @@ class SavedCustomMapStore(private val context: Context) {
                     cells.put(JSONObject().put("row", cell.row).put("col", cell.col))
                 }
             })
+            .put("customBlockCells", JSONArray().also { cells ->
+                design.customBlockCells.sortedWith(compareBy(Cell::row, Cell::col)).forEach { cell ->
+                    cells.put(JSONObject().put("row", cell.row).put("col", cell.col))
+                }
+            })
     }
 
     private fun JSONObject.toSavedMap(): SavedCustomMap? {
@@ -81,11 +90,34 @@ class SavedCustomMapStore(private val context: Context) {
                 if (row in 0 until rows && col in 0 until columns) add(Cell(row, col))
             }
         }
+        val customBlockCells = buildSet {
+            val cells = optJSONArray("customBlockCells") ?: JSONArray()
+            repeat(cells.length()) { index ->
+                val cell = cells.optJSONObject(index) ?: return@repeat
+                val row = cell.optInt("row", -1)
+                val col = cell.optInt("col", -1)
+                if (row in 0 until CustomBlockRules.EDITOR_SIZE &&
+                    col in 0 until CustomBlockRules.EDITOR_SIZE
+                ) add(Cell(row, col))
+            }
+        }.takeIf { CustomBlockRules.validationError(it, rows, columns) == null }
+            ?.let(CustomBlockRules::normalize)
+            ?: emptySet()
         return SavedCustomMap(
             id = id,
             name = normalizedName(optString("name")),
-            design = CustomMapDesign(rows, columns, blockedCells)
+            design = CustomMapDesign(rows, columns, blockedCells, customBlockCells)
         )
+    }
+
+    private fun normalizedDesign(design: CustomMapDesign): CustomMapDesign {
+        val customBlockCells = design.customBlockCells
+            .takeIf {
+                CustomBlockRules.validationError(it, design.rows, design.columns) == null
+            }
+            ?.let(CustomBlockRules::normalize)
+            ?: emptySet()
+        return design.copy(customBlockCells = customBlockCells)
     }
 
     private fun normalizedName(name: String): String = name.trim().take(MAX_NAME_LENGTH).ifBlank { "Custom Map" }

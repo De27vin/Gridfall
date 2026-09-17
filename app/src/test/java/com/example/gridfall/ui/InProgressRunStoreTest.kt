@@ -36,6 +36,7 @@ class InProgressRunStoreTest {
     @Test
     fun roundTripsCustomMapShape() {
         val blockedCells = setOf(Cell(0, 0), Cell(0, 7), Cell(7, 0), Cell(7, 7))
+        val customBlockCells = setOf(Cell(0, 0), Cell(0, 1), Cell(1, 0))
         val saved = SavedInProgressRun(
             gameState = gameState().copy(
                 board = Board.empty(
@@ -43,7 +44,8 @@ class InProgressRunStoreTest {
                     columns = 10,
                     blockedCells = blockedCells,
                     isCustom = true
-                ).fill(3, 3, 2)
+                ).fill(3, 3, 2),
+                customBlockCells = customBlockCells
             )
         )
 
@@ -54,6 +56,7 @@ class InProgressRunStoreTest {
         assertEquals(10, restored?.gameState?.board?.columnCount)
         assertTrue(restored?.gameState?.board?.isCustom == true)
         assertEquals(2, restored?.gameState?.board?.get(3, 3))
+        assertEquals(customBlockCells, restored?.gameState?.customBlockCells)
     }
 
     @Test

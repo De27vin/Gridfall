@@ -857,6 +857,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
         blockedCells: Set<Cell> = gameState.board.blockedCells,
         customRows: Int = gameState.board.rowCount,
         customColumns: Int = gameState.board.columnCount,
+        customBlockCells: Set<Cell> = gameState.customBlockCells,
         isCustomMap: Boolean = gameState.board.isCustom,
         keepSettingsOpen: Boolean = false
     ) {
@@ -868,7 +869,9 @@ fun GameScreen(modifier: Modifier = Modifier) {
         riskSpinPaidCost = null
         showSettingsScreen = keepSettingsOpen
         gameState = if (isCustomMap) {
-            GameEngine.createCustomState(CustomMapDesign(customRows, customColumns, blockedCells))
+            GameEngine.createCustomState(
+                CustomMapDesign(customRows, customColumns, blockedCells, customBlockCells)
+            )
         } else {
             GameEngine.createInitialState(gridLayout)
         }
@@ -895,6 +898,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 blockedCells = design.blockedCells,
                 customRows = design.rows,
                 customColumns = design.columns,
+                customBlockCells = design.customBlockCells,
                 isCustomMap = true,
                 keepSettingsOpen = true
             )
@@ -1047,6 +1051,8 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 initialColumns = editorDesign?.columns
                     ?: if (gameState.board.isCustom) gameState.board.columnCount else 8,
                 initialBlockedCells = editorDesign?.blockedCells ?: gameState.board.blockedCells,
+                initialCustomBlockCells = editorDesign?.customBlockCells
+                    ?: if (gameState.board.isCustom) gameState.customBlockCells else emptySet(),
                 initialMapName = editingSavedMap?.name,
                 suggestedMapName = "Map ${savedCustomMaps.size + 1}",
                 onBack = {
@@ -1067,7 +1073,8 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 CustomMapDesign(
                     rows = gameState.board.rowCount,
                     columns = gameState.board.columnCount,
-                    blockedCells = gameState.board.blockedCells
+                    blockedCells = gameState.board.blockedCells,
+                    customBlockCells = gameState.customBlockCells
                 )
             } else {
                 null
@@ -1666,6 +1673,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                         blockedCells = design.blockedCells,
                         customRows = design.rows,
                         customColumns = design.columns,
+                        customBlockCells = design.customBlockCells,
                         isCustomMap = true,
                         keepSettingsOpen = true
                     )

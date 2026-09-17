@@ -56,4 +56,21 @@ class CustomMapRulesTest {
         assertTrue(state.board.isCustom)
         assertTrue(state.board.isPlayable(8, 9))
     }
+
+    @Test
+    fun `custom state keeps its normalized custom block`() {
+        val state = GameEngine.createCustomState(
+            CustomMapDesign(
+                rows = 8,
+                columns = 8,
+                blockedCells = emptySet(),
+                customBlockCells = setOf(Cell(2, 2), Cell(2, 3), Cell(3, 2))
+            )
+        )
+
+        assertEquals(
+            setOf(Cell(0, 0), Cell(0, 1), Cell(1, 0)),
+            state.customBlockCells
+        )
+    }
 }

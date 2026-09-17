@@ -398,6 +398,13 @@ private fun SavedMapOptionRow(
                     style = MaterialTheme.typography.labelSmall.retroText(theme)
                 )
             }
+            if (savedMap.design.customBlockCells.isNotEmpty()) {
+                Text(
+                    text = "Custom block · ${savedMap.design.customBlockCells.size} cells",
+                    color = theme.accentStrong,
+                    style = MaterialTheme.typography.labelSmall.retroText(theme)
+                )
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(18.dp)) {
                 SavedMapAction("Play", theme.accentStrong, onPlay)
                 SavedMapAction("Edit", theme.textSecondary, onEdit)
