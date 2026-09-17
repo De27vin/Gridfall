@@ -58,19 +58,26 @@ class CustomMapRulesTest {
     }
 
     @Test
-    fun `custom state keeps its normalized custom block`() {
+    fun `custom state keeps its map-specific block pool`() {
+        val customBlock = MapBlockDefinition(
+            id = "custom-test",
+            name = "Test Block",
+            cells = setOf(Cell(2, 2), Cell(2, 3), Cell(3, 2)),
+            spawnChancePercent = 100
+        )
         val state = GameEngine.createCustomState(
             CustomMapDesign(
                 rows = 8,
                 columns = 8,
                 blockedCells = emptySet(),
-                customBlockCells = setOf(Cell(2, 2), Cell(2, 3), Cell(3, 2))
+                blockPool = listOf(customBlock)
             )
         )
 
         assertEquals(
             setOf(Cell(0, 0), Cell(0, 1), Cell(1, 0)),
-            state.customBlockCells
+            state.customBlockPool.single().cells
         )
+        assertEquals(100, state.customBlockPool.single().spawnChancePercent)
     }
 }

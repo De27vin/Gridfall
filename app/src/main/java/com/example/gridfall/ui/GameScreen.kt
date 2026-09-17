@@ -69,6 +69,7 @@ import com.example.gridfall.game.GameEngine
 import com.example.gridfall.game.GameState
 import com.example.gridfall.game.GridLayoutPreset
 import com.example.gridfall.game.JokerType
+import com.example.gridfall.game.MapBlockDefinition
 import com.example.gridfall.game.LevelSystem
 import com.example.gridfall.game.Piece
 import com.example.gridfall.game.PieceEffect
@@ -857,7 +858,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
         blockedCells: Set<Cell> = gameState.board.blockedCells,
         customRows: Int = gameState.board.rowCount,
         customColumns: Int = gameState.board.columnCount,
-        customBlockCells: Set<Cell> = gameState.customBlockCells,
+        customBlockPool: List<MapBlockDefinition> = gameState.customBlockPool,
         isCustomMap: Boolean = gameState.board.isCustom,
         keepSettingsOpen: Boolean = false
     ) {
@@ -870,7 +871,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
         showSettingsScreen = keepSettingsOpen
         gameState = if (isCustomMap) {
             GameEngine.createCustomState(
-                CustomMapDesign(customRows, customColumns, blockedCells, customBlockCells)
+                CustomMapDesign(customRows, customColumns, blockedCells, customBlockPool)
             )
         } else {
             GameEngine.createInitialState(gridLayout)
@@ -898,7 +899,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 blockedCells = design.blockedCells,
                 customRows = design.rows,
                 customColumns = design.columns,
-                customBlockCells = design.customBlockCells,
+                customBlockPool = design.blockPool,
                 isCustomMap = true,
                 keepSettingsOpen = true
             )
@@ -1051,8 +1052,8 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 initialColumns = editorDesign?.columns
                     ?: if (gameState.board.isCustom) gameState.board.columnCount else 8,
                 initialBlockedCells = editorDesign?.blockedCells ?: gameState.board.blockedCells,
-                initialCustomBlockCells = editorDesign?.customBlockCells
-                    ?: if (gameState.board.isCustom) gameState.customBlockCells else emptySet(),
+                initialBlockPool = editorDesign?.blockPool
+                    ?: if (gameState.board.isCustom) gameState.customBlockPool else com.example.gridfall.game.MapBlockPoolRules.defaultPool(),
                 initialMapName = editingSavedMap?.name,
                 suggestedMapName = "Map ${savedCustomMaps.size + 1}",
                 onBack = {
@@ -1074,7 +1075,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                     rows = gameState.board.rowCount,
                     columns = gameState.board.columnCount,
                     blockedCells = gameState.board.blockedCells,
-                    customBlockCells = gameState.customBlockCells
+                    blockPool = gameState.customBlockPool
                 )
             } else {
                 null
@@ -1673,7 +1674,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                         blockedCells = design.blockedCells,
                         customRows = design.rows,
                         customColumns = design.columns,
-                        customBlockCells = design.customBlockCells,
+                        customBlockPool = design.blockPool,
                         isCustomMap = true,
                         keepSettingsOpen = true
                     )

@@ -12,6 +12,8 @@ import com.example.gridfall.game.CustomMapRules
 import com.example.gridfall.game.GameState
 import com.example.gridfall.game.GridLayoutPreset
 import com.example.gridfall.game.JokerType
+import com.example.gridfall.game.MapBlockDefinition
+import com.example.gridfall.game.MapBlockPoolRules
 import com.example.gridfall.game.Piece
 import com.example.gridfall.game.PieceEffect
 import com.example.gridfall.game.PieceGenerator
@@ -111,7 +113,9 @@ object InProgressRunJson {
                     }
             })
             .put("customMap", board.isCustom)
-            .put("customBlockCells", customBlockCells.toJson())
+            .put("customBlockPool", JSONArray().also { array ->
+                customBlockPool.forEach { array.put(it.toJson()) }
+            })
             .put("pieces", JSONArray().also { array -> currentPieces.forEach { array.put(it.toJson()) } })
             .put("usedPieceIndices", JSONArray().also { array -> usedPieceIndices.sorted().forEach(array::put) })
             .put("nextPiece", nextPiece?.toJson() ?: JSONObject.NULL)
@@ -141,16 +145,35 @@ object InProgressRunJson {
         if (usedIndices.any { it !in savedPieces.indices }) return null
 
         val score = optInt("score").coerceAtLeast(0)
-        val customBlockCells = optJSONArray("customBlockCells")
+        val legacyCustomBlockCells = optJSONArray("customBlockCells")
             ?.toCells(CustomBlockRules.EDITOR_SIZE, CustomBlockRules.EDITOR_SIZE)
             ?.takeIf {
                 CustomBlockRules.validationError(it, board.rowCount, board.columnCount) == null
             }
             ?.let(CustomBlockRules::normalize)
             ?: emptySet()
-        val piecePool = PieceLibrary.starterPieces + listOfNotNull(
-            CustomBlockRules.toPiece(customBlockCells)
-        )
+        val savedBlockPool = optJSONArray("customBlockPool")
+            ?.toMapBlockPool(board.rowCount, board.columnCount)
+        val customBlockPool = when {
+            savedBlockPool != null && savedBlockPool.isNotEmpty() -> savedBlockPool
+            board.isCustom && legacyCustomBlockCells.isNotEmpty() -> MapBlockPoolRules.add(
+                MapBlockPoolRules.defaultPool(),
+                MapBlockDefinition(
+                    id = "migrated_custom",
+                    name = "Custom Block",
+                    cells = legacyCustomBlockCells,
+                    spawnChancePercent = 10,
+                    colorVariant = 2
+                )
+            )
+            board.isCustom -> MapBlockPoolRules.defaultPool()
+            else -> emptyList()
+        }
+        val piecePool = if (customBlockPool.isEmpty()) {
+            PieceLibrary.starterPieces
+        } else {
+            customBlockPool.map(MapBlockDefinition::toPiece)
+        }
         val gridLayout = if (board.isCustom) GridLayoutPreset.Classic else {
             GridLayoutPreset.fromBoardSize(board.rowCount)
         }
@@ -197,7 +220,7 @@ object InProgressRunJson {
             ),
             combo = optInt("combo").coerceAtLeast(0),
             isGameOver = optBoolean("isGameOver"),
-            customBlockCells = customBlockCells,
+            customBlockPool = customBlockPool,
             contractState = if (score < ContractGenerator.CONTRACT_UNLOCK_SCORE) {
                 ContractState()
             } else {
@@ -239,6 +262,35 @@ object InProgressRunJson {
         }
     }
 
+    private fun MapBlockDefinition.toJson(): JSONObject {
+        return JSONObject()
+            .put("id", id)
+            .put("name", name)
+            .put("cells", cells.toJson())
+            .put("spawnChancePercent", spawnChancePercent)
+            .put("colorVariant", colorVariant)
+    }
+
+    private fun JSONArray.toMapBlockPool(boardRows: Int, boardColumns: Int): List<MapBlockDefinition>? {
+        val blocks = (0 until length()).map { index ->
+            val json = optJSONObject(index) ?: return null
+            val cells = json.optJSONArray("cells")
+                ?.toCells(CustomBlockRules.EDITOR_SIZE, CustomBlockRules.EDITOR_SIZE)
+                ?: return null
+            MapBlockDefinition(
+                id = json.optString("id").takeIf(String::isNotBlank) ?: return null,
+                name = json.optString("name").takeIf(String::isNotBlank) ?: "Block ${index + 1}",
+                cells = cells,
+                spawnChancePercent = json.optInt("spawnChancePercent", 0),
+                colorVariant = json.optInt("colorVariant", 1)
+            )
+        }
+        val normalized = MapBlockPoolRules.normalize(blocks)
+        return normalized.takeIf {
+            MapBlockPoolRules.validationError(it, boardRows, boardColumns) == null
+        }
+    }
+
     private fun Set<Cell>.toJson(): JSONArray {
         return JSONArray().also { array ->
             sortedWith(compareBy(Cell::row, Cell::col)).forEach { cell ->
@@ -258,6 +310,7 @@ object InProgressRunJson {
             .put("effect", effect.name)
             .put("rarity", rarity.name)
             .put("colorVariant", colorVariant)
+            .put("spawnWeight", spawnWeight ?: JSONObject.NULL)
     }
 
     private fun JSONArray.toPieces(): List<Piece>? {
@@ -281,7 +334,8 @@ object InProgressRunJson {
             cells = cells,
             effect = enumOrNull<PieceEffect>(optString("effect")) ?: PieceEffect.Normal,
             rarity = enumOrNull<PieceRarity>(optString("rarity")) ?: PieceRarity.Common,
-            colorVariant = optInt("colorVariant", 1)
+            colorVariant = optInt("colorVariant", 1),
+            spawnWeight = optNullableInt("spawnWeight")
         )
     }
 

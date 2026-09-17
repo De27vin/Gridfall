@@ -10,7 +10,7 @@ data class GameState(
     val maxScoreReached: Int = score,
     val combo: Int,
     val isGameOver: Boolean,
-    val customBlockCells: Set<Cell> = emptySet(),
+    val customBlockPool: List<MapBlockDefinition> = emptyList(),
     val contractState: ContractState = ContractState(),
     val riskSpinState: RiskSpinState = RiskSpinState(),
     val runStats: RunStats = RunStats.newRun()

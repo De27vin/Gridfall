@@ -5,6 +5,8 @@ import com.example.gridfall.game.Cell
 import com.example.gridfall.game.CustomBlockRules
 import com.example.gridfall.game.CustomMapDesign
 import com.example.gridfall.game.CustomMapRules
+import com.example.gridfall.game.MapBlockDefinition
+import com.example.gridfall.game.MapBlockPoolRules
 import com.example.gridfall.game.SavedCustomMap
 import org.json.JSONArray
 import org.json.JSONObject
@@ -67,10 +69,8 @@ class SavedCustomMapStore(private val context: Context) {
                     cells.put(JSONObject().put("row", cell.row).put("col", cell.col))
                 }
             })
-            .put("customBlockCells", JSONArray().also { cells ->
-                design.customBlockCells.sortedWith(compareBy(Cell::row, Cell::col)).forEach { cell ->
-                    cells.put(JSONObject().put("row", cell.row).put("col", cell.col))
-                }
+            .put("blockPool", JSONArray().also { blocks ->
+                design.blockPool.forEach { block -> blocks.put(block.toJson()) }
             })
     }
 
@@ -90,7 +90,7 @@ class SavedCustomMapStore(private val context: Context) {
                 if (row in 0 until rows && col in 0 until columns) add(Cell(row, col))
             }
         }
-        val customBlockCells = buildSet {
+        val legacyCustomBlockCells = buildSet {
             val cells = optJSONArray("customBlockCells") ?: JSONArray()
             repeat(cells.length()) { index ->
                 val cell = cells.optJSONObject(index) ?: return@repeat
@@ -103,21 +103,68 @@ class SavedCustomMapStore(private val context: Context) {
         }.takeIf { CustomBlockRules.validationError(it, rows, columns) == null }
             ?.let(CustomBlockRules::normalize)
             ?: emptySet()
+        val savedBlockPool = optJSONArray("blockPool")?.toBlockPool(rows, columns)
+        val blockPool = when {
+            savedBlockPool != null && savedBlockPool.isNotEmpty() -> savedBlockPool
+            legacyCustomBlockCells.isNotEmpty() -> MapBlockPoolRules.add(
+                MapBlockPoolRules.defaultPool(),
+                MapBlockDefinition(
+                    id = "migrated_custom",
+                    name = "Custom Block",
+                    cells = legacyCustomBlockCells,
+                    spawnChancePercent = 10,
+                    colorVariant = 2
+                )
+            )
+            else -> MapBlockPoolRules.defaultPool()
+        }
         return SavedCustomMap(
             id = id,
             name = normalizedName(optString("name")),
-            design = CustomMapDesign(rows, columns, blockedCells, customBlockCells)
+            design = CustomMapDesign(rows, columns, blockedCells, blockPool)
         )
     }
 
     private fun normalizedDesign(design: CustomMapDesign): CustomMapDesign {
-        val customBlockCells = design.customBlockCells
-            .takeIf {
-                CustomBlockRules.validationError(it, design.rows, design.columns) == null
+        val blockPool = MapBlockPoolRules.normalize(design.blockPool).takeIf {
+            MapBlockPoolRules.validationError(it, design.rows, design.columns) == null
+        } ?: MapBlockPoolRules.defaultPool()
+        return design.copy(blockPool = blockPool)
+    }
+
+    private fun MapBlockDefinition.toJson(): JSONObject {
+        return JSONObject()
+            .put("id", id)
+            .put("name", name)
+            .put("cells", JSONArray().also { array ->
+                cells.sortedWith(compareBy(Cell::row, Cell::col)).forEach { cell ->
+                    array.put(JSONObject().put("row", cell.row).put("col", cell.col))
+                }
+            })
+            .put("spawnChancePercent", spawnChancePercent)
+            .put("colorVariant", colorVariant)
+    }
+
+    private fun JSONArray.toBlockPool(rows: Int, columns: Int): List<MapBlockDefinition>? {
+        val blocks = (0 until length()).map { index ->
+            val json = optJSONObject(index) ?: return null
+            val cells = buildSet {
+                val cellArray = json.optJSONArray("cells") ?: return null
+                repeat(cellArray.length()) { cellIndex ->
+                    val cell = cellArray.optJSONObject(cellIndex) ?: return null
+                    add(Cell(cell.optInt("row", -1), cell.optInt("col", -1)))
+                }
             }
-            ?.let(CustomBlockRules::normalize)
-            ?: emptySet()
-        return design.copy(customBlockCells = customBlockCells)
+            MapBlockDefinition(
+                id = json.optString("id").takeIf { it.isNotBlank() } ?: return null,
+                name = json.optString("name").takeIf { it.isNotBlank() } ?: "Block ${index + 1}",
+                cells = cells,
+                spawnChancePercent = json.optInt("spawnChancePercent", 0),
+                colorVariant = json.optInt("colorVariant", 1)
+            )
+        }
+        val normalized = MapBlockPoolRules.normalize(blocks)
+        return normalized.takeIf { MapBlockPoolRules.validationError(it, rows, columns) == null }
     }
 
     private fun normalizedName(name: String): String = name.trim().take(MAX_NAME_LENGTH).ifBlank { "Custom Map" }

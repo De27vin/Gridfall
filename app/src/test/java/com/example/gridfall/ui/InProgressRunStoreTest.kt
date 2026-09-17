@@ -7,6 +7,7 @@ import com.example.gridfall.game.ContractState
 import com.example.gridfall.game.ContractType
 import com.example.gridfall.game.GameState
 import com.example.gridfall.game.JokerType
+import com.example.gridfall.game.MapBlockDefinition
 import com.example.gridfall.game.Piece
 import com.example.gridfall.game.RiskSpinMemoryField
 import com.example.gridfall.game.RiskSpinMemorySession
@@ -36,7 +37,14 @@ class InProgressRunStoreTest {
     @Test
     fun roundTripsCustomMapShape() {
         val blockedCells = setOf(Cell(0, 0), Cell(0, 7), Cell(7, 0), Cell(7, 7))
-        val customBlockCells = setOf(Cell(0, 0), Cell(0, 1), Cell(1, 0))
+        val customBlockPool = listOf(
+            MapBlockDefinition(
+                id = "custom-test",
+                name = "Test Block",
+                cells = setOf(Cell(0, 0), Cell(0, 1), Cell(1, 0)),
+                spawnChancePercent = 100
+            )
+        )
         val saved = SavedInProgressRun(
             gameState = gameState().copy(
                 board = Board.empty(
@@ -45,7 +53,7 @@ class InProgressRunStoreTest {
                     blockedCells = blockedCells,
                     isCustom = true
                 ).fill(3, 3, 2),
-                customBlockCells = customBlockCells
+                customBlockPool = customBlockPool
             )
         )
 
@@ -56,7 +64,7 @@ class InProgressRunStoreTest {
         assertEquals(10, restored?.gameState?.board?.columnCount)
         assertTrue(restored?.gameState?.board?.isCustom == true)
         assertEquals(2, restored?.gameState?.board?.get(3, 3))
-        assertEquals(customBlockCells, restored?.gameState?.customBlockCells)
+        assertEquals(customBlockPool, restored?.gameState?.customBlockPool)
     }
 
     @Test

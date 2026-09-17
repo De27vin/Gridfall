@@ -5,7 +5,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -44,6 +43,8 @@ import com.example.gridfall.game.Cell
 import com.example.gridfall.game.CustomBlockRules
 import com.example.gridfall.game.CustomMapDesign
 import com.example.gridfall.game.CustomMapRules
+import com.example.gridfall.game.MapBlockDefinition
+import com.example.gridfall.game.MapBlockPoolRules
 import com.example.gridfall.ui.theme.LocalGridfallColors
 
 @Composable
@@ -51,7 +52,7 @@ fun CustomMapEditorScreen(
     initialRows: Int,
     initialColumns: Int,
     initialBlockedCells: Set<Cell>,
-    initialCustomBlockCells: Set<Cell> = emptySet(),
+    initialBlockPool: List<MapBlockDefinition> = MapBlockPoolRules.defaultPool(),
     initialMapName: String? = null,
     suggestedMapName: String = "Custom Map",
     onBack: () -> Unit,
@@ -63,9 +64,10 @@ fun CustomMapEditorScreen(
     var rows by remember(initialRows) { mutableStateOf(initialRows) }
     var columns by remember(initialColumns) { mutableStateOf(initialColumns) }
     var blockedCells by remember(initialBlockedCells) { mutableStateOf(initialBlockedCells) }
-    var customBlockCells by remember(initialCustomBlockCells) {
-        mutableStateOf(initialCustomBlockCells)
+    var blockPool by remember(initialBlockPool) {
+        mutableStateOf(MapBlockPoolRules.normalize(initialBlockPool))
     }
+    var showBlockList by remember { mutableStateOf(false) }
     var showResetConfirmation by remember { mutableStateOf(false) }
     var showSaveDialog by remember { mutableStateOf(false) }
     var mapName by remember(initialMapName, suggestedMapName) {
@@ -73,9 +75,21 @@ fun CustomMapEditorScreen(
     }
     var savedMessage by remember { mutableStateOf<String?>(null) }
     val mapValidationError = CustomMapRules.validationError(blockedCells, rows, columns)
-    val customBlockValidationError = CustomBlockRules.validationError(customBlockCells, rows, columns)
-    val validationError = mapValidationError ?: customBlockValidationError
+    val blockPoolValidationError = MapBlockPoolRules.validationError(blockPool, rows, columns)
+    val validationError = mapValidationError ?: blockPoolValidationError
     val playableCount = rows * columns - blockedCells.size
+
+    if (showBlockList) {
+        MapBlockListScreen(
+            blocks = blockPool,
+            boardRows = rows,
+            boardColumns = columns,
+            onBlocksChanged = { blockPool = it },
+            onBack = { showBlockList = false },
+            modifier = modifier
+        )
+        return
+    }
 
     Box(
         modifier = modifier
@@ -158,50 +172,29 @@ fun CustomMapEditorScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    text = "Custom Block",
+                    text = "Block List",
                     color = theme.textPrimary,
                     style = MaterialTheme.typography.titleMedium.retroText(theme)
                 )
+                Text(
+                    text = "${blockPool.size} blocks · Edit shapes and exact spawn probabilities for this map.",
+                    color = theme.textSecondary,
+                    style = MaterialTheme.typography.bodySmall.retroText(theme)
+                )
                 OutlinedButton(
-                    onClick = { customBlockCells = emptySet() },
-                    enabled = customBlockCells.isNotEmpty()
-                ) { Text("Clear") }
+                    onClick = { showBlockList = true },
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("Open Block List") }
+                blockPoolValidationError?.let { error ->
+                    Text(
+                        text = error,
+                        color = theme.warning,
+                        style = MaterialTheme.typography.bodySmall.retroText(theme)
+                    )
+                }
             }
-
-            Text(
-                text = "Optional · Tap connected cells in the 4×4 builder. This block joins the normal piece pool for this map.",
-                color = theme.textSecondary,
-                style = MaterialTheme.typography.bodySmall.retroText(theme)
-            )
-
-            CustomBlockEditorGrid(
-                selectedCells = customBlockCells,
-                onCellTapped = { cell ->
-                    customBlockCells = if (cell in customBlockCells) {
-                        customBlockCells - cell
-                    } else {
-                        customBlockCells + cell
-                    }
-                },
-                modifier = Modifier
-                    .align(Alignment.CenterHorizontally)
-                    .widthIn(max = 220.dp)
-                    .fillMaxWidth()
-                    .aspectRatio(1f)
-            )
-
-            Text(
-                text = customBlockValidationError
-                    ?: if (customBlockCells.isEmpty()) "No custom block selected." else "${customBlockCells.size} cells selected.",
-                color = if (customBlockValidationError == null) theme.accentStrong else theme.warning,
-                style = MaterialTheme.typography.bodySmall.retroText(theme)
-            )
 
             Text(
                 text = validationError ?: "Custom maps are unranked in this prototype.",
@@ -235,7 +228,7 @@ fun CustomMapEditorScreen(
                                 rows,
                                 columns,
                                 blockedCells,
-                                CustomBlockRules.normalize(customBlockCells)
+                                blockPool
                             )
                         )
                     },
@@ -259,7 +252,7 @@ fun CustomMapEditorScreen(
             title = { Text("Reset custom map?", color = theme.textPrimary) },
             text = {
                 Text(
-                    "This removes every blocked field and custom block, then restores the blank 8×8 editor.",
+                    "This restores the blank 8×8 editor and its default block list.",
                     color = theme.textSecondary
                 )
             },
@@ -270,7 +263,7 @@ fun CustomMapEditorScreen(
                 Button(
                     onClick = {
                         blockedCells = emptySet()
-                        customBlockCells = emptySet()
+                        blockPool = MapBlockPoolRules.defaultPool()
                         rows = CustomMapRules.BOARD_SIZE
                         columns = CustomMapRules.BOARD_SIZE
                         showResetConfirmation = false
@@ -316,7 +309,7 @@ fun CustomMapEditorScreen(
                                 rows,
                                 columns,
                                 blockedCells,
-                                CustomBlockRules.normalize(customBlockCells)
+                                blockPool
                             )
                         )
                         savedMessage = "Saved as $savedName"
@@ -469,7 +462,7 @@ private fun CustomMapEditorGrid(
 }
 
 @Composable
-private fun CustomBlockEditorGrid(
+internal fun CustomBlockEditorGrid(
     selectedCells: Set<Cell>,
     onCellTapped: (Cell) -> Unit,
     modifier: Modifier = Modifier

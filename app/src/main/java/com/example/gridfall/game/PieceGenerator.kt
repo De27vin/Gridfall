@@ -34,7 +34,7 @@ object PieceGenerator {
         random: Random
     ): Piece {
         val weightedPieces = map { piece ->
-            piece to rarityWeight(piece.rarity, level)
+            piece to (piece.spawnWeight ?: rarityWeight(piece.rarity, level))
         }.filter { (_, weight) ->
             weight > 0
         }
