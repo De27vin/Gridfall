@@ -9,36 +9,36 @@ class MapBlockPoolRulesTest {
     fun `default block pool totals one hundred percent`() {
         val pool = MapBlockPoolRules.defaultPool()
 
-        assertEquals(100, pool.sumOf { it.spawnChancePercent })
+        assertEquals(1_000, pool.sumOf { it.spawnChanceTenthsPercent })
         assertNull(MapBlockPoolRules.validationError(pool, 8, 8))
     }
 
     @Test
     fun `setting one probability rebalances all other blocks`() {
         val pool = listOf(
-            block("one", 40),
-            block("two", 30),
-            block("three", 30)
+            block("one", 400),
+            block("two", 300),
+            block("three", 300)
         )
 
-        val changed = MapBlockPoolRules.setProbability(pool, "one", 70)
+        val changed = MapBlockPoolRules.setProbability(pool, "one", 703)
 
-        assertEquals(70, changed.first { it.id == "one" }.spawnChancePercent)
-        assertEquals(100, changed.sumOf { it.spawnChancePercent })
+        assertEquals(703, changed.first { it.id == "one" }.spawnChanceTenthsPercent)
+        assertEquals(1_000, changed.sumOf { it.spawnChanceTenthsPercent })
     }
 
     @Test
     fun `deleting a block redistributes its probability`() {
-        val pool = listOf(block("one", 50), block("two", 25), block("three", 25))
+        val pool = listOf(block("one", 500), block("two", 250), block("three", 250))
 
         val changed = MapBlockPoolRules.delete(pool, "one")
 
-        assertEquals(listOf(50, 50), changed.map { it.spawnChancePercent })
+        assertEquals(listOf(500, 500), changed.map { it.spawnChanceTenthsPercent })
     }
 
     @Test
     fun `piece generator honors exact map probability weights`() {
-        val onlySpawnable = block("always", 100).toPiece()
+        val onlySpawnable = block("always", 1_000).toPiece()
         val disabled = block("never", 0).toPiece()
 
         val generated = PieceGenerator.generateBatch(
@@ -55,7 +55,7 @@ class MapBlockPoolRulesTest {
             id = id,
             name = id,
             cells = setOf(Cell(0, 0)),
-            spawnChancePercent = probability
+            spawnChanceTenthsPercent = probability
         )
     }
 }

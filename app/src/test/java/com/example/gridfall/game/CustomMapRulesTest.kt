@@ -63,7 +63,7 @@ class CustomMapRulesTest {
             id = "custom-test",
             name = "Test Block",
             cells = setOf(Cell(2, 2), Cell(2, 3), Cell(3, 2)),
-            spawnChancePercent = 100
+            spawnChanceTenthsPercent = 1_000
         )
         val state = GameEngine.createCustomState(
             CustomMapDesign(
@@ -78,6 +78,6 @@ class CustomMapRulesTest {
             setOf(Cell(0, 0), Cell(0, 1), Cell(1, 0)),
             state.customBlockPool.single().cells
         )
-        assertEquals(100, state.customBlockPool.single().spawnChancePercent)
+        assertEquals(1_000, state.customBlockPool.single().spawnChanceTenthsPercent)
     }
 }

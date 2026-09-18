@@ -8,26 +8,10 @@ object CustomBlockRules {
         boardRows: Int = EDITOR_SIZE,
         boardColumns: Int = EDITOR_SIZE
     ): String? {
-        if (cells.isEmpty()) return null
+        if (cells.isEmpty()) return "Select at least one cell for this block."
         if (cells.any { it.row !in 0 until EDITOR_SIZE || it.col !in 0 until EDITOR_SIZE }) {
             return "The custom block must stay inside the 4×4 editor."
         }
-
-        val connected = mutableSetOf<Cell>()
-        val pending = ArrayDeque<Cell>()
-        pending.add(cells.first())
-        while (pending.isNotEmpty()) {
-            val cell = pending.removeFirst()
-            if (!connected.add(cell)) continue
-            listOf(
-                Cell(cell.row - 1, cell.col),
-                Cell(cell.row + 1, cell.col),
-                Cell(cell.row, cell.col - 1),
-                Cell(cell.row, cell.col + 1)
-            ).filterTo(pending) { it in cells && it !in connected }
-        }
-
-        if (connected.size != cells.size) return "Every custom-block cell must be connected."
 
         val normalized = normalize(cells)
         val blockRows = normalized.maxOf(Cell::row) + 1

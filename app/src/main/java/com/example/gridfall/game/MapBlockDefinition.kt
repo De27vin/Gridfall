@@ -4,7 +4,7 @@ data class MapBlockDefinition(
     val id: String,
     val name: String,
     val cells: Set<Cell>,
-    val spawnChancePercent: Int,
+    val spawnChanceTenthsPercent: Int,
     val colorVariant: Int = 1
 ) {
     fun toPiece(): Piece {
@@ -13,16 +13,16 @@ data class MapBlockDefinition(
             cells = CustomBlockRules.normalize(cells).sortedWith(compareBy(Cell::row, Cell::col)),
             rarity = PieceRarity.Common,
             colorVariant = colorVariant.coerceIn(1, 4),
-            spawnWeight = spawnChancePercent.coerceIn(0, 100)
+            spawnWeight = spawnChanceTenthsPercent.coerceIn(0, 1_000)
         )
     }
 }
 
 object MapBlockPoolRules {
-    const val TOTAL_PERCENT = 100
+    const val TOTAL_TENTHS_PERCENT = 1_000
 
     fun defaultPool(): List<MapBlockDefinition> {
-        val chances = distribute(TOTAL_PERCENT, List(PieceLibrary.starterPieces.size) { 1 })
+        val chances = distribute(TOTAL_TENTHS_PERCENT, List(PieceLibrary.starterPieces.size) { 1 })
         return PieceLibrary.starterPieces.mapIndexed { index, piece ->
             MapBlockDefinition(
                 id = piece.id,
@@ -30,7 +30,7 @@ object MapBlockPoolRules {
                     .split('_')
                     .joinToString(" ") { word -> word.replaceFirstChar(Char::uppercase) },
                 cells = piece.cells.toSet(),
-                spawnChancePercent = chances[index],
+                spawnChanceTenthsPercent = chances[index],
                 colorVariant = piece.colorVariant
             )
         }
@@ -49,11 +49,11 @@ object MapBlockPoolRules {
             CustomBlockRules.validationError(block.cells, boardRows, boardColumns)?.let { error ->
                 return "${block.name}: $error"
             }
-            if (block.spawnChancePercent !in 0..TOTAL_PERCENT) {
+            if (block.spawnChanceTenthsPercent !in 0..TOTAL_TENTHS_PERCENT) {
                 return "${block.name}: spawn probability must be between 0% and 100%."
             }
         }
-        if (blocks.sumOf(MapBlockDefinition::spawnChancePercent) != TOTAL_PERCENT) {
+        if (blocks.sumOf(MapBlockDefinition::spawnChanceTenthsPercent) != TOTAL_TENTHS_PERCENT) {
             return "Block spawn probabilities must total 100%."
         }
         return null
@@ -62,13 +62,13 @@ object MapBlockPoolRules {
     fun normalize(blocks: List<MapBlockDefinition>): List<MapBlockDefinition> {
         if (blocks.isEmpty()) return emptyList()
         val chances = distribute(
-            TOTAL_PERCENT,
-            blocks.map { it.spawnChancePercent.coerceAtLeast(0) }
+            TOTAL_TENTHS_PERCENT,
+            blocks.map { it.spawnChanceTenthsPercent.coerceAtLeast(0) }
         )
         return blocks.mapIndexed { index, block ->
             block.copy(
                 cells = CustomBlockRules.normalize(block.cells),
-                spawnChancePercent = chances[index],
+                spawnChanceTenthsPercent = chances[index],
                 colorVariant = block.colorVariant.coerceIn(1, 4)
             )
         }
@@ -80,20 +80,22 @@ object MapBlockPoolRules {
         probability: Int
     ): List<MapBlockDefinition> {
         if (blocks.none { it.id == blockId }) return normalize(blocks)
-        if (blocks.size == 1) return listOf(blocks.first().copy(spawnChancePercent = TOTAL_PERCENT))
+        if (blocks.size == 1) {
+            return listOf(blocks.first().copy(spawnChanceTenthsPercent = TOTAL_TENTHS_PERCENT))
+        }
 
-        val target = probability.coerceIn(0, TOTAL_PERCENT)
+        val target = probability.coerceIn(0, TOTAL_TENTHS_PERCENT)
         val others = blocks.filterNot { it.id == blockId }
         val otherChances = distribute(
-            TOTAL_PERCENT - target,
-            others.map { it.spawnChancePercent.coerceAtLeast(0) }
+            TOTAL_TENTHS_PERCENT - target,
+            others.map { it.spawnChanceTenthsPercent.coerceAtLeast(0) }
         )
         var otherIndex = 0
         return blocks.map { block ->
             if (block.id == blockId) {
-                block.copy(spawnChancePercent = target)
+                block.copy(spawnChanceTenthsPercent = target)
             } else {
-                block.copy(spawnChancePercent = otherChances[otherIndex++])
+                block.copy(spawnChanceTenthsPercent = otherChances[otherIndex++])
             }
         }
     }
@@ -107,9 +109,9 @@ object MapBlockPoolRules {
                 ?: "custom_${System.currentTimeMillis()}"
         )
         return setProbability(
-            normalize(blocks) + uniqueBlock.copy(spawnChancePercent = 0),
+            normalize(blocks) + uniqueBlock.copy(spawnChanceTenthsPercent = 0),
             uniqueBlock.id,
-            block.spawnChancePercent.coerceIn(0, TOTAL_PERCENT)
+            block.spawnChanceTenthsPercent.coerceIn(0, TOTAL_TENTHS_PERCENT)
         )
     }
 

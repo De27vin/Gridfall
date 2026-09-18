@@ -7,8 +7,11 @@ import org.junit.Test
 
 class CustomBlockRulesTest {
     @Test
-    fun `empty custom block is optional`() {
-        assertNull(CustomBlockRules.validationError(emptySet()))
+    fun `empty custom block is rejected`() {
+        assertEquals(
+            "Select at least one cell for this block.",
+            CustomBlockRules.validationError(emptySet())
+        )
         assertEquals(null, CustomBlockRules.toPiece(emptySet()))
     }
 
@@ -26,14 +29,11 @@ class CustomBlockRulesTest {
     }
 
     @Test
-    fun `disconnected custom block is rejected`() {
+    fun `disconnected custom block is allowed`() {
         val cells = setOf(Cell(0, 0), Cell(3, 3))
 
-        assertEquals(
-            "Every custom-block cell must be connected.",
-            CustomBlockRules.validationError(cells)
-        )
-        assertEquals(null, CustomBlockRules.toPiece(cells))
+        assertNull(CustomBlockRules.validationError(cells))
+        assertEquals(cells, CustomBlockRules.toPiece(cells)?.cells?.toSet())
     }
 
     @Test

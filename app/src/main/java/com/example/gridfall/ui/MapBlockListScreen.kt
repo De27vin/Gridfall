@@ -43,6 +43,7 @@ import com.example.gridfall.game.CustomBlockRules
 import com.example.gridfall.game.MapBlockDefinition
 import com.example.gridfall.game.MapBlockPoolRules
 import com.example.gridfall.ui.theme.LocalGridfallColors
+import java.util.Locale
 import java.util.UUID
 import kotlin.math.roundToInt
 
@@ -104,7 +105,7 @@ fun MapBlockListScreen(
             )
 
             Text(
-                text = "${blocks.size} blocks · ${blocks.sumOf { it.spawnChancePercent }}% total",
+                text = "${blocks.size} blocks · ${formatTenthsPercent(blocks.sumOf { it.spawnChanceTenthsPercent })} total",
                 color = theme.accentStrong,
                 style = MaterialTheme.typography.labelLarge.retroText(theme)
             )
@@ -139,7 +140,7 @@ fun MapBlockListScreen(
                             id = "custom_${UUID.randomUUID()}",
                             name = name,
                             cells = cells,
-                            spawnChancePercent = probability,
+                            spawnChanceTenthsPercent = probability,
                             colorVariant = ((blocks.size % 4) + 1)
                         )
                     )
@@ -219,7 +220,7 @@ private fun MapBlockRow(
                 style = MaterialTheme.typography.bodyLarge.retroText(theme)
             )
             Text(
-                text = "${block.cells.size} cells · ${block.spawnChancePercent}% spawn",
+                text = "${block.cells.size} cells · ${formatTenthsPercent(block.spawnChanceTenthsPercent)} spawn",
                 color = theme.accentStrong,
                 style = MaterialTheme.typography.labelMedium.retroText(theme)
             )
@@ -248,7 +249,7 @@ private fun MapBlockEditorDialog(
         mutableStateOf(initialBlock?.cells ?: setOf(Cell(0, 0)))
     }
     var probability by remember(initialBlock) {
-        mutableStateOf(initialBlock?.spawnChancePercent ?: 10)
+        mutableStateOf(initialBlock?.spawnChanceTenthsPercent ?: 100)
     }
     val error = CustomBlockRules.validationError(cells, boardRows, boardColumns)
 
@@ -274,7 +275,7 @@ private fun MapBlockEditorDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
                 Text(
-                    "Tap connected cells to shape the block.",
+                    "Tap any cells to shape the block.",
                     color = theme.textSecondary,
                     style = MaterialTheme.typography.bodySmall.retroText(theme)
                 )
@@ -295,14 +296,14 @@ private fun MapBlockEditorDialog(
                     style = MaterialTheme.typography.bodySmall.retroText(theme)
                 )
                 Text(
-                    text = "Spawn probability: $probability%",
+                    text = "Spawn probability: ${formatTenthsPercent(probability)}",
                     color = theme.textPrimary,
                     style = MaterialTheme.typography.labelLarge.retroText(theme)
                 )
                 Slider(
                     value = probability.toFloat(),
                     onValueChange = { probability = it.roundToInt() },
-                    valueRange = 0f..100f
+                    valueRange = 0f..1_000f
                 )
                 Text(
                     "The other blocks will rebalance automatically.",
@@ -367,4 +368,8 @@ private fun MapBlockPreview(block: MapBlockDefinition, modifier: Modifier = Modi
             )
         }
     }
+}
+
+private fun formatTenthsPercent(value: Int): String {
+    return String.format(Locale.US, "%.1f%%", value / 10.0)
 }

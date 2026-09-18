@@ -112,7 +112,7 @@ class SavedCustomMapStore(private val context: Context) {
                     id = "migrated_custom",
                     name = "Custom Block",
                     cells = legacyCustomBlockCells,
-                    spawnChancePercent = 10,
+                    spawnChanceTenthsPercent = 100,
                     colorVariant = 2
                 )
             )
@@ -141,7 +141,7 @@ class SavedCustomMapStore(private val context: Context) {
                     array.put(JSONObject().put("row", cell.row).put("col", cell.col))
                 }
             })
-            .put("spawnChancePercent", spawnChancePercent)
+            .put("spawnChanceTenthsPercent", spawnChanceTenthsPercent)
             .put("colorVariant", colorVariant)
     }
 
@@ -159,7 +159,11 @@ class SavedCustomMapStore(private val context: Context) {
                 id = json.optString("id").takeIf { it.isNotBlank() } ?: return null,
                 name = json.optString("name").takeIf { it.isNotBlank() } ?: "Block ${index + 1}",
                 cells = cells,
-                spawnChancePercent = json.optInt("spawnChancePercent", 0),
+                spawnChanceTenthsPercent = if (json.has("spawnChanceTenthsPercent")) {
+                    json.optInt("spawnChanceTenthsPercent", 0)
+                } else {
+                    json.optInt("spawnChancePercent", 0) * 10
+                },
                 colorVariant = json.optInt("colorVariant", 1)
             )
         }

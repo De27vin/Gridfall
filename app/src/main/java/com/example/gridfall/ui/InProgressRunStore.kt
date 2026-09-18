@@ -162,7 +162,7 @@ object InProgressRunJson {
                     id = "migrated_custom",
                     name = "Custom Block",
                     cells = legacyCustomBlockCells,
-                    spawnChancePercent = 10,
+                    spawnChanceTenthsPercent = 100,
                     colorVariant = 2
                 )
             )
@@ -267,7 +267,7 @@ object InProgressRunJson {
             .put("id", id)
             .put("name", name)
             .put("cells", cells.toJson())
-            .put("spawnChancePercent", spawnChancePercent)
+            .put("spawnChanceTenthsPercent", spawnChanceTenthsPercent)
             .put("colorVariant", colorVariant)
     }
 
@@ -281,7 +281,11 @@ object InProgressRunJson {
                 id = json.optString("id").takeIf(String::isNotBlank) ?: return null,
                 name = json.optString("name").takeIf(String::isNotBlank) ?: "Block ${index + 1}",
                 cells = cells,
-                spawnChancePercent = json.optInt("spawnChancePercent", 0),
+                spawnChanceTenthsPercent = if (json.has("spawnChanceTenthsPercent")) {
+                    json.optInt("spawnChanceTenthsPercent", 0)
+                } else {
+                    json.optInt("spawnChancePercent", 0) * 10
+                },
                 colorVariant = json.optInt("colorVariant", 1)
             )
         }

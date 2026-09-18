@@ -42,7 +42,7 @@ class InProgressRunStoreTest {
                 id = "custom-test",
                 name = "Test Block",
                 cells = setOf(Cell(0, 0), Cell(0, 1), Cell(1, 0)),
-                spawnChancePercent = 100
+                spawnChanceTenthsPercent = 1_000
             )
         )
         val saved = SavedInProgressRun(
