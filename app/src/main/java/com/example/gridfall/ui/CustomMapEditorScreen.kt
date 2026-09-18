@@ -84,7 +84,21 @@ fun CustomMapEditorScreen(
             blocks = blockPool,
             boardRows = rows,
             boardColumns = columns,
-            onBlocksChanged = { blockPool = it },
+            onBlocksChanged = { updatedBlockPool ->
+                blockPool = updatedBlockPool
+                val savedName = mapName.trim().ifBlank { suggestedMapName }
+                mapName = savedName
+                onSaveMap(
+                    savedName,
+                    CustomMapDesign(
+                        rows = rows,
+                        columns = columns,
+                        blockedCells = blockedCells,
+                        blockPool = updatedBlockPool
+                    )
+                )
+                savedMessage = "Block list saved automatically"
+            },
             onBack = { showBlockList = false },
             modifier = modifier
         )
