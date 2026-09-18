@@ -14,6 +14,24 @@ class MapBlockPoolRulesTest {
     }
 
     @Test
+    fun `map fit is validated separately from block structure`() {
+        val pool = listOf(
+            MapBlockDefinition(
+                id = "four-tall",
+                name = "Four Tall",
+                cells = setOf(Cell(0, 0), Cell(1, 0), Cell(2, 0), Cell(3, 0)),
+                spawnChanceTenthsPercent = 1_000
+            )
+        )
+
+        assertNull(MapBlockPoolRules.validationError(pool))
+        assertEquals(
+            "Four Tall: The custom block must fit inside this map.",
+            MapBlockPoolRules.validationError(pool, boardRows = 3, boardColumns = 8)
+        )
+    }
+
+    @Test
     fun `setting one probability rebalances all other blocks`() {
         val pool = listOf(
             block("one", 400),

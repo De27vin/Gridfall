@@ -36,17 +36,34 @@ object MapBlockPoolRules {
         }
     }
 
+    fun validationError(blocks: List<MapBlockDefinition>): String? {
+        return validationErrorInternal(blocks, boardRows = null, boardColumns = null)
+    }
+
     fun validationError(
         blocks: List<MapBlockDefinition>,
         boardRows: Int,
         boardColumns: Int
+    ): String? {
+        return validationErrorInternal(blocks, boardRows, boardColumns)
+    }
+
+    private fun validationErrorInternal(
+        blocks: List<MapBlockDefinition>,
+        boardRows: Int?,
+        boardColumns: Int?
     ): String? {
         if (blocks.isEmpty()) return "Keep at least one block in the map's block list."
         if (blocks.map(MapBlockDefinition::id).toSet().size != blocks.size) {
             return "Every block needs a unique ID."
         }
         blocks.forEach { block ->
-            CustomBlockRules.validationError(block.cells, boardRows, boardColumns)?.let { error ->
+            val blockError = if (boardRows != null && boardColumns != null) {
+                CustomBlockRules.validationError(block.cells, boardRows, boardColumns)
+            } else {
+                CustomBlockRules.validationError(block.cells)
+            }
+            blockError?.let { error ->
                 return "${block.name}: $error"
             }
             if (block.spawnChanceTenthsPercent !in 0..TOTAL_TENTHS_PERCENT) {

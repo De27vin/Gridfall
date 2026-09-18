@@ -82,8 +82,6 @@ fun CustomMapEditorScreen(
     if (showBlockList) {
         MapBlockListScreen(
             blocks = blockPool,
-            boardRows = rows,
-            boardColumns = columns,
             onBlocksChanged = { updatedBlockPool ->
                 blockPool = updatedBlockPool
                 val savedName = mapName.trim().ifBlank { suggestedMapName }

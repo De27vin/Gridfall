@@ -3,15 +3,21 @@ package com.example.gridfall.game
 object CustomBlockRules {
     const val EDITOR_SIZE = 4
 
-    fun validationError(
-        cells: Set<Cell>,
-        boardRows: Int = EDITOR_SIZE,
-        boardColumns: Int = EDITOR_SIZE
-    ): String? {
+    fun validationError(cells: Set<Cell>): String? {
         if (cells.isEmpty()) return "Select at least one cell for this block."
         if (cells.any { it.row !in 0 until EDITOR_SIZE || it.col !in 0 until EDITOR_SIZE }) {
             return "The custom block must stay inside the 4×4 editor."
         }
+
+        return null
+    }
+
+    fun validationError(
+        cells: Set<Cell>,
+        boardRows: Int,
+        boardColumns: Int
+    ): String? {
+        validationError(cells)?.let { return it }
 
         val normalized = normalize(cells)
         val blockRows = normalized.maxOf(Cell::row) + 1

@@ -103,7 +103,7 @@ class SavedCustomMapStore(private val context: Context) {
         }.takeIf { CustomBlockRules.validationError(it, rows, columns) == null }
             ?.let(CustomBlockRules::normalize)
             ?: emptySet()
-        val savedBlockPool = optJSONArray("blockPool")?.toBlockPool(rows, columns)
+        val savedBlockPool = optJSONArray("blockPool")?.toBlockPool()
         val blockPool = when {
             savedBlockPool != null && savedBlockPool.isNotEmpty() -> savedBlockPool
             legacyCustomBlockCells.isNotEmpty() -> MapBlockPoolRules.add(
@@ -127,7 +127,7 @@ class SavedCustomMapStore(private val context: Context) {
 
     private fun normalizedDesign(design: CustomMapDesign): CustomMapDesign {
         val blockPool = MapBlockPoolRules.normalize(design.blockPool).takeIf {
-            MapBlockPoolRules.validationError(it, design.rows, design.columns) == null
+            MapBlockPoolRules.validationError(it) == null
         } ?: MapBlockPoolRules.defaultPool()
         return design.copy(blockPool = blockPool)
     }
@@ -145,7 +145,7 @@ class SavedCustomMapStore(private val context: Context) {
             .put("colorVariant", colorVariant)
     }
 
-    private fun JSONArray.toBlockPool(rows: Int, columns: Int): List<MapBlockDefinition>? {
+    private fun JSONArray.toBlockPool(): List<MapBlockDefinition>? {
         val blocks = (0 until length()).map { index ->
             val json = optJSONObject(index) ?: return null
             val cells = buildSet {
@@ -168,7 +168,7 @@ class SavedCustomMapStore(private val context: Context) {
             )
         }
         val normalized = MapBlockPoolRules.normalize(blocks)
-        return normalized.takeIf { MapBlockPoolRules.validationError(it, rows, columns) == null }
+        return normalized.takeIf { MapBlockPoolRules.validationError(it) == null }
     }
 
     private fun normalizedName(name: String): String = name.trim().take(MAX_NAME_LENGTH).ifBlank { "Custom Map" }

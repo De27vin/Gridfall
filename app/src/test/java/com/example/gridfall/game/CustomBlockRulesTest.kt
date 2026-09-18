@@ -40,6 +40,7 @@ class CustomBlockRulesTest {
     fun `custom block must fit the selected map`() {
         val fourTall = setOf(Cell(0, 0), Cell(1, 0), Cell(2, 0), Cell(3, 0))
 
+        assertNull(CustomBlockRules.validationError(fourTall))
         assertEquals(
             "The custom block must fit inside this map.",
             CustomBlockRules.validationError(fourTall, boardRows = 3, boardColumns = 8)

@@ -50,8 +50,6 @@ import kotlin.math.roundToInt
 @Composable
 fun MapBlockListScreen(
     blocks: List<MapBlockDefinition>,
-    boardRows: Int,
-    boardColumns: Int,
     onBlocksChanged: (List<MapBlockDefinition>) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier
@@ -125,8 +123,6 @@ fun MapBlockListScreen(
         MapBlockEditorDialog(
             initialBlock = editingBlock,
             suggestedName = "Custom ${blocks.count { it.id.startsWith("custom_") } + 1}",
-            boardRows = boardRows,
-            boardColumns = boardColumns,
             onDismiss = {
                 addingBlock = false
                 editingBlock = null
@@ -236,8 +232,6 @@ private fun MapBlockRow(
 private fun MapBlockEditorDialog(
     initialBlock: MapBlockDefinition?,
     suggestedName: String,
-    boardRows: Int,
-    boardColumns: Int,
     onDismiss: () -> Unit,
     onSave: (String, Set<Cell>, Int) -> Unit
 ) {
@@ -251,7 +245,7 @@ private fun MapBlockEditorDialog(
     var probability by remember(initialBlock) {
         mutableStateOf(initialBlock?.spawnChanceTenthsPercent ?: 100)
     }
-    val error = CustomBlockRules.validationError(cells, boardRows, boardColumns)
+    val error = CustomBlockRules.validationError(cells)
 
     AlertDialog(
         onDismissRequest = onDismiss,
