@@ -58,6 +58,7 @@ import com.example.gridfall.audio.GridfallSoundManager
 import com.example.gridfall.audio.SoundPreferenceStore
 import com.example.gridfall.game.ContractGenerator
 import com.example.gridfall.game.CustomMapDesign
+import com.example.gridfall.game.CustomMapRules
 import com.example.gridfall.audio.ThemeSoundEvent
 import com.example.gridfall.auth.AuthPromptStore
 import com.example.gridfall.auth.GridfallAuthManager
@@ -70,6 +71,7 @@ import com.example.gridfall.game.GameState
 import com.example.gridfall.game.GridLayoutPreset
 import com.example.gridfall.game.JokerType
 import com.example.gridfall.game.MapBlockDefinition
+import com.example.gridfall.game.MapBlockPoolRules
 import com.example.gridfall.game.LevelSystem
 import com.example.gridfall.game.Piece
 import com.example.gridfall.game.PieceEffect
@@ -1047,13 +1049,10 @@ fun GameScreen(modifier: Modifier = Modifier) {
         if (showCustomMapEditor) {
             val editorDesign = editingSavedMap?.design
             CustomMapEditorScreen(
-                initialRows = editorDesign?.rows
-                    ?: if (gameState.board.isCustom) gameState.board.rowCount else 8,
-                initialColumns = editorDesign?.columns
-                    ?: if (gameState.board.isCustom) gameState.board.columnCount else 8,
-                initialBlockedCells = editorDesign?.blockedCells ?: gameState.board.blockedCells,
-                initialBlockPool = editorDesign?.blockPool
-                    ?: if (gameState.board.isCustom) gameState.customBlockPool else com.example.gridfall.game.MapBlockPoolRules.defaultPool(),
+                initialRows = editorDesign?.rows ?: CustomMapRules.BOARD_SIZE,
+                initialColumns = editorDesign?.columns ?: CustomMapRules.BOARD_SIZE,
+                initialBlockedCells = editorDesign?.blockedCells ?: emptySet(),
+                initialBlockPool = editorDesign?.blockPool ?: MapBlockPoolRules.defaultPool(),
                 initialMapName = editingSavedMap?.name,
                 suggestedMapName = "Map ${savedCustomMaps.size + 1}",
                 onBack = {

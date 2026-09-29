@@ -183,7 +183,6 @@ fun SettingsScreen(
                         )
                     }
                     CustomMapOptionRow(
-                        active = activeIsCustomMap,
                         onClick = onCustomMapClick
                     )
                     Text(
@@ -287,7 +286,6 @@ fun SettingsScreen(
 
 @Composable
 private fun CustomMapOptionRow(
-    active: Boolean,
     onClick: () -> Unit
 ) {
     val theme = LocalGridfallColors.current
@@ -296,13 +294,13 @@ private fun CustomMapOptionRow(
         modifier = Modifier
             .fillMaxWidth()
             .clip(shape)
-            .background(if (active) theme.accent.copy(alpha = 0.14f) else theme.chipBackground.copy(alpha = 0.62f))
+            .background(theme.chipBackground.copy(alpha = 0.62f))
             .infernoPanelTexture(theme)
             .retroPanelTexture(theme)
             .border(
                 BorderStroke(
                     if (theme.isRetroTheme() || theme.isInfernoTheme()) 2.dp else 1.dp,
-                    if (active) theme.accentStrong else theme.panelBorder.copy(alpha = 0.34f)
+                    theme.panelBorder.copy(alpha = 0.34f)
                 ),
                 shape
             )
@@ -313,7 +311,7 @@ private fun CustomMapOptionRow(
     ) {
         GridLayoutPreview(
             boardSize = CustomMapRules.BOARD_SIZE,
-            selected = active,
+            selected = false,
             blockedCells = CustomMapRules.diamondBlockedCells(),
             modifier = Modifier.size(48.dp)
         )
@@ -324,18 +322,18 @@ private fun CustomMapOptionRow(
             ) {
                 Text(
                     text = if (theme.isRetroTheme()) "CUSTOM MAP" else "Custom Map",
-                    color = if (active) theme.textPrimary else theme.textSecondary,
+                    color = theme.textSecondary,
                     style = MaterialTheme.typography.bodyLarge.retroText(theme)
                 )
                 Text(
                     text = "EDITOR",
-                    color = if (active) theme.accentStrong else theme.textMuted,
+                    color = theme.textMuted,
                     style = MaterialTheme.typography.labelLarge.retroText(theme)
                 )
             }
             Text(
-                text = "Design an unranked 3×3–10×10 board${if (active) " · Current run" else ""}",
-                color = if (active) theme.success else theme.textMuted,
+                text = "Design an unranked 3×3–10×10 board",
+                color = theme.textMuted,
                 style = MaterialTheme.typography.labelSmall.retroText(theme)
             )
         }
