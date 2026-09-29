@@ -1,5 +1,6 @@
 package com.example.gridfall.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -25,6 +26,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -53,6 +55,7 @@ fun CustomMapEditorScreen(
     initialColumns: Int,
     initialBlockedCells: Set<Cell>,
     initialBlockPool: List<MapBlockDefinition> = MapBlockPoolRules.defaultPool(),
+    initialSavedDesign: CustomMapDesign? = null,
     initialMapName: String? = null,
     suggestedMapName: String = "Custom Map",
     onBack: () -> Unit,
@@ -76,10 +79,13 @@ fun CustomMapEditorScreen(
     var showBlockList by remember { mutableStateOf(false) }
     var showResetConfirmation by remember { mutableStateOf(false) }
     var showSaveDialog by remember { mutableStateOf(false) }
+    var showUnsavedExitConfirmation by remember { mutableStateOf(false) }
+    var exitAfterSave by remember { mutableStateOf(false) }
     var mapName by remember(initialMapName, suggestedMapName) {
         mutableStateOf(initialMapName ?: suggestedMapName)
     }
     var savedMessage by remember { mutableStateOf<String?>(null) }
+    var lastSavedDesign by remember(initialSavedDesign) { mutableStateOf(initialSavedDesign) }
     val currentDesign = editorHistory.current
     val rows = currentDesign.rows
     val columns = currentDesign.columns
@@ -90,6 +96,7 @@ fun CustomMapEditorScreen(
         val savedName = mapName.trim().ifBlank { suggestedMapName }
         mapName = savedName
         onSaveMap(savedName, design)
+        lastSavedDesign = design
     }
 
     fun applyHistory(nextHistory: CustomMapEditorHistory, message: String? = null) {
@@ -109,10 +116,26 @@ fun CustomMapEditorScreen(
         applyHistory(editorHistory.record(nextDesign))
     }
 
+    fun requestEditorExit() {
+        if (currentDesign == lastSavedDesign) {
+            onBack()
+        } else {
+            showUnsavedExitConfirmation = true
+        }
+    }
+
     val mapValidationError = CustomMapRules.validationError(blockedCells, rows, columns)
     val blockPoolValidationError = MapBlockPoolRules.validationError(blockPool, rows, columns)
     val validationError = mapValidationError ?: blockPoolValidationError
     val playableCount = rows * columns - blockedCells.size
+
+    BackHandler {
+        if (showBlockList) {
+            showBlockList = false
+        } else {
+            requestEditorExit()
+        }
+    }
 
     if (showBlockList) {
         MapBlockListScreen(
@@ -150,7 +173,7 @@ fun CustomMapEditorScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                OutlinedButton(onClick = onBack) { Text("Back") }
+                OutlinedButton(onClick = ::requestEditorExit) { Text("Back") }
                 Text(
                     text = "Map Editor",
                     color = theme.textPrimary,
@@ -307,7 +330,7 @@ fun CustomMapEditorScreen(
                     ),
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text("Start Map")
+                    Text("Test Map")
                 }
             }
         }
@@ -351,7 +374,10 @@ fun CustomMapEditorScreen(
 
     if (showSaveDialog) {
         AlertDialog(
-            onDismissRequest = { showSaveDialog = false },
+            onDismissRequest = {
+                showSaveDialog = false
+                exitAfterSave = false
+            },
             containerColor = theme.dialogBackground,
             title = {
                 Text(
@@ -368,7 +394,12 @@ fun CustomMapEditorScreen(
                 )
             },
             dismissButton = {
-                OutlinedButton(onClick = { showSaveDialog = false }) { Text("Cancel") }
+                OutlinedButton(
+                    onClick = {
+                        showSaveDialog = false
+                        exitAfterSave = false
+                    }
+                ) { Text("Cancel") }
             },
             confirmButton = {
                 Button(
@@ -384,14 +415,68 @@ fun CustomMapEditorScreen(
                                 blockPool
                             )
                         )
+                        lastSavedDesign = currentDesign
                         savedMessage = "Saved as $savedName"
                         showSaveDialog = false
+                        if (exitAfterSave) {
+                            exitAfterSave = false
+                            onBack()
+                        }
                     },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = theme.button,
                         contentColor = theme.textPrimary
                     )
                 ) { Text("Save") }
+            }
+        )
+    }
+
+    if (showUnsavedExitConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showUnsavedExitConfirmation = false },
+            containerColor = theme.dialogBackground,
+            title = { Text("Save changes?", color = theme.textPrimary) },
+            text = {
+                Text(
+                    "This map has unsaved changes. Save it before leaving the editor?",
+                    color = theme.textSecondary
+                )
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showUnsavedExitConfirmation = false }) {
+                    Text("Cancel")
+                }
+            },
+            confirmButton = {
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    TextButton(
+                        onClick = {
+                            showUnsavedExitConfirmation = false
+                            onBack()
+                        }
+                    ) { Text("Don't Save", color = theme.danger) }
+                    Button(
+                        onClick = {
+                            showUnsavedExitConfirmation = false
+                            if (lastSavedDesign == null) {
+                                exitAfterSave = true
+                                showSaveDialog = true
+                            } else {
+                                val savedName = mapName.trim().ifBlank { suggestedMapName }
+                                mapName = savedName
+                                onSaveMap(savedName, currentDesign)
+                                lastSavedDesign = currentDesign
+                                onBack()
+                            }
+                        },
+                        enabled = validationError == null,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = theme.button,
+                            contentColor = theme.textPrimary
+                        )
+                    ) { Text("Save") }
+                }
             }
         )
     }

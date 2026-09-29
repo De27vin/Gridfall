@@ -33,6 +33,7 @@ fun GameTopBar(
     nextLevelScore: Int?,
     combo: Int,
     onSettingsClick: () -> Unit,
+    actionLabel: String? = null,
     modifier: Modifier = Modifier
 ) {
     val theme = LocalGridfallColors.current
@@ -104,7 +105,7 @@ fun GameTopBar(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = if (theme.isRetroTheme()) "SETTINGS" else "Settings",
+                        text = actionLabel ?: if (theme.isRetroTheme()) "SETTINGS" else "Settings",
                         color = theme.textSecondary,
                         style = MaterialTheme.typography.labelMedium.retroText(theme)
                     )

@@ -104,6 +104,17 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
+private data class CustomMapTestSession(
+    val design: CustomMapDesign,
+    val previousGameState: GameState,
+    val previousHighScore: Int,
+    val previousIsNewBest: Boolean,
+    val previousRiskSpinMemorySession: RiskSpinMemorySession?,
+    val previousRiskSpinPaidCost: Int?,
+    val previousShowRiskSpinOverlay: Boolean,
+    val previousShowRiskSpinOptions: Boolean
+)
+
 @Composable
 fun GameScreen(modifier: Modifier = Modifier) {
     val context = LocalContext.current.applicationContext
@@ -122,6 +133,8 @@ fun GameScreen(modifier: Modifier = Modifier) {
             restoredInProgressRun?.gameState ?: GameEngine.createInitialState(selectedGridLayout)
         )
     }
+    var customMapEditorDraft by remember { mutableStateOf<CustomMapDesign?>(null) }
+    var customMapTestSession by remember { mutableStateOf<CustomMapTestSession?>(null) }
     var dragState by remember { mutableStateOf(DragState()) }
     var boardLayoutInfo by remember { mutableStateOf<BoardLayoutInfo?>(null) }
     var highScore by remember {
@@ -181,12 +194,10 @@ fun GameScreen(modifier: Modifier = Modifier) {
     var leaderboardLoadToken by remember { mutableStateOf(0) }
     var wasRiskSpinAvailable by remember { mutableStateOf(false) }
 
-    BackHandler(enabled = showCustomMapEditor || showSettingsScreen || showLeaderboardScreen) {
+    BackHandler(
+        enabled = !showCustomMapEditor && (showSettingsScreen || showLeaderboardScreen)
+    ) {
         when {
-            showCustomMapEditor -> {
-                editingSavedMap = null
-                showCustomMapEditor = false
-            }
             showSettingsScreen -> showSettingsScreen = false
             showLeaderboardScreen -> showLeaderboardScreen = false
         }
@@ -196,17 +207,19 @@ fun GameScreen(modifier: Modifier = Modifier) {
     val apiClient = remember { GridfallApiClient() }
     val pendingRunStore = remember { PendingRunSubmissionStore(context) }
     val persistInProgressRun by rememberUpdatedState(newValue = {
-        val memorySession = riskSpinMemorySession.takeIf { showRiskSpinOverlay }
-        if (!gameState.isGameOver && InProgressRunJson.hasProgress(gameState, memorySession)) {
-            inProgressRunStore.save(
-                SavedInProgressRun(
-                    gameState = gameState,
-                    riskSpinMemorySession = memorySession,
-                    riskSpinPaidCost = riskSpinPaidCost.takeIf { memorySession != null }
+        if (customMapTestSession == null) {
+            val memorySession = riskSpinMemorySession.takeIf { showRiskSpinOverlay }
+            if (!gameState.isGameOver && InProgressRunJson.hasProgress(gameState, memorySession)) {
+                inProgressRunStore.save(
+                    SavedInProgressRun(
+                        gameState = gameState,
+                        riskSpinMemorySession = memorySession,
+                        riskSpinPaidCost = riskSpinPaidCost.takeIf { memorySession != null }
+                    )
                 )
-            )
-        } else {
-            inProgressRunStore.clear()
+            } else {
+                inProgressRunStore.clear()
+            }
         }
     })
     var pendingRunCount by remember { mutableStateOf(pendingRunStore.pendingCount()) }
@@ -724,11 +737,13 @@ fun GameScreen(modifier: Modifier = Modifier) {
     }
 
     LaunchedEffect(gameState.isGameOver, gameState.runStats.runId) {
-        if (gameState.isGameOver) {
-            inProgressRunStore.clear()
-        }
-        if (RunSubmissionPolicy.shouldSubmitGameOverRun(gameState)) {
-            submitEndedRunOnce(gameState)
+        if (customMapTestSession == null) {
+            if (gameState.isGameOver) {
+                inProgressRunStore.clear()
+            }
+            if (RunSubmissionPolicy.shouldSubmitGameOverRun(gameState)) {
+                submitEndedRunOnce(gameState)
+            }
         }
     }
 
@@ -886,6 +901,63 @@ fun GameScreen(modifier: Modifier = Modifier) {
         isBlockBreakerTargeting = false
         scoreEventFeedbacks = emptyList()
         isNewBestThisGame = false
+    }
+
+    fun startCustomMapTest(design: CustomMapDesign) {
+        customMapTestSession = CustomMapTestSession(
+            design = design,
+            previousGameState = gameState,
+            previousHighScore = highScore,
+            previousIsNewBest = isNewBestThisGame,
+            previousRiskSpinMemorySession = riskSpinMemorySession,
+            previousRiskSpinPaidCost = riskSpinPaidCost,
+            previousShowRiskSpinOverlay = showRiskSpinOverlay,
+            previousShowRiskSpinOptions = showRiskSpinOptions
+        )
+        customMapEditorDraft = design
+        showCustomMapEditor = false
+        showSettingsScreen = false
+        showLeaderboardScreen = false
+        showRestartConfirmDialog = false
+        showRiskSpinOverlay = false
+        showRiskSpinOptions = false
+        riskSpinMemorySession = null
+        riskSpinPaidCost = null
+        gameState = GameEngine.createCustomState(design)
+        highScore = 0
+        dragState = DragState()
+        lineClearFeedback = null
+        bombPulseFeedback = null
+        blockBreakerFeedback = null
+        isBlockBreakerTargeting = false
+        scoreEventFeedbacks = emptyList()
+        isNewBestThisGame = false
+    }
+
+    fun returnToCustomMapEditor() {
+        val testSession = customMapTestSession ?: return
+        customMapTestSession = null
+        customMapEditorDraft = testSession.design
+        gameState = testSession.previousGameState
+        highScore = testSession.previousHighScore
+        isNewBestThisGame = testSession.previousIsNewBest
+        riskSpinMemorySession = testSession.previousRiskSpinMemorySession
+        riskSpinPaidCost = testSession.previousRiskSpinPaidCost
+        showRiskSpinOverlay = testSession.previousShowRiskSpinOverlay
+        showRiskSpinOptions = testSession.previousShowRiskSpinOptions
+        dragState = DragState()
+        lineClearFeedback = null
+        bombPulseFeedback = null
+        blockBreakerFeedback = null
+        isBlockBreakerTargeting = false
+        scoreEventFeedbacks = emptyList()
+        showSettingsScreen = true
+        showLeaderboardScreen = false
+        showCustomMapEditor = true
+    }
+
+    BackHandler(enabled = customMapTestSession != null) {
+        returnToCustomMapEditor()
     }
 
     fun requestCustomMapStart(design: CustomMapDesign) {
@@ -1047,19 +1119,21 @@ fun GameScreen(modifier: Modifier = Modifier) {
 
     CompositionLocalProvider(LocalGridfallColors provides activeThemeColors) {
         if (showCustomMapEditor) {
-            val editorDesign = editingSavedMap?.design
+            val editorDesign = customMapEditorDraft ?: editingSavedMap?.design
             CustomMapEditorScreen(
                 initialRows = editorDesign?.rows ?: CustomMapRules.BOARD_SIZE,
                 initialColumns = editorDesign?.columns ?: CustomMapRules.BOARD_SIZE,
                 initialBlockedCells = editorDesign?.blockedCells ?: emptySet(),
                 initialBlockPool = editorDesign?.blockPool ?: MapBlockPoolRules.defaultPool(),
+                initialSavedDesign = editingSavedMap?.design,
                 initialMapName = editingSavedMap?.name,
                 suggestedMapName = "Map ${savedCustomMaps.size + 1}",
                 onBack = {
                     editingSavedMap = null
+                    customMapEditorDraft = null
                     showCustomMapEditor = false
                 },
-                onStartMap = ::requestCustomMapStart,
+                onStartMap = ::startCustomMapTest,
                 onSaveMap = { name, design ->
                     val savedMap = editingSavedMap?.copy(name = name, design = design)
                         ?: savedCustomMapStore.create(name, design)
@@ -1115,11 +1189,13 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 },
                 onCustomMapClick = {
                     editingSavedMap = null
+                    customMapEditorDraft = null
                     showCustomMapEditor = true
                 },
                 onSavedMapPlay = { savedMap -> requestCustomMapStart(savedMap.design) },
                 onSavedMapEdit = { savedMap ->
                     editingSavedMap = savedMap
+                    customMapEditorDraft = null
                     showCustomMapEditor = true
                 },
                 onSavedMapDelete = { savedMap ->
@@ -1212,12 +1288,26 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 nextLevelScore = nextLevelScore,
                 combo = gameState.combo,
                 onSettingsClick = {
-                    showRestartConfirmDialog = false
-                    showLeaderboardScreen = false
-                    showSettingsScreen = true
+                    if (customMapTestSession != null) {
+                        returnToCustomMapEditor()
+                    } else {
+                        showRestartConfirmDialog = false
+                        showLeaderboardScreen = false
+                        showSettingsScreen = true
+                    }
                 },
+                actionLabel = if (customMapTestSession != null) "EDITOR" else null,
                 modifier = Modifier.fillMaxWidth()
             )
+
+            if (customMapTestSession != null) {
+                Text(
+                    text = "TEST MODE · Score and progress are temporary",
+                    color = activeThemeColors.warning,
+                    style = MaterialTheme.typography.labelMedium.retroText(activeThemeColors),
+                    modifier = Modifier.padding(top = 10.dp)
+                )
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -1578,7 +1668,12 @@ fun GameScreen(modifier: Modifier = Modifier) {
     }
     }
 
-        if (!showSettingsScreen && !showLeaderboardScreen && gameState.isGameOver) {
+        if (
+            !showSettingsScreen &&
+            !showLeaderboardScreen &&
+            gameState.isGameOver &&
+            customMapTestSession == null
+        ) {
             LaunchedEffect(gameState.isGameOver, savePromptDismissed, accountConnectionState.isAnonymous) {
                 offerSavePromptIfNeeded()
             }
