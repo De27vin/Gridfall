@@ -61,11 +61,17 @@ fun CustomMapEditorScreen(
     modifier: Modifier = Modifier
 ) {
     val theme = LocalGridfallColors.current
-    var rows by remember(initialRows) { mutableStateOf(initialRows) }
-    var columns by remember(initialColumns) { mutableStateOf(initialColumns) }
-    var blockedCells by remember(initialBlockedCells) { mutableStateOf(initialBlockedCells) }
-    var blockPool by remember(initialBlockPool) {
-        mutableStateOf(MapBlockPoolRules.normalize(initialBlockPool))
+    var editorHistory by remember {
+        mutableStateOf(
+            CustomMapEditorHistory(
+                CustomMapDesign(
+                    rows = initialRows,
+                    columns = initialColumns,
+                    blockedCells = initialBlockedCells,
+                    blockPool = MapBlockPoolRules.normalize(initialBlockPool)
+                )
+            )
+        )
     }
     var showBlockList by remember { mutableStateOf(false) }
     var showResetConfirmation by remember { mutableStateOf(false) }
@@ -74,6 +80,35 @@ fun CustomMapEditorScreen(
         mutableStateOf(initialMapName ?: suggestedMapName)
     }
     var savedMessage by remember { mutableStateOf<String?>(null) }
+    val currentDesign = editorHistory.current
+    val rows = currentDesign.rows
+    val columns = currentDesign.columns
+    val blockedCells = currentDesign.blockedCells
+    val blockPool = currentDesign.blockPool
+
+    fun persistBlockPoolChange(design: CustomMapDesign) {
+        val savedName = mapName.trim().ifBlank { suggestedMapName }
+        mapName = savedName
+        onSaveMap(savedName, design)
+    }
+
+    fun applyHistory(nextHistory: CustomMapEditorHistory, message: String? = null) {
+        if (nextHistory == editorHistory) return
+        val blockPoolChanged = nextHistory.current.blockPool != editorHistory.current.blockPool
+        editorHistory = nextHistory
+        if (blockPoolChanged) {
+            persistBlockPoolChange(nextHistory.current)
+            savedMessage = message?.let { "$it · Saved automatically" }
+                ?: "Block list saved automatically"
+        } else {
+            savedMessage = message
+        }
+    }
+
+    fun recordDesign(nextDesign: CustomMapDesign) {
+        applyHistory(editorHistory.record(nextDesign))
+    }
+
     val mapValidationError = CustomMapRules.validationError(blockedCells, rows, columns)
     val blockPoolValidationError = MapBlockPoolRules.validationError(blockPool, rows, columns)
     val validationError = mapValidationError ?: blockPoolValidationError
@@ -83,19 +118,9 @@ fun CustomMapEditorScreen(
         MapBlockListScreen(
             blocks = blockPool,
             onBlocksChanged = { updatedBlockPool ->
-                blockPool = updatedBlockPool
-                val savedName = mapName.trim().ifBlank { suggestedMapName }
-                mapName = savedName
-                onSaveMap(
-                    savedName,
-                    CustomMapDesign(
-                        rows = rows,
-                        columns = columns,
-                        blockedCells = blockedCells,
-                        blockPool = updatedBlockPool
-                    )
+                applyHistory(
+                    editorHistory.record(currentDesign.copy(blockPool = updatedBlockPool))
                 )
-                savedMessage = "Block list saved automatically"
             },
             onBack = { showBlockList = false },
             modifier = modifier
@@ -150,15 +175,36 @@ fun CustomMapEditorScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                OutlinedButton(
+                    onClick = { applyHistory(editorHistory.undo(), "Change undone") },
+                    enabled = editorHistory.canUndo,
+                    modifier = Modifier.weight(1f)
+                ) { Text("Undo") }
+                OutlinedButton(
+                    onClick = { applyHistory(editorHistory.redo(), "Change redone") },
+                    enabled = editorHistory.canRedo,
+                    modifier = Modifier.weight(1f)
+                ) { Text("Redo") }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 LaneControl(
                     label = "Horizontal",
                     canRemove = rows > CustomMapRules.MIN_BOARD_SIZE,
                     canAdd = rows < CustomMapRules.MAX_ROWS,
                     onRemove = {
-                        rows -= 1
-                        blockedCells = blockedCells.filter { it.row < rows }.toSet()
+                        val nextRows = rows - 1
+                        recordDesign(
+                            currentDesign.copy(
+                                rows = nextRows,
+                                blockedCells = blockedCells.filter { it.row < nextRows }.toSet()
+                            )
+                        )
                     },
-                    onAdd = { rows += 1 },
+                    onAdd = { recordDesign(currentDesign.copy(rows = rows + 1)) },
                     modifier = Modifier.weight(1f)
                 )
                 LaneControl(
@@ -166,10 +212,15 @@ fun CustomMapEditorScreen(
                     canRemove = columns > CustomMapRules.MIN_BOARD_SIZE,
                     canAdd = columns < CustomMapRules.MAX_COLUMNS,
                     onRemove = {
-                        columns -= 1
-                        blockedCells = blockedCells.filter { it.col < columns }.toSet()
+                        val nextColumns = columns - 1
+                        recordDesign(
+                            currentDesign.copy(
+                                columns = nextColumns,
+                                blockedCells = blockedCells.filter { it.col < nextColumns }.toSet()
+                            )
+                        )
                     },
-                    onAdd = { columns += 1 },
+                    onAdd = { recordDesign(currentDesign.copy(columns = columns + 1)) },
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -179,7 +230,12 @@ fun CustomMapEditorScreen(
                 columns = columns,
                 blockedCells = blockedCells,
                 onCellTapped = { cell ->
-                    blockedCells = if (cell in blockedCells) blockedCells - cell else blockedCells + cell
+                    val nextBlockedCells = if (cell in blockedCells) {
+                        blockedCells - cell
+                    } else {
+                        blockedCells + cell
+                    }
+                    recordDesign(currentDesign.copy(blockedCells = nextBlockedCells))
                 },
                 modifier = Modifier.fillMaxWidth()
             )
@@ -274,10 +330,14 @@ fun CustomMapEditorScreen(
             confirmButton = {
                 Button(
                     onClick = {
-                        blockedCells = emptySet()
-                        blockPool = MapBlockPoolRules.defaultPool()
-                        rows = CustomMapRules.BOARD_SIZE
-                        columns = CustomMapRules.BOARD_SIZE
+                        recordDesign(
+                            CustomMapDesign(
+                                rows = CustomMapRules.BOARD_SIZE,
+                                columns = CustomMapRules.BOARD_SIZE,
+                                blockedCells = emptySet(),
+                                blockPool = MapBlockPoolRules.defaultPool()
+                            )
+                        )
                         showResetConfirmation = false
                     },
                     colors = ButtonDefaults.buttonColors(
