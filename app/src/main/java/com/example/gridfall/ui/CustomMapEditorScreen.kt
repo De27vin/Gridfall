@@ -117,10 +117,10 @@ fun CustomMapEditorScreen(
     }
 
     fun requestEditorExit() {
-        if (currentDesign == lastSavedDesign) {
-            onBack()
-        } else {
+        if (CustomMapEditorExitPolicy.hasUnsavedChanges(currentDesign, lastSavedDesign)) {
             showUnsavedExitConfirmation = true
+        } else {
+            onBack()
         }
     }
 

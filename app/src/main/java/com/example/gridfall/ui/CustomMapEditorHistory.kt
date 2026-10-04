@@ -1,6 +1,23 @@
 package com.example.gridfall.ui
 
 import com.example.gridfall.game.CustomMapDesign
+import com.example.gridfall.game.CustomMapRules
+import com.example.gridfall.game.MapBlockPoolRules
+
+internal object CustomMapEditorExitPolicy {
+    fun hasUnsavedChanges(
+        currentDesign: CustomMapDesign,
+        lastSavedDesign: CustomMapDesign?
+    ): Boolean {
+        val cleanDesign = lastSavedDesign ?: CustomMapDesign(
+            rows = CustomMapRules.BOARD_SIZE,
+            columns = CustomMapRules.BOARD_SIZE,
+            blockedCells = emptySet(),
+            blockPool = MapBlockPoolRules.defaultPool()
+        )
+        return currentDesign != cleanDesign
+    }
+}
 
 internal data class CustomMapEditorHistory(
     val current: CustomMapDesign,
