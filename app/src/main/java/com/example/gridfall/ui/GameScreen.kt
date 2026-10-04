@@ -89,6 +89,7 @@ import com.example.gridfall.sync.RunSubmissionPolicy
 import com.example.gridfall.sync.RunSubmissionRegistry
 import com.example.gridfall.sync.RunFailureKind
 import com.example.gridfall.sync.RunRetryPolicy
+import com.example.gridfall.sync.RunSyncAutoRetryPolicy
 import com.example.gridfall.sync.RunSyncManager
 import com.example.gridfall.sync.RunSyncState
 import com.example.gridfall.sync.RunSyncStatus
@@ -726,6 +727,44 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 authError = "Auth unavailable"
             )
             Log.w(ACCOUNT_LOG_TAG, "Firebase anonymous auth unavailable: ${error.message}")
+        }
+    }
+
+    LaunchedEffect(pendingRunCount > 0, isAppInForeground) {
+        if (!isAppInForeground || pendingRunCount == 0) return@LaunchedEffect
+
+        while (isAppInForeground && pendingRunStore.pendingCount() > 0) {
+            delay(RunSyncAutoRetryPolicy.delayMillis(pendingRunStore.load()))
+            if (!isAppInForeground) break
+
+            try {
+                val token = authManager.getFreshIdToken()
+                val syncedCount = retryPendingRuns(token)
+                if (syncedCount > 0) {
+                    if (showLeaderboardDialog || showLeaderboardScreen) {
+                        loadLeaderboard()
+                    }
+                    coroutineScope.launch {
+                        runCatching { apiClient.getMe(token) }.getOrNull()?.let { backendUser ->
+                            accountConnectionState = accountConnectionState.copy(
+                                isLoading = false,
+                                firebaseUid = backendUser.firebaseUid,
+                                isAnonymous = backendUser.isAnonymous,
+                                backendUser = backendUser,
+                                backendError = null
+                            )
+                            syncHighScoreFromBackend(backendUser)
+                        }
+                    }
+                }
+            } catch (error: Exception) {
+                runSyncState = RunSyncState(
+                    status = RunSyncStatus.Failed,
+                    message = "Run saved locally, retrying automatically"
+                )
+                refreshPendingRunCount()
+                Log.w(ACCOUNT_LOG_TAG, "Automatic pending run retry unavailable: ${error.message}")
+            }
         }
     }
 
