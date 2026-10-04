@@ -1002,6 +1002,118 @@ class GameEngineTest {
     }
 
     @Test
+    fun avoidCornersFailsImmediatelyOnlyOnAnActualCorner() {
+        val piece = Piece("single", listOf(Cell(0, 0)))
+        val contract = testContract(ContractType.AvoidCorners, rewardPoints = 25)
+        val state = acceptedContractState(
+            contract = contract,
+            score = 80,
+            currentPieces = listOf(piece, piece, piece)
+        )
+
+        val afterEdge = GameEngine.placePiece(state, pieceIndex = 0, startRow = 0, startCol = 2)
+        val afterCorner = GameEngine.placePiece(afterEdge, pieceIndex = 1, startRow = 0, startCol = 0)
+
+        assertNotNull(afterEdge.contractState.activeContract)
+        assertTrue(afterCorner.contractState.isFailed)
+        assertEquals(contract, afterCorner.contractState.resolvedContract)
+    }
+
+    @Test
+    fun touchEdgeCompletesWhenAnyPieceUsesTheOuterLayer() {
+        val piece = Piece("single", listOf(Cell(0, 0)))
+        val contract = testContract(ContractType.TouchEdge, rewardPoints = 25)
+        val state = acceptedContractState(
+            contract = contract,
+            currentPieces = listOf(piece, piece, piece)
+        )
+
+        val afterFirst = GameEngine.placePiece(state, pieceIndex = 0, startRow = 0, startCol = 3)
+        val afterSecond = GameEngine.placePiece(afterFirst, pieceIndex = 1, startRow = 1, startCol = 1)
+        val afterThird = GameEngine.placePiece(afterSecond, pieceIndex = 2, startRow = 1, startCol = 2)
+
+        assertTrue(afterThird.contractState.isCompleted)
+    }
+
+    @Test
+    fun marathonFullRouteNeedsBothCenterAndEdgeAcrossFourPieces() {
+        val piece = Piece("single", listOf(Cell(0, 0)))
+        val contract = testContract(ContractType.TouchEdgeAndCenter, rewardPoints = 25)
+        val state = acceptedContractState(
+            contract = contract,
+            board = Board.empty(10),
+            currentPieces = listOf(piece, piece, piece, piece)
+        )
+
+        val afterFirst = GameEngine.placePiece(state, pieceIndex = 0, startRow = 0, startCol = 4)
+        val afterSecond = GameEngine.placePiece(afterFirst, pieceIndex = 1, startRow = 4, startCol = 4)
+        val afterThird = GameEngine.placePiece(afterSecond, pieceIndex = 2, startRow = 1, startCol = 1)
+        val afterFourth = GameEngine.placePiece(afterThird, pieceIndex = 3, startRow = 1, startCol = 2)
+
+        assertTrue(afterFourth.contractState.isCompleted)
+    }
+
+    @Test
+    fun clearNoLinesCompletesCleanBatchAndFailsAsSoonAsALineClears() {
+        val piece = Piece("single", listOf(Cell(0, 0)))
+        val contract = testContract(ContractType.ClearNoLines, rewardPoints = 25)
+        val cleanState = acceptedContractState(
+            contract = contract,
+            currentPieces = listOf(piece, piece, piece)
+        )
+
+        val cleanFirst = GameEngine.placePiece(cleanState, pieceIndex = 0, startRow = 1, startCol = 1)
+        val cleanSecond = GameEngine.placePiece(cleanFirst, pieceIndex = 1, startRow = 1, startCol = 2)
+        val cleanThird = GameEngine.placePiece(cleanSecond, pieceIndex = 2, startRow = 1, startCol = 3)
+
+        val rowReady = (0 until Board.SIZE - 1).fold(Board.empty()) { board, col ->
+            board.fill(0, col)
+        }
+        val clearingState = acceptedContractState(
+            contract = contract,
+            board = rowReady,
+            currentPieces = listOf(piece, piece, piece)
+        )
+        val afterClear = GameEngine.placePiece(
+            clearingState,
+            pieceIndex = 0,
+            startRow = 0,
+            startCol = Board.SIZE - 1
+        )
+
+        assertTrue(cleanThird.contractState.isCompleted)
+        assertTrue(afterClear.contractState.isFailed)
+    }
+
+    @Test
+    fun doubleStrikeRequiresTwoLinesFromTheSamePlacement() {
+        val piece = Piece("single", listOf(Cell(0, 0)))
+        val rowReady = (1 until Board.SIZE).fold(Board.empty()) { board, col ->
+            board.fill(0, col)
+        }
+        val crossReady = (1 until Board.SIZE).fold(rowReady) { board, row ->
+            board.fill(row, 0)
+        }
+        val contract = testContract(
+            ContractType.ClearTwoLinesInSinglePlacement,
+            rewardPoints = 25,
+            targetValue = 2
+        )
+        val state = acceptedContractState(
+            contract = contract,
+            board = crossReady,
+            currentPieces = listOf(piece, piece, piece)
+        )
+
+        val afterFirst = GameEngine.placePiece(state, pieceIndex = 0, startRow = 0, startCol = 0)
+        val afterSecond = GameEngine.placePiece(afterFirst, pieceIndex = 1, startRow = 1, startCol = 1)
+        val afterThird = GameEngine.placePiece(afterSecond, pieceIndex = 2, startRow = 1, startCol = 2)
+
+        assertEquals(2, afterFirst.contractState.maxLinesClearedInSinglePlacement)
+        assertTrue(afterThird.contractState.isCompleted)
+    }
+
+    @Test
     fun scoreAtLeastTwentyContractCompletesFromBatchScoreOnly() {
         val piece = Piece("single", listOf(Cell(0, 0)))
         val rowReady = (1 until Board.SIZE).fold(Board.empty()) { currentBoard, col ->
@@ -1509,7 +1621,8 @@ class GameEngineTest {
 
     private fun testContract(
         type: ContractType,
-        rewardPoints: Int = 25
+        rewardPoints: Int = 25,
+        targetValue: Int = 0
     ): Contract {
         return Contract(
             id = type.name,
@@ -1517,7 +1630,8 @@ class GameEngineTest {
             description = type.name,
             rewardPoints = rewardPoints,
             penaltyPoints = rewardPoints * 2,
-            type = type
+            type = type,
+            targetValue = targetValue
         )
     }
 

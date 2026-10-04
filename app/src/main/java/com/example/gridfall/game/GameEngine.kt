@@ -85,7 +85,11 @@ object GameEngine {
             ContractGenerator.shouldOfferBackToBack(random)
         return state.copy(
             contractState = state.contractState.copy(
-                offeredContract = if (offerFollowUp) ContractGenerator.generate(state.score, random) else null,
+                offeredContract = if (offerFollowUp) {
+                    ContractGenerator.generate(state.score, contractGridLayout(state), random)
+                } else {
+                    null
+                },
                 activeContract = null,
                 resolvedContract = null,
                 isAccepted = false,
@@ -373,7 +377,8 @@ object GameEngine {
             piece = piece,
             startRow = startRow,
             startCol = startCol,
-                boardSize = minOf(state.board.rowCount, state.board.columnCount),
+            boardRows = state.board.rowCount,
+            boardColumns = state.board.columnCount,
             clearedLineCount = placementResult.clearedLineCount,
             scoreGained = placementResult.scoreGained
         )
@@ -426,6 +431,7 @@ object GameEngine {
             finalContractState = advanceContractBatch(
                 contractState = evaluation.contractState,
                 score = finalScore,
+                gridLayout = gridLayout,
                 random = random
             )
             if (
@@ -531,7 +537,8 @@ object GameEngine {
             piece = piece,
             startRow = startRow,
             startCol = startCol,
-            boardSize = minOf(state.board.rowCount, state.board.columnCount),
+            boardRows = state.board.rowCount,
+            boardColumns = state.board.columnCount,
             clearedLineCount = placementResult.clearedLineCount,
             scoreGained = placementResult.scoreGained
         )
@@ -737,7 +744,8 @@ object GameEngine {
         piece: Piece,
         startRow: Int,
         startCol: Int,
-        boardSize: Int,
+        boardRows: Int,
+        boardColumns: Int,
         clearedLineCount: Int,
         scoreGained: Int
     ): ContractState {
@@ -753,20 +761,29 @@ object GameEngine {
 
         val placedCells = absoluteCells(piece, startRow, startCol)
 
-        val centerZone = Board.centerZone(boardSize)
+        val centerRows = Board.centerZone(boardRows)
+        val centerColumns = Board.centerZone(boardColumns)
         return contractState.copy(
             batchPlacedPieces = contractState.batchPlacedPieces + 1,
             batchClearedLines = contractState.batchClearedLines + clearedLineCount,
             batchScoreGained = contractState.batchScoreGained + scoreGained,
             usedEdge = contractState.usedEdge || placedCells.any { cell ->
                 cell.row == 0 ||
-                    cell.row == boardSize - 1 ||
+                    cell.row == boardRows - 1 ||
                     cell.col == 0 ||
-                    cell.col == boardSize - 1
+                    cell.col == boardColumns - 1
             },
             usedCenter = contractState.usedCenter || placedCells.any { cell ->
-                cell.row in centerZone && cell.col in centerZone
+                cell.row in centerRows && cell.col in centerColumns
             },
+            usedCorner = contractState.usedCorner || placedCells.any { cell ->
+                (cell.row == 0 || cell.row == boardRows - 1) &&
+                    (cell.col == 0 || cell.col == boardColumns - 1)
+            },
+            maxLinesClearedInSinglePlacement = maxOf(
+                contractState.maxLinesClearedInSinglePlacement,
+                clearedLineCount
+            ),
             resolvedContract = null,
             isCompleted = false,
             isFailed = false,
@@ -784,9 +801,16 @@ object GameEngine {
         val failed = when (activeContract.type) {
             ContractType.NoEdgePlacement -> contractState.usedEdge
             ContractType.AvoidCenterArea -> contractState.usedCenter
+            ContractType.AvoidCorners -> contractState.usedCorner
+            ContractType.ClearNoLines -> contractState.batchClearedLines > 0
             ContractType.ClearAtLeastOneLine,
+            ContractType.ClearExactlyOneLine,
             ContractType.ClearExactlyTwoLines,
-            ContractType.ScoreAtLeastTwenty -> false
+            ContractType.ScoreAtLeastTwenty,
+            ContractType.TouchEdge,
+            ContractType.TouchCenter,
+            ContractType.ClearTwoLinesInSinglePlacement,
+            ContractType.TouchEdgeAndCenter -> false
         }
 
         if (!failed) {
@@ -828,6 +852,8 @@ object GameEngine {
                     batchScoreGained = 0,
                     usedEdge = false,
                     usedCenter = false,
+                    usedCorner = false,
+                    maxLinesClearedInSinglePlacement = 0,
                     rewardClaimed = false,
                     penaltyApplied = false
                 ),
@@ -836,11 +862,22 @@ object GameEngine {
         }
 
         val completed = when (activeContract.type) {
-            ContractType.ClearAtLeastOneLine -> contractState.batchClearedLines >= 1
-            ContractType.ClearExactlyTwoLines -> contractState.batchClearedLines == 2
+            ContractType.ClearAtLeastOneLine ->
+                contractState.batchClearedLines >= activeContract.effectiveTargetValue()
+            ContractType.ClearExactlyOneLine,
+            ContractType.ClearExactlyTwoLines ->
+                contractState.batchClearedLines == activeContract.effectiveTargetValue()
             ContractType.NoEdgePlacement -> !contractState.usedEdge
             ContractType.AvoidCenterArea -> !contractState.usedCenter
-            ContractType.ScoreAtLeastTwenty -> contractState.batchScoreGained >= 20
+            ContractType.ScoreAtLeastTwenty ->
+                contractState.batchScoreGained >= activeContract.effectiveTargetValue()
+            ContractType.AvoidCorners -> !contractState.usedCorner
+            ContractType.TouchEdge -> contractState.usedEdge
+            ContractType.TouchCenter -> contractState.usedCenter
+            ContractType.ClearNoLines -> contractState.batchClearedLines == 0
+            ContractType.ClearTwoLinesInSinglePlacement ->
+                contractState.maxLinesClearedInSinglePlacement >= activeContract.effectiveTargetValue()
+            ContractType.TouchEdgeAndCenter -> contractState.usedEdge && contractState.usedCenter
         }
         val scoreDelta = if (completed) activeContract.rewardPoints else -activeContract.penaltyPoints
 
@@ -861,6 +898,7 @@ object GameEngine {
     private fun advanceContractBatch(
         contractState: ContractState,
         score: Int,
+        gridLayout: GridLayoutPreset,
         random: Random
     ): ContractState {
         val completedBatchCount = contractState.completedBatchCount + 1
@@ -881,10 +919,22 @@ object GameEngine {
         }
 
         return ContractState(
-            offeredContract = ContractGenerator.generate(score = score, random = random),
+            offeredContract = ContractGenerator.generate(
+                score = score,
+                gridLayout = gridLayout,
+                random = random
+            ),
             nextContractScoreThreshold = ContractGenerator.nextContractScoreThreshold(threshold, random),
             completedBatchCount = completedBatchCount
         )
+    }
+
+    private fun contractGridLayout(state: GameState): GridLayoutPreset {
+        return if (state.board.isCustom) {
+            GridLayoutPreset.Classic
+        } else {
+            GridLayoutPreset.fromBoardSize(state.board.rowCount)
+        }
     }
     private fun absoluteCells(
         piece: Piece,

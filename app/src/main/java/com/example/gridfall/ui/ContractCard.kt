@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import com.example.gridfall.game.Contract
 import com.example.gridfall.game.ContractState
 import com.example.gridfall.game.ContractType
+import com.example.gridfall.game.effectiveTargetValue
 import com.example.gridfall.ui.theme.ActionCyan
 import com.example.gridfall.ui.theme.BlueGray
 import com.example.gridfall.ui.theme.ContractChipNavy
@@ -246,10 +247,23 @@ private fun shortProgressText(contractState: ContractState, piecesPerBatch: Int)
     val contract = contractState.activeContract ?: return ""
 
     return when (contract.type) {
-        ContractType.ClearAtLeastOneLine -> "Lines ${contractState.batchClearedLines}/1"
-        ContractType.ClearExactlyTwoLines -> "Lines ${contractState.batchClearedLines}/2"
+        ContractType.ClearAtLeastOneLine,
+        ContractType.ClearExactlyOneLine,
+        ContractType.ClearExactlyTwoLines ->
+            "Lines ${contractState.batchClearedLines}/${contract.effectiveTargetValue()}"
         ContractType.NoEdgePlacement -> "${contractState.batchPlacedPieces}/$piecesPerBatch pieces"
         ContractType.AvoidCenterArea -> "${contractState.batchPlacedPieces}/$piecesPerBatch pieces"
-        ContractType.ScoreAtLeastTwenty -> "Score ${contractState.batchScoreGained}/20"
+        ContractType.ScoreAtLeastTwenty ->
+            "Score ${contractState.batchScoreGained}/${contract.effectiveTargetValue()}"
+        ContractType.AvoidCorners -> "${contractState.batchPlacedPieces}/$piecesPerBatch pieces"
+        ContractType.TouchEdge -> if (contractState.usedEdge) "Edge ✓" else "Edge —"
+        ContractType.TouchCenter -> if (contractState.usedCenter) "Center ✓" else "Center —"
+        ContractType.ClearNoLines -> "Lines ${contractState.batchClearedLines}/0"
+        ContractType.ClearTwoLinesInSinglePlacement ->
+            "Best ${contractState.maxLinesClearedInSinglePlacement}/${contract.effectiveTargetValue()}"
+        ContractType.TouchEdgeAndCenter ->
+            "Center ${checkMark(contractState.usedCenter)} · Edge ${checkMark(contractState.usedEdge)}"
     }
 }
+
+private fun checkMark(done: Boolean): String = if (done) "✓" else "—"

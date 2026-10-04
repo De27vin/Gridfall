@@ -351,6 +351,7 @@ object InProgressRunJson {
             .put("rewardPoints", rewardPoints)
             .put("penaltyPoints", penaltyPoints)
             .put("type", type.name)
+            .put("targetValue", targetValue)
     }
 
     private fun JSONObject.toContract(): Contract? {
@@ -362,7 +363,8 @@ object InProgressRunJson {
             description = optString("description"),
             rewardPoints = optInt("rewardPoints").coerceAtLeast(0),
             penaltyPoints = optInt("penaltyPoints").coerceAtLeast(0),
-            type = type
+            type = type,
+            targetValue = optInt("targetValue").coerceAtLeast(0)
         )
     }
 
@@ -379,6 +381,8 @@ object InProgressRunJson {
             .put("batchScoreGained", batchScoreGained)
             .put("usedEdge", usedEdge)
             .put("usedCenter", usedCenter)
+            .put("usedCorner", usedCorner)
+            .put("maxLinesClearedInSinglePlacement", maxLinesClearedInSinglePlacement)
             .put("rewardClaimed", rewardClaimed)
             .put("penaltyApplied", penaltyApplied)
             .put("nextContractScoreThreshold", nextContractScoreThreshold)
@@ -399,6 +403,8 @@ object InProgressRunJson {
             batchScoreGained = optInt("batchScoreGained").coerceAtLeast(0),
             usedEdge = optBoolean("usedEdge"),
             usedCenter = optBoolean("usedCenter"),
+            usedCorner = optBoolean("usedCorner"),
+            maxLinesClearedInSinglePlacement = optInt("maxLinesClearedInSinglePlacement").coerceAtLeast(0),
             rewardClaimed = optBoolean("rewardClaimed"),
             penaltyApplied = optBoolean("penaltyApplied"),
             nextContractScoreThreshold = optInt("nextContractScoreThreshold", ContractGenerator.CONTRACT_UNLOCK_SCORE).coerceAtLeast(ContractGenerator.CONTRACT_UNLOCK_SCORE),

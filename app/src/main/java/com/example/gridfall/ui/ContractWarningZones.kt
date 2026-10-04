@@ -5,37 +5,69 @@ import com.example.gridfall.game.Cell
 import com.example.gridfall.game.ContractState
 import com.example.gridfall.game.ContractType
 
-fun contractWarningCells(contractState: ContractState, boardSize: Int = Board.SIZE): Set<Cell> {
+fun contractWarningCells(
+    contractState: ContractState,
+    boardRows: Int = Board.SIZE,
+    boardColumns: Int = boardRows
+): Set<Cell> {
     val contract = contractState.activeContract ?: return emptySet()
     if (!contractState.isAccepted) return emptySet()
 
     return when (contract.type) {
-        ContractType.NoEdgePlacement -> edgeWarningCells(boardSize)
-        ContractType.AvoidCenterArea -> centerWarningCells(boardSize)
+        ContractType.NoEdgePlacement -> edgeWarningCells(boardRows, boardColumns)
+        ContractType.AvoidCenterArea -> centerWarningCells(boardRows, boardColumns)
+        ContractType.AvoidCorners -> cornerWarningCells(boardRows, boardColumns)
         ContractType.ClearAtLeastOneLine,
+        ContractType.ClearExactlyOneLine,
         ContractType.ClearExactlyTwoLines,
-        ContractType.ScoreAtLeastTwenty -> emptySet()
+        ContractType.ScoreAtLeastTwenty,
+        ContractType.TouchEdge,
+        ContractType.TouchCenter,
+        ContractType.ClearNoLines,
+        ContractType.ClearTwoLinesInSinglePlacement,
+        ContractType.TouchEdgeAndCenter -> emptySet()
     }
 }
 
-fun edgeWarningCells(boardSize: Int = Board.SIZE): Set<Cell> {
+fun edgeWarningCells(
+    boardRows: Int = Board.SIZE,
+    boardColumns: Int = boardRows
+): Set<Cell> {
     return buildSet {
-        for (index in 0 until boardSize) {
-            add(Cell(0, index))
-            add(Cell(boardSize - 1, index))
-            add(Cell(index, 0))
-            add(Cell(index, boardSize - 1))
+        for (column in 0 until boardColumns) {
+            add(Cell(0, column))
+            add(Cell(boardRows - 1, column))
+        }
+        for (row in 0 until boardRows) {
+            add(Cell(row, 0))
+            add(Cell(row, boardColumns - 1))
         }
     }
 }
 
-fun centerWarningCells(boardSize: Int = Board.SIZE): Set<Cell> {
-    val centerZone = Board.centerZone(boardSize)
+fun centerWarningCells(
+    boardRows: Int = Board.SIZE,
+    boardColumns: Int = boardRows
+): Set<Cell> {
+    val centerRows = Board.centerZone(boardRows)
+    val centerColumns = Board.centerZone(boardColumns)
     return buildSet {
-        for (row in centerZone) {
-            for (col in centerZone) {
+        for (row in centerRows) {
+            for (col in centerColumns) {
                 add(Cell(row, col))
             }
         }
     }
+}
+
+fun cornerWarningCells(
+    boardRows: Int = Board.SIZE,
+    boardColumns: Int = boardRows
+): Set<Cell> {
+    return setOf(
+        Cell(0, 0),
+        Cell(0, boardColumns - 1),
+        Cell(boardRows - 1, 0),
+        Cell(boardRows - 1, boardColumns - 1)
+    )
 }

@@ -154,7 +154,8 @@ class InProgressRunStoreTest {
             description = "Clear at least one line.",
             rewardPoints = 25,
             penaltyPoints = 5,
-            type = ContractType.ClearAtLeastOneLine
+            type = ContractType.ClearAtLeastOneLine,
+            targetValue = 1
         )
         return GameState(
             board = Board.empty().fill(2, 3, 4),
@@ -169,6 +170,7 @@ class InProgressRunStoreTest {
                 batchPlacedPieces = 1,
                 batchClearedLines = 1,
                 batchScoreGained = 10,
+                maxLinesClearedInSinglePlacement = 1,
                 completedBatchCount = 3
             ),
             riskSpinState = RiskSpinState(

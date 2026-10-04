@@ -1387,7 +1387,8 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 },
                 contractWarningCells = contractWarningCells(
                     gameState.contractState,
-                    minOf(gameState.board.rowCount, gameState.board.columnCount)
+                    gameState.board.rowCount,
+                    gameState.board.columnCount
                 ),
                 onBoardLayoutChanged = { layoutInfo ->
                     boardLayoutInfo = layoutInfo
@@ -1629,7 +1630,11 @@ fun GameScreen(modifier: Modifier = Modifier) {
         } else if (gameState.contractState.activeContract != null) {
             ContractActiveChip(
                 contractState = gameState.contractState,
-                piecesPerBatch = GridLayoutPreset.fromBoardSize(gameState.board.size).piecesPerBatch,
+                piecesPerBatch = if (gameState.board.isCustom) {
+                    GridLayoutPreset.Classic.piecesPerBatch
+                } else {
+                    GridLayoutPreset.fromBoardSize(gameState.board.size).piecesPerBatch
+                },
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .systemBarsPadding()
