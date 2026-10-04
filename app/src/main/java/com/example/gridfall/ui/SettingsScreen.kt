@@ -294,13 +294,13 @@ private fun CustomMapOptionRow(
         modifier = Modifier
             .fillMaxWidth()
             .clip(shape)
-            .background(theme.chipBackground.copy(alpha = 0.62f))
+            .background(theme.panelBackground.copy(alpha = 0.46f))
             .infernoPanelTexture(theme)
             .retroPanelTexture(theme)
             .border(
                 BorderStroke(
-                    if (theme.isRetroTheme() || theme.isInfernoTheme()) 2.dp else 1.dp,
-                    theme.panelBorder.copy(alpha = 0.34f)
+                    1.dp,
+                    theme.emptyCellBorder.copy(alpha = 0.72f)
                 ),
                 shape
             )
