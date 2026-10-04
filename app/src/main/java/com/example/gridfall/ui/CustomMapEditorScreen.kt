@@ -287,11 +287,13 @@ fun CustomMapEditorScreen(
                 }
             }
 
-            Text(
-                text = validationError ?: "Custom maps are unranked in this prototype.",
-                color = if (validationError == null) theme.success else theme.warning,
-                style = MaterialTheme.typography.bodySmall.retroText(theme)
-            )
+            if (mapValidationError != null || blockPoolValidationError == null) {
+                Text(
+                    text = mapValidationError ?: "Custom maps are unranked in this prototype.",
+                    color = if (mapValidationError == null) theme.success else theme.warning,
+                    style = MaterialTheme.typography.bodySmall.retroText(theme)
+                )
+            }
 
             savedMessage?.let { message ->
                 Text(
