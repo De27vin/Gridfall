@@ -76,6 +76,7 @@ fun BoardCanvas(
     bombPulseFeedback: BombPulseFeedback? = null,
     blockBreakerFeedback: BlockBreakerFeedback? = null,
     contractWarningCells: Set<Cell> = emptySet(),
+    contractTargetCells: Set<Cell> = emptySet(),
     blockBreakerTargetCells: Set<Cell> = emptySet(),
     onBlockBreakerCellTapped: (Cell) -> Unit = {},
     onBoardLayoutChanged: (BoardLayoutInfo) -> Unit = {}
@@ -234,6 +235,17 @@ fun BoardCanvas(
                         y = geometry.cellStartY + cell.row * geometry.stride
                     )
                     drawContractWarningCell(topLeft, cellSize, theme)
+                }
+            }
+
+            // Positive contract targets use a success color, distinct from forbidden zones.
+            contractTargetCells.forEach { cell ->
+                if (board.isPlayable(cell.row, cell.col)) {
+                    val topLeft = Offset(
+                        x = geometry.cellStartX + cell.col * geometry.stride,
+                        y = geometry.cellStartY + cell.row * geometry.stride
+                    )
+                    drawContractTargetCell(topLeft, cellSize, theme)
                 }
             }
 
@@ -669,5 +681,38 @@ private fun DrawScope.drawContractWarningCell(
         color = colors.contractWarningBorder.copy(alpha = 0.44f),
         topLeft = topLeft + Offset(0f, cellSize * 0.78f),
         size = Size(cellSize, 1.5.dp.toPx())
+    )
+}
+
+private fun DrawScope.drawContractTargetCell(
+    topLeft: Offset,
+    cellSize: Float,
+    colors: GridfallColors
+) {
+    val cornerRadius = when {
+        colors.isBlockworldTheme() -> CornerRadius.Zero
+        colors.isInfernoTheme() -> CornerRadius(cellSize * 0.060f, cellSize * 0.060f)
+        else -> CornerRadius(8.dp.toPx(), 8.dp.toPx())
+    }
+    val inset = 1.dp.toPx()
+    val targetColor = colors.success
+
+    drawRoundRect(
+        color = targetColor.copy(alpha = 0.13f),
+        topLeft = topLeft,
+        size = Size(cellSize, cellSize),
+        cornerRadius = cornerRadius
+    )
+    drawRoundRect(
+        color = targetColor.copy(alpha = 0.78f),
+        topLeft = topLeft + Offset(inset, inset),
+        size = Size(cellSize - inset * 2f, cellSize - inset * 2f),
+        cornerRadius = cornerRadius,
+        style = Stroke(width = 1.5.dp.toPx())
+    )
+    drawCircle(
+        color = targetColor.copy(alpha = 0.82f),
+        radius = (cellSize * 0.065f).coerceAtLeast(1.5.dp.toPx()),
+        center = topLeft + Offset(cellSize / 2f, cellSize / 2f)
     )
 }

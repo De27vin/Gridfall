@@ -29,6 +29,45 @@ fun contractWarningCells(
     }
 }
 
+fun contractTargetCells(
+    contractState: ContractState,
+    boardRows: Int = Board.SIZE,
+    boardColumns: Int = boardRows
+): Set<Cell> {
+    val contract = contractState.activeContract ?: return emptySet()
+    if (!contractState.isAccepted) return emptySet()
+
+    return when (contract.type) {
+        ContractType.TouchEdge -> if (contractState.usedEdge) {
+            emptySet()
+        } else {
+            edgeWarningCells(boardRows, boardColumns)
+        }
+        ContractType.TouchCenter -> if (contractState.usedCenter) {
+            emptySet()
+        } else {
+            centerWarningCells(boardRows, boardColumns)
+        }
+        ContractType.TouchEdgeAndCenter -> buildSet {
+            if (!contractState.usedEdge) {
+                addAll(edgeWarningCells(boardRows, boardColumns))
+            }
+            if (!contractState.usedCenter) {
+                addAll(centerWarningCells(boardRows, boardColumns))
+            }
+        }
+        ContractType.ClearAtLeastOneLine,
+        ContractType.ClearExactlyOneLine,
+        ContractType.ClearExactlyTwoLines,
+        ContractType.NoEdgePlacement,
+        ContractType.AvoidCenterArea,
+        ContractType.ScoreAtLeastTwenty,
+        ContractType.AvoidCorners,
+        ContractType.ClearNoLines,
+        ContractType.ClearTwoLinesInSinglePlacement -> emptySet()
+    }
+}
+
 fun edgeWarningCells(
     boardRows: Int = Board.SIZE,
     boardColumns: Int = boardRows

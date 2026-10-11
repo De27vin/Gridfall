@@ -1390,6 +1390,11 @@ fun GameScreen(modifier: Modifier = Modifier) {
                     gameState.board.rowCount,
                     gameState.board.columnCount
                 ),
+                contractTargetCells = contractTargetCells(
+                    gameState.contractState,
+                    gameState.board.rowCount,
+                    gameState.board.columnCount
+                ),
                 onBoardLayoutChanged = { layoutInfo ->
                     boardLayoutInfo = layoutInfo
                 },
