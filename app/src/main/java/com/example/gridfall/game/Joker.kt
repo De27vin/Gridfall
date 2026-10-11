@@ -7,7 +7,8 @@ enum class JokerType(val title: String) {
     Bomb("Bomb Joker"),
     MegaBomb("Mega Bomb Joker"),
     Revert("Revert Joker"),
-    BlockBreaker("Block Breaker");
+    BlockBreaker("Block Breaker"),
+    ClearBoard("Clean Slate Joker");
 
     fun toPiece(): Piece? {
         return when (this) {
@@ -40,6 +41,7 @@ enum class JokerType(val title: String) {
                 cells = listOf(Cell(0, 0)),
                 colorVariant = 1
             )
+            ClearBoard -> null
         }
     }
 }

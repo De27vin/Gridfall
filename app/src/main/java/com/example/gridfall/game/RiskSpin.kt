@@ -26,7 +26,8 @@ enum class RiskSpinOutcome(val title: String) {
     Bomb("Bomb Joker"),
     MegaBomb("Mega Bomb Joker"),
     Revert("Revert Joker"),
-    BlockBreaker("Block Breaker");
+    BlockBreaker("Block Breaker"),
+    ClearBoard("Clean Slate Joker");
 
     fun toJokerType(): JokerType? {
         return when (this) {
@@ -38,6 +39,7 @@ enum class RiskSpinOutcome(val title: String) {
             MegaBomb -> JokerType.MegaBomb
             Revert -> JokerType.Revert
             BlockBreaker -> JokerType.BlockBreaker
+            ClearBoard -> JokerType.ClearBoard
         }
     }
 }
@@ -67,19 +69,19 @@ object RiskSpin {
     const val MEMORY_FIELD_COUNT = MEMORY_GRID_SIZE * MEMORY_GRID_SIZE
 
     fun rewardPool(): List<RiskSpinOutcome> {
-        return listOf(
-            RiskSpinOutcome.Miss,
-            RiskSpinOutcome.Miss,
-            RiskSpinOutcome.Miss,
-            RiskSpinOutcome.Single,
-            RiskSpinOutcome.HorizontalTwo,
-            RiskSpinOutcome.VerticalTwo,
-            RiskSpinOutcome.Bomb,
-            RiskSpinOutcome.BlockBreaker,
-            RiskSpinOutcome.Revert,
-            RiskSpinOutcome.Revert,
-            RiskSpinOutcome.MegaBomb
-        )
+        return buildList {
+            // Preserve the original relative weighting across 99 slots, then
+            // reserve the final 1% for the exceptionally strong Clean Slate.
+            repeat(27) { add(RiskSpinOutcome.Miss) }
+            repeat(9) { add(RiskSpinOutcome.Single) }
+            repeat(9) { add(RiskSpinOutcome.HorizontalTwo) }
+            repeat(9) { add(RiskSpinOutcome.VerticalTwo) }
+            repeat(9) { add(RiskSpinOutcome.Bomb) }
+            repeat(9) { add(RiskSpinOutcome.BlockBreaker) }
+            repeat(18) { add(RiskSpinOutcome.Revert) }
+            repeat(9) { add(RiskSpinOutcome.MegaBomb) }
+            add(RiskSpinOutcome.ClearBoard)
+        }
     }
 
     fun randomCooldown(random: Random = Random.Default): Int {

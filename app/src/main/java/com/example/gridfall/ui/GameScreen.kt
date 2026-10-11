@@ -1543,6 +1543,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 draggingJokerInventoryIndex = dragState.jokerInventoryIndex,
                 canUseRevert = gameState.riskSpinState.previousMoveSnapshot != null &&
                     JokerType.Revert in gameState.riskSpinState.inventory,
+                canUseClearBoard = !gameState.board.isEmpty() && !gameState.isGameOver,
                 onJokerDragStarted = { inventoryIndex, selectedJokerType, jokerPiece, position, startOffset ->
                     val resolution = calculateCurrentDragPlacementResolution(
                         piece = jokerPiece,
@@ -1590,6 +1591,41 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 onBlockBreakerClicked = {
                     if (!dragState.isDragging && !gameState.isGameOver) {
                         isBlockBreakerTargeting = !isBlockBreakerTargeting
+                    }
+                },
+                onClearBoardClicked = {
+                    val previousState = gameState
+                    val nextState = GameEngine.useClearBoardJoker(previousState)
+                    if (nextState != previousState) {
+                        gameState = nextState
+                        isBlockBreakerTargeting = false
+                        dragState = DragState()
+                        showScoreEventFeedbacks(
+                            listOf(
+                                ScoreEventFeedback(
+                                    text = "Perfect Clear +${nextState.score - previousState.score}",
+                                    tone = FeedbackTone.Success,
+                                    token = 0
+                                )
+                            )
+                        )
+                        soundManager.playThemeEvent(
+                            themeMode = selectedThemeMode,
+                            event = ThemeSoundEvent.Bomb,
+                            effectsVolume = soundEffectsVolume
+                        )
+                        if (!nextState.board.isCustom && nextState.score > highScore) {
+                            highScore = nextState.score
+                            HighScoreStore.save(
+                                context,
+                                GridLayoutPreset.fromBoardSize(nextState.board.size),
+                                nextState.score
+                            )
+                            isNewBestThisGame = true
+                        }
+                        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                    } else {
+                        view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                     }
                 },
                 onRevertClicked = {

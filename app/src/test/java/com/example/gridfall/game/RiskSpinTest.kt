@@ -47,12 +47,15 @@ class RiskSpinTest {
     }
 
     @Test
-    fun riskSpinRewardPoolContainsMegaBombAsRareReward() {
+    fun riskSpinRewardPoolContainsOnePercentCleanSlateReward() {
         val pool = RiskSpin.rewardPool()
 
-        assertEquals(3, pool.count { it == RiskSpinOutcome.Miss })
-        assertEquals(2, pool.count { it == RiskSpinOutcome.Revert })
-        assertEquals(1, pool.count { it == RiskSpinOutcome.MegaBomb })
+        assertEquals(100, pool.size)
+        assertEquals(27, pool.count { it == RiskSpinOutcome.Miss })
+        assertEquals(18, pool.count { it == RiskSpinOutcome.Revert })
+        assertEquals(9, pool.count { it == RiskSpinOutcome.MegaBomb })
+        assertEquals(1, pool.count { it == RiskSpinOutcome.ClearBoard })
+        assertEquals(JokerType.ClearBoard, RiskSpinOutcome.ClearBoard.toJokerType())
         assertTrue(RiskSpinOutcome.Single in pool)
         assertTrue(RiskSpinOutcome.HorizontalTwo in pool)
         assertTrue(RiskSpinOutcome.VerticalTwo in pool)

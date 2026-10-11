@@ -266,6 +266,7 @@ private fun rewardLabel(
         RiskSpinOutcome.MegaBomb -> "MEGA"
         RiskSpinOutcome.Revert -> "UNDO"
         RiskSpinOutcome.BlockBreaker -> "BREAK"
+        RiskSpinOutcome.ClearBoard -> "CLEAR"
     }
 }
 

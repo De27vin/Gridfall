@@ -30,6 +30,7 @@ internal fun JokerIcon(
             JokerType.HorizontalTwo -> colors.block3Mid
             JokerType.VerticalTwo -> colors.block2Mid
             JokerType.Bomb, JokerType.MegaBomb, JokerType.Revert, JokerType.BlockBreaker -> colors.block1Mid
+            JokerType.ClearBoard -> colors.success
         }
         val dark = Color.Black.copy(alpha = 0.30f)
         val gap = size.minDimension * 0.08f
@@ -103,6 +104,33 @@ internal fun JokerIcon(
                         style = Stroke(width = (radius * 0.12f).coerceAtLeast(1f))
                     )
                 }
+            }
+            JokerType.ClearBoard -> {
+                val cell = size.minDimension * 0.18f
+                val spacing = cell * 0.28f
+                val gridSize = cell * 3f + spacing * 2f
+                val left = (size.width - gridSize) / 2f
+                val top = (size.height - gridSize) / 2f
+                repeat(3) { row ->
+                    repeat(3) { col ->
+                        drawRoundRect(
+                            color = blockColor.copy(alpha = 0.40f),
+                            topLeft = Offset(
+                                left + col * (cell + spacing),
+                                top + row * (cell + spacing)
+                            ),
+                            size = Size(cell, cell),
+                            cornerRadius = CornerRadius(cell * 0.18f)
+                        )
+                    }
+                }
+                val stroke = (size.minDimension * 0.09f).coerceAtLeast(1f)
+                drawLine(
+                    color = colors.textPrimary,
+                    start = Offset(size.width * 0.22f, size.height * 0.78f),
+                    end = Offset(size.width * 0.78f, size.height * 0.22f),
+                    strokeWidth = stroke
+                )
             }
             JokerType.Revert -> Unit
         }

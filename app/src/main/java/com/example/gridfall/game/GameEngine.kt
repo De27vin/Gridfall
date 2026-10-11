@@ -602,6 +602,36 @@ object GameEngine {
         )
     }
 
+    fun useClearBoardJoker(state: GameState): GameState {
+        if (state.isGameOver || JokerType.ClearBoard !in state.riskSpinState.inventory) return state
+        if (state.board.isEmpty()) return state
+
+        val previousSnapshot = snapshotBeforeMove(state)
+        val nextBoard = Board.empty(
+            rows = state.board.rowCount,
+            columns = state.board.columnCount,
+            blockedCells = state.board.blockedCells,
+            isCustom = state.board.isCustom
+        )
+        val perfectClearBonus = ScoreSystem.perfectClearBonusForLevel(
+            LevelSystem.levelForScore(state.score)
+        )
+        val nextScore = state.score + perfectClearBonus
+
+        return state.copy(
+            board = nextBoard,
+            score = nextScore,
+            maxScoreReached = maxOf(state.maxScoreReached, nextScore),
+            combo = 0,
+            isGameOver = false,
+            riskSpinState = state.riskSpinState.copy(
+                inventory = removeOneJoker(state.riskSpinState.inventory, JokerType.ClearBoard),
+                previousMoveSnapshot = previousSnapshot,
+                hasUsedRevertSinceLastMove = false
+            )
+        )
+    }
+
     fun useRevertJoker(state: GameState): GameState {
         if (JokerType.Revert !in state.riskSpinState.inventory) return state
         if (state.riskSpinState.hasUsedRevertSinceLastMove) return state

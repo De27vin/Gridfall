@@ -44,12 +44,14 @@ fun JokerInventoryCarousel(
     inventory: List<JokerType>,
     draggingJokerInventoryIndex: Int?,
     canUseRevert: Boolean,
+    canUseClearBoard: Boolean,
     onJokerDragStarted: (inventoryIndex: Int, jokerType: JokerType, piece: Piece, position: Offset, startOffset: Offset) -> Unit,
     onJokerDragged: (Offset) -> Unit,
     onJokerDragEnded: () -> Unit,
     onJokerDragCancelled: () -> Unit,
     onRevertClicked: () -> Unit,
     onBlockBreakerClicked: () -> Unit,
+    onClearBoardClicked: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val colors = LocalGridfallColors.current
@@ -101,12 +103,14 @@ fun JokerInventoryCarousel(
                         inventoryIndex = index,
                         isDragging = draggingJokerInventoryIndex == index,
                         canUseRevert = canUseRevert,
+                        canUseClearBoard = canUseClearBoard,
                         onJokerDragStarted = onJokerDragStarted,
                         onJokerDragged = onJokerDragged,
                         onJokerDragEnded = onJokerDragEnded,
                         onJokerDragCancelled = onJokerDragCancelled,
                         onRevertClicked = onRevertClicked,
-                        onBlockBreakerClicked = onBlockBreakerClicked
+                        onBlockBreakerClicked = onBlockBreakerClicked,
+                        onClearBoardClicked = onClearBoardClicked
                     )
                 }
             }
@@ -120,18 +124,24 @@ private fun JokerChip(
     inventoryIndex: Int,
     isDragging: Boolean,
     canUseRevert: Boolean,
+    canUseClearBoard: Boolean,
     onJokerDragStarted: (inventoryIndex: Int, jokerType: JokerType, piece: Piece, position: Offset, startOffset: Offset) -> Unit,
     onJokerDragged: (Offset) -> Unit,
     onJokerDragEnded: () -> Unit,
     onJokerDragCancelled: () -> Unit,
     onRevertClicked: () -> Unit,
-    onBlockBreakerClicked: () -> Unit
+    onBlockBreakerClicked: () -> Unit,
+    onClearBoardClicked: () -> Unit
 ) {
     val colors = LocalGridfallColors.current
     val piece = jokerType.toPiece()
     val shape = RoundedCornerShape(retroCorner(colors, infernoCorner(colors, 12.dp)))
     var chipTopLeft by remember { mutableStateOf(Offset.Zero) }
-    val enabled = piece != null || jokerType == JokerType.BlockBreaker || canUseRevert
+    val enabled = when (jokerType) {
+        JokerType.Revert -> canUseRevert
+        JokerType.ClearBoard -> canUseClearBoard
+        else -> true
+    }
 
     Box(
         modifier = Modifier
@@ -174,12 +184,13 @@ private fun JokerChip(
                         )
                     }
                 } else {
-                    Modifier.pointerInput(canUseRevert) {
+                    Modifier.pointerInput(canUseRevert, canUseClearBoard) {
                         detectTapGestures(
                             onTap = {
                                 when (jokerType) {
                                     JokerType.Revert -> if (canUseRevert) onRevertClicked()
                                     JokerType.BlockBreaker -> onBlockBreakerClicked()
+                                    JokerType.ClearBoard -> if (canUseClearBoard) onClearBoardClicked()
                                     else -> Unit
                                 }
                             }
@@ -299,5 +310,6 @@ private fun shortJokerLabel(jokerType: JokerType): String {
         JokerType.MegaBomb -> "MEGA"
         JokerType.Revert -> "UNDO"
         JokerType.BlockBreaker -> "BREAK"
+        JokerType.ClearBoard -> "CLEAR"
     }
 }
