@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -139,6 +140,7 @@ fun ContractActiveChip(
 ) {
     val contract = contractState.activeContract ?: return
     val theme = LocalGridfallColors.current
+    val goalReached = activeContractGoalReached(contractState)
     val chipShape = RoundedCornerShape(
         when {
             theme.isRetroTheme() -> 6.dp
@@ -149,6 +151,7 @@ fun ContractActiveChip(
 
     Row(
         modifier = modifier
+            .fillMaxWidth()
             .background(theme.chipBackground.copy(alpha = 0.94f), chipShape)
             .infernoPanelTexture(theme)
             .retroPanelTexture(theme)
@@ -161,21 +164,37 @@ fun ContractActiveChip(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            text = contract.title,
-            color = theme.textPrimary,
-            style = MaterialTheme.typography.labelLarge.retroText(theme)
-        )
-        Text(
-            text = shortProgressText(contractState, piecesPerBatch),
-            color = theme.textMuted,
-            style = MaterialTheme.typography.labelMedium.retroText(theme)
-        )
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            Text(
+                text = contract.title,
+                color = theme.textPrimary,
+                style = MaterialTheme.typography.labelLarge.retroText(theme)
+            )
+            Text(
+                text = if (goalReached) {
+                    "Goal reached"
+                } else {
+                    shortProgressText(contractState, piecesPerBatch)
+                },
+                color = if (goalReached) theme.success else theme.textMuted,
+                style = MaterialTheme.typography.labelMedium.retroText(theme)
+            )
+        }
         Text(
             text = "+${contract.rewardPoints}/-${contract.penaltyPoints}",
             color = theme.success,
             style = MaterialTheme.typography.labelMedium.retroText(theme)
         )
+        if (goalReached) {
+            ContractStatusBadge(
+                symbol = "✓",
+                color = theme.success,
+                size = 30.dp
+            )
+        }
     }
 }
 
@@ -200,17 +219,49 @@ fun ContractResultChip(
         }
     )
 
-    Text(
-        text = text,
-        color = if (contractState.isCompleted) theme.textPrimary else theme.danger,
-        style = MaterialTheme.typography.titleSmall.retroText(theme),
+    Row(
         modifier = modifier
             .background(theme.chipBackground.copy(alpha = 0.96f), chipShape)
             .infernoPanelTexture(theme)
             .retroPanelTexture(theme)
             .border(if (theme.isRetroTheme() || theme.isInfernoTheme()) 2.dp else 1.dp, accent.copy(alpha = 0.72f), chipShape)
-            .padding(horizontal = 14.dp, vertical = 8.dp)
-    )
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        ContractStatusBadge(
+            symbol = if (contractState.isCompleted) "✓" else "×",
+            color = accent,
+            size = 36.dp
+        )
+        Text(
+            text = text,
+            color = if (contractState.isCompleted) theme.textPrimary else theme.danger,
+            style = MaterialTheme.typography.titleSmall.retroText(theme)
+        )
+    }
+}
+
+@Composable
+private fun ContractStatusBadge(
+    symbol: String,
+    color: androidx.compose.ui.graphics.Color,
+    size: androidx.compose.ui.unit.Dp
+) {
+    val shape = RoundedCornerShape(999.dp)
+    Box(
+        modifier = Modifier
+            .size(size)
+            .background(color.copy(alpha = 0.22f), shape)
+            .border(2.dp, color.copy(alpha = 0.90f), shape),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = symbol,
+            color = color,
+            style = MaterialTheme.typography.titleMedium
+        )
+    }
 }
 
 @Composable
@@ -256,14 +307,38 @@ private fun shortProgressText(contractState: ContractState, piecesPerBatch: Int)
         ContractType.ScoreAtLeastTwenty ->
             "Score ${contractState.batchScoreGained}/${contract.effectiveTargetValue()}"
         ContractType.AvoidCorners -> "${contractState.batchPlacedPieces}/$piecesPerBatch pieces"
-        ContractType.TouchEdge -> if (contractState.usedEdge) "Edge ✓" else "Edge —"
-        ContractType.TouchCenter -> if (contractState.usedCenter) "Center ✓" else "Center —"
+        ContractType.TouchEdge -> if (contractState.usedEdge) "Edge reached" else "Reach edge"
+        ContractType.TouchCenter -> if (contractState.usedCenter) "Center reached" else "Reach center"
         ContractType.ClearNoLines -> "Lines ${contractState.batchClearedLines}/0"
         ContractType.ClearTwoLinesInSinglePlacement ->
             "Best ${contractState.maxLinesClearedInSinglePlacement}/${contract.effectiveTargetValue()}"
         ContractType.TouchEdgeAndCenter ->
-            "Center ${checkMark(contractState.usedCenter)} · Edge ${checkMark(contractState.usedEdge)}"
+            "Center ${progressWord(contractState.usedCenter)} · Edge ${progressWord(contractState.usedEdge)}"
     }
 }
 
-private fun checkMark(done: Boolean): String = if (done) "✓" else "—"
+private fun progressWord(done: Boolean): String = if (done) "done" else "needed"
+
+internal fun activeContractGoalReached(contractState: ContractState): Boolean {
+    val contract = contractState.activeContract ?: return false
+    if (!contractState.isAccepted) return false
+
+    return when (contract.type) {
+        ContractType.ClearAtLeastOneLine ->
+            contractState.batchClearedLines >= contract.effectiveTargetValue()
+        ContractType.ClearExactlyOneLine,
+        ContractType.ClearExactlyTwoLines ->
+            contractState.batchClearedLines == contract.effectiveTargetValue()
+        ContractType.ScoreAtLeastTwenty ->
+            contractState.batchScoreGained >= contract.effectiveTargetValue()
+        ContractType.TouchEdge -> contractState.usedEdge
+        ContractType.TouchCenter -> contractState.usedCenter
+        ContractType.ClearTwoLinesInSinglePlacement ->
+            contractState.maxLinesClearedInSinglePlacement >= contract.effectiveTargetValue()
+        ContractType.TouchEdgeAndCenter -> contractState.usedEdge && contractState.usedCenter
+        ContractType.NoEdgePlacement,
+        ContractType.AvoidCenterArea,
+        ContractType.AvoidCorners,
+        ContractType.ClearNoLines -> false
+    }
+}
