@@ -91,10 +91,15 @@ class InProgressRunStoreTest {
     @Test
     fun roundTripsInProgressRunIncludingRevertSnapshotAndMemorySession() {
         val previousMove = gameState(score = 5_042, inventory = listOf(JokerType.Revert))
-        val currentState = gameState(
+        val currentStateBase = gameState(
             score = 5_073,
             inventory = listOf(JokerType.Bomb, JokerType.Revert),
             previousMove = previousMove
+        )
+        val currentState = currentStateBase.copy(
+            contractState = currentStateBase.contractState.copy(
+                bonusJokerReward = JokerType.BlockBreaker
+            )
         )
         val session = RiskSpinMemorySession(
             option = RiskSpinOption.Risk,

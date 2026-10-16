@@ -219,26 +219,60 @@ fun ContractResultChip(
         }
     )
 
-    Row(
+    Column(
         modifier = modifier
             .background(theme.chipBackground.copy(alpha = 0.96f), chipShape)
             .infernoPanelTexture(theme)
             .retroPanelTexture(theme)
             .border(if (theme.isRetroTheme() || theme.isInfernoTheme()) 2.dp else 1.dp, accent.copy(alpha = 0.72f), chipShape)
             .padding(horizontal = 12.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalAlignment = Alignment.CenterVertically
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        ContractStatusBadge(
-            symbol = if (contractState.isCompleted) "✓" else "×",
-            color = accent,
-            size = 36.dp
-        )
-        Text(
-            text = text,
-            color = if (contractState.isCompleted) theme.textPrimary else theme.danger,
-            style = MaterialTheme.typography.titleSmall.retroText(theme)
-        )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            ContractStatusBadge(
+                symbol = if (contractState.isCompleted) "✓" else "×",
+                color = accent,
+                size = 36.dp
+            )
+            Text(
+                text = text,
+                color = if (contractState.isCompleted) theme.textPrimary else theme.danger,
+                style = MaterialTheme.typography.titleSmall.retroText(theme)
+            )
+        }
+
+        contractState.bonusJokerReward?.let { jokerType ->
+            Row(
+                modifier = Modifier
+                    .background(theme.success.copy(alpha = 0.14f), RoundedCornerShape(10.dp))
+                    .border(1.dp, theme.success.copy(alpha = 0.60f), RoundedCornerShape(10.dp))
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                JokerIcon(
+                    jokerType = jokerType,
+                    enabled = true,
+                    modifier = Modifier.size(28.dp)
+                )
+                Column {
+                    Text(
+                        text = "BONUS JOKER!",
+                        color = theme.success,
+                        style = MaterialTheme.typography.labelMedium.retroText(theme)
+                    )
+                    Text(
+                        text = jokerType.title,
+                        color = theme.textPrimary,
+                        style = MaterialTheme.typography.labelLarge.retroText(theme)
+                    )
+                }
+            }
+        }
     }
 }
 

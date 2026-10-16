@@ -384,6 +384,7 @@ object InProgressRunJson {
             .put("usedCorner", usedCorner)
             .put("maxLinesClearedInSinglePlacement", maxLinesClearedInSinglePlacement)
             .put("rewardClaimed", rewardClaimed)
+            .put("bonusJokerReward", bonusJokerReward?.name ?: JSONObject.NULL)
             .put("penaltyApplied", penaltyApplied)
             .put("nextContractScoreThreshold", nextContractScoreThreshold)
             .put("batchesUntilNextOffer", batchesUntilNextOffer)
@@ -406,6 +407,7 @@ object InProgressRunJson {
             usedCorner = optBoolean("usedCorner"),
             maxLinesClearedInSinglePlacement = optInt("maxLinesClearedInSinglePlacement").coerceAtLeast(0),
             rewardClaimed = optBoolean("rewardClaimed"),
+            bonusJokerReward = enumOrNull<JokerType>(optString("bonusJokerReward")),
             penaltyApplied = optBoolean("penaltyApplied"),
             nextContractScoreThreshold = optInt("nextContractScoreThreshold", ContractGenerator.CONTRACT_UNLOCK_SCORE).coerceAtLeast(ContractGenerator.CONTRACT_UNLOCK_SCORE),
             batchesUntilNextOffer = optInt("batchesUntilNextOffer").coerceAtLeast(0),

@@ -67,6 +67,7 @@ object GameEngine {
                 isCompleted = false,
                 isFailed = false,
                 rewardClaimed = false,
+                bonusJokerReward = null,
                 penaltyApplied = false
             ),
             riskSpinState = state.riskSpinState.copy(
@@ -96,6 +97,7 @@ object GameEngine {
                 isCompleted = false,
                 isFailed = false,
                 rewardClaimed = false,
+                bonusJokerReward = null,
                 penaltyApplied = false
             ),
             riskSpinState = state.riskSpinState.copy(
@@ -428,7 +430,7 @@ object GameEngine {
                     availablePieces = piecePool(state.customBlockPool)
                 )
             }
-            finalContractState = advanceContractBatch(
+            val advancedContractState = advanceContractBatch(
                 contractState = evaluation.contractState,
                 score = finalScore,
                 gridLayout = gridLayout,
@@ -442,15 +444,25 @@ object GameEngine {
             }
             val cooldownRiskSpinState = advanceRiskSpinBatch(state.riskSpinState)
             advancedRiskSpinState = if (evaluation.contractState.isCompleted) {
+                val rewardedInventory = ContractBonusReward.addBlockBreakerIfRolled(
+                    inventory = cooldownRiskSpinState.inventory,
+                    rollPercent = random.nextInt(100)
+                )
                 cooldownRiskSpinState.copy(
-                    inventory = ContractBonusReward.addBlockBreakerIfRolled(
-                        inventory = cooldownRiskSpinState.inventory,
-                        rollPercent = random.nextInt(100)
-                    )
+                    inventory = rewardedInventory
                 )
             } else {
                 cooldownRiskSpinState
             }
+            finalContractState = advancedContractState.copy(
+                bonusJokerReward = if (
+                    advancedRiskSpinState.inventory.size > cooldownRiskSpinState.inventory.size
+                ) {
+                    JokerType.BlockBreaker
+                } else {
+                    null
+                }
+            )
         } else {
             nextPieces = state.currentPieces
             finalUsedPieceIndices = nextUsedPieceIndices
@@ -785,7 +797,8 @@ object GameEngine {
                 resolvedContract = null,
                 isCompleted = false,
                 isFailed = false,
-                rewardClaimed = false
+                rewardClaimed = false,
+                bonusJokerReward = null
             )
         }
 
@@ -818,6 +831,7 @@ object GameEngine {
             isCompleted = false,
             isFailed = false,
             rewardClaimed = false,
+            bonusJokerReward = null,
             penaltyApplied = false
         )
     }
@@ -885,6 +899,7 @@ object GameEngine {
                     usedCorner = false,
                     maxLinesClearedInSinglePlacement = 0,
                     rewardClaimed = false,
+                    bonusJokerReward = null,
                     penaltyApplied = false
                 ),
                 scoreDelta = 0

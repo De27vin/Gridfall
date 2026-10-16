@@ -1230,6 +1230,29 @@ class GameEngineTest {
     }
 
     @Test
+    fun completedContractRecordsGrantedBonusJokerForTheResultBanner() {
+        val piece = Piece("single", listOf(Cell(0, 0)))
+        val contract = testContract(ContractType.NoEdgePlacement, rewardPoints = 25)
+        val state = acceptedContractState(
+            contract = contract,
+            currentPieces = listOf(piece, piece, piece)
+        )
+
+        val afterFirst = GameEngine.placePiece(state, pieceIndex = 0, startRow = 1, startCol = 1)
+        val afterSecond = GameEngine.placePiece(afterFirst, pieceIndex = 1, startRow = 1, startCol = 2)
+        val afterThird = GameEngine.placePiece(
+            afterSecond,
+            pieceIndex = 2,
+            startRow = 1,
+            startCol = 3,
+            random = ZeroRandom
+        )
+
+        assertEquals(JokerType.BlockBreaker, afterThird.contractState.bonusJokerReward)
+        assertTrue(JokerType.BlockBreaker in afterThird.riskSpinState.inventory)
+    }
+
+    @Test
     fun newContractIsNotOfferedImmediatelyAfterContractResolution() {
         val piece = Piece("single", listOf(Cell(0, 0)))
         val contract = testContract(ContractType.NoEdgePlacement)
@@ -1639,6 +1662,10 @@ class GameEngineTest {
         val afterFirst = GameEngine.placePiece(state, pieceIndex = 0, startRow = 0, startCol = 0)
         val afterSecond = GameEngine.placePiece(afterFirst, pieceIndex = 1, startRow = 0, startCol = 1)
         return GameEngine.placePiece(afterSecond, pieceIndex = 2, startRow = 0, startCol = 2)
+    }
+
+    private object ZeroRandom : kotlin.random.Random() {
+        override fun nextBits(bitCount: Int): Int = 0
     }
 
     private fun bombPiece(): Piece {

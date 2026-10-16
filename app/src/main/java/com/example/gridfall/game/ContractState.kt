@@ -15,6 +15,7 @@ data class ContractState(
     val usedCorner: Boolean = false,
     val maxLinesClearedInSinglePlacement: Int = 0,
     val rewardClaimed: Boolean = false,
+    val bonusJokerReward: JokerType? = null,
     val penaltyApplied: Boolean = false,
     val nextContractScoreThreshold: Int = ContractGenerator.CONTRACT_UNLOCK_SCORE,
     val batchesUntilNextOffer: Int = 0,

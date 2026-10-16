@@ -883,7 +883,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 soundManager.playContractFailed(soundEffectsVolume)
             }
             showContractResult = true
-            delay(1200)
+            delay(if (gameState.contractState.bonusJokerReward != null) 2400 else 1200)
             showContractResult = false
         }
     }
