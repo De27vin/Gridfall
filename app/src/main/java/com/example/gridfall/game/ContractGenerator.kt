@@ -7,7 +7,7 @@ object ContractGenerator {
     const val CONTRACT_UNLOCK_SCORE = 5_000
     const val NEXT_CONTRACT_MIN_SCORE_DELTA = 1_300
     const val NEXT_CONTRACT_MAX_SCORE_DELTA = 1_700
-    private const val BACK_TO_BACK_OFFER_PERCENT = 1
+    private const val HIGH_SCORE_PACING_START = 20_000
 
     private val templatesByLayout = mapOf(
         GridLayoutPreset.Rush to listOf(
@@ -81,12 +81,21 @@ object ContractGenerator {
         currentThreshold: Int,
         random: Random = Random.Default
     ): Int {
-        return currentThreshold.coerceAtLeast(CONTRACT_UNLOCK_SCORE) +
+        val baseline = currentThreshold.coerceAtLeast(CONTRACT_UNLOCK_SCORE)
+        val delta = if (baseline >= HIGH_SCORE_PACING_START) {
+            random.nextInt(3_000, 4_501)
+        } else {
             random.nextInt(NEXT_CONTRACT_MIN_SCORE_DELTA, NEXT_CONTRACT_MAX_SCORE_DELTA + 1)
+        }
+        return baseline + delta
     }
 
-    fun shouldOfferBackToBack(random: Random = Random.Default): Boolean {
-        return random.nextInt(100) < BACK_TO_BACK_OFFER_PERCENT
+    fun nextContractBatchCooldown(score: Int, random: Random = Random.Default): Int {
+        return if (score >= HIGH_SCORE_PACING_START) {
+            random.nextInt(10, 15)
+        } else {
+            random.nextInt(8, 13)
+        }
     }
 
     fun rewardForScore(score: Int): Int {

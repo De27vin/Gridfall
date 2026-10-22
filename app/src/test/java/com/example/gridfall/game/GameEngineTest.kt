@@ -719,7 +719,8 @@ class GameEngineTest {
         assertNull(nextState.contractState.offeredContract)
         assertNull(nextState.contractState.activeContract)
         assertFalse(nextState.contractState.isAccepted)
-        assertEquals(ContractGenerator.CONTRACT_UNLOCK_SCORE, nextState.contractState.nextContractScoreThreshold)
+        assertTrue(nextState.contractState.nextContractScoreThreshold in 6_300..6_700)
+        assertTrue(nextState.contractState.batchesUntilNextOffer in 8..12)
         assertNotNull(nextState.riskSpinState.previousMoveSnapshot)
 
         val reverted = GameEngine.useRevertJoker(nextState)
@@ -745,7 +746,9 @@ class GameEngineTest {
 
         assertNull(afterBeforeUnlockBatch.contractState.offeredContract)
         assertNotNull(afterUnlockBatch.contractState.offeredContract)
-        assertTrue(afterUnlockBatch.contractState.nextContractScoreThreshold in 6_300..6_700)
+        val reward = afterUnlockBatch.contractState.offeredContract!!.rewardPoints
+        assertTrue(afterUnlockBatch.contractState.nextContractScoreThreshold in
+            (6_300 + reward)..(6_700 + reward))
     }
 
     @Test

@@ -82,15 +82,9 @@ object GameEngine {
         if (state.contractState.offeredContract == null) return state
 
         val previousSnapshot = snapshotBeforeMove(state)
-        val offerFollowUp = state.score >= ContractGenerator.CONTRACT_UNLOCK_SCORE &&
-            ContractGenerator.shouldOfferBackToBack(random)
         return state.copy(
             contractState = state.contractState.copy(
-                offeredContract = if (offerFollowUp) {
-                    ContractGenerator.generate(state.score, contractGridLayout(state), random)
-                } else {
-                    null
-                },
+                offeredContract = null,
                 activeContract = null,
                 resolvedContract = null,
                 isAccepted = false,
@@ -98,7 +92,11 @@ object GameEngine {
                 isFailed = false,
                 rewardClaimed = false,
                 bonusJokerReward = null,
-                penaltyApplied = false
+                penaltyApplied = false,
+                nextContractScoreThreshold = ContractGenerator.nextContractScoreThreshold(
+                    state.score, random
+                ),
+                batchesUntilNextOffer = ContractGenerator.nextContractBatchCooldown(state.score, random)
             ),
             riskSpinState = state.riskSpinState.copy(
                 previousMoveSnapshot = previousSnapshot,
@@ -867,6 +865,7 @@ object GameEngine {
                 isFailed = true,
                 penaltyApplied = true,
                 nextContractScoreThreshold = contractState.nextContractScoreThreshold,
+                batchesUntilNextOffer = contractState.batchesUntilNextOffer,
                 completedBatchCount = contractState.completedBatchCount
             ),
             scoreDelta = -activeContract.penaltyPoints
@@ -934,6 +933,7 @@ object GameEngine {
                 rewardClaimed = completed,
                 penaltyApplied = !completed,
                 nextContractScoreThreshold = contractState.nextContractScoreThreshold,
+                batchesUntilNextOffer = contractState.batchesUntilNextOffer,
                 completedBatchCount = contractState.completedBatchCount
             ),
             scoreDelta = scoreDelta
@@ -954,33 +954,37 @@ object GameEngine {
             return contractState.copy(completedBatchCount = completedBatchCount)
         }
 
+        val batchesRemaining = (contractState.batchesUntilNextOffer - 1).coerceAtLeast(0)
+        if (batchesRemaining > 0) {
+            return contractState.copy(
+                batchesUntilNextOffer = batchesRemaining,
+                completedBatchCount = completedBatchCount
+            )
+        }
+
         val threshold = contractState.nextContractScoreThreshold
             .coerceAtLeast(ContractGenerator.CONTRACT_UNLOCK_SCORE)
         if (score < threshold) {
             return contractState.copy(
                 nextContractScoreThreshold = threshold,
+                batchesUntilNextOffer = batchesRemaining,
                 completedBatchCount = completedBatchCount
             )
         }
 
+        val offeredContract = ContractGenerator.generate(score, gridLayout, random)
         return ContractState(
-            offeredContract = ContractGenerator.generate(
-                score = score,
-                gridLayout = gridLayout,
-                random = random
+            offeredContract = offeredContract,
+            // Reserve the reward too: completing this contract must not pay
+            // for the score gap to the following offer.
+            nextContractScoreThreshold = ContractGenerator.nextContractScoreThreshold(
+                score + offeredContract.rewardPoints, random
             ),
-            nextContractScoreThreshold = ContractGenerator.nextContractScoreThreshold(threshold, random),
+            batchesUntilNextOffer = ContractGenerator.nextContractBatchCooldown(score, random),
             completedBatchCount = completedBatchCount
         )
     }
 
-    private fun contractGridLayout(state: GameState): GridLayoutPreset {
-        return if (state.board.isCustom) {
-            GridLayoutPreset.Classic
-        } else {
-            GridLayoutPreset.fromBoardSize(state.board.rowCount)
-        }
-    }
     private fun absoluteCells(
         piece: Piece,
         startRow: Int,
