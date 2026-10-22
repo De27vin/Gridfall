@@ -52,7 +52,7 @@ fun RiskSpinDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
-                    text = "Pay score now, then reveal hidden fields. Misses give nothing. Inventory max is ${RiskSpinState.MAX_INVENTORY_SIZE}.",
+                    text = "Pay score now, then reveal hidden fields. Misses give nothing. Spin rewards need a free slot out of ${RiskSpinState.MAX_INVENTORY_SIZE}. Contract rewards can exceed this limit.",
                     color = colors.textSecondary,
                     style = MaterialTheme.typography.bodyMedium.retroText(colors)
                 )

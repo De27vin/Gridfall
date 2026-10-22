@@ -432,7 +432,7 @@ object InProgressRunJson {
             ?.let { array ->
                 (0 until array.length()).mapNotNull { index ->
                     enumOrNull<JokerType>(array.optString(index))
-                }.take(RiskSpinState.MAX_INVENTORY_SIZE)
+                }
             }
             ?: emptyList()
         return RiskSpinState(

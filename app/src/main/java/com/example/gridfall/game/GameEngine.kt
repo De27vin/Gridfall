@@ -220,7 +220,7 @@ object GameEngine {
         val nextState = state.copy(
             score = (state.score - cost).coerceAtLeast(0),
             riskSpinState = state.riskSpinState.copy(
-                inventory = nextInventory.take(RiskSpinState.MAX_INVENTORY_SIZE),
+                inventory = nextInventory,
                 cooldownBatchesRemaining = RiskSpin.randomCooldown(random),
                 previousMoveSnapshot = snapshotBeforeMove(state),
                 hasUsedRevertSinceLastMove = false

@@ -3,6 +3,8 @@ package com.example.gridfall.ui
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -79,7 +81,11 @@ fun JokerInventoryCarousel(
             )
             Spacer(modifier = Modifier.weight(1f))
             Text(
-                text = "${inventory.size}/${RiskSpinState.MAX_INVENTORY_SIZE}",
+                text = if (inventory.size > RiskSpinState.MAX_INVENTORY_SIZE) {
+                    "${inventory.size} · Bonus slots"
+                } else {
+                    "${inventory.size}/${RiskSpinState.MAX_INVENTORY_SIZE}"
+                },
                 color = colors.textMuted,
                 style = MaterialTheme.typography.labelSmall.retroText(colors)
             )
@@ -93,7 +99,7 @@ fun JokerInventoryCarousel(
             )
         } else {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {

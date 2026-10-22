@@ -23,6 +23,17 @@ import org.junit.Test
 
 class InProgressRunStoreTest {
     @Test
+    fun preservesBonusJokersAboveSpinLimitIncludingUndoSnapshot() {
+        val inventory = List(8) { JokerType.BlockBreaker } + JokerType.Revert
+        val previous = gameState(inventory = inventory)
+        val saved = SavedInProgressRun(
+            gameState = gameState(inventory = inventory, previousMove = previous)
+        )
+
+        assertEquals(saved, InProgressRunJson.decode(InProgressRunJson.encode(saved)))
+    }
+
+    @Test
     fun roundTripsNonClassicBoardSize() {
         val saved = SavedInProgressRun(
             gameState = gameState().copy(board = Board.empty(10).fill(9, 9, 3))

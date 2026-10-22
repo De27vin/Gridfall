@@ -73,7 +73,7 @@ class BlockBreakerTest {
     }
 
     @Test
-    fun contractBonusAddsBlockBreakerOnlyOnWinningRollAndWhenInventoryHasSpace() {
+    fun contractBonusAddsBlockBreakerOnWinningRollEvenAboveInventoryLimit() {
         val granted = ContractBonusReward.addBlockBreakerIfRolled(emptyList(), rollPercent = 14)
         val missed = ContractBonusReward.addBlockBreakerIfRolled(emptyList(), rollPercent = 15)
         val full = ContractBonusReward.addBlockBreakerIfRolled(
@@ -83,8 +83,10 @@ class BlockBreakerTest {
 
         assertEquals(listOf(JokerType.BlockBreaker), granted)
         assertTrue(missed.isEmpty())
-        assertEquals(RiskSpinState.MAX_INVENTORY_SIZE, full.size)
-        assertFalse(JokerType.BlockBreaker in full)
+        assertEquals(RiskSpinState.MAX_INVENTORY_SIZE + 1, full.size)
+        assertTrue(JokerType.BlockBreaker in full)
+        val stacked = ContractBonusReward.addBlockBreakerIfRolled(full, rollPercent = 0)
+        assertEquals(RiskSpinState.MAX_INVENTORY_SIZE + 2, stacked.size)
     }
 
     private fun stateWithBreaker(board: Board, score: Int = 0): GameState {

@@ -8,7 +8,6 @@ object ContractBonusReward {
         rollPercent: Int
     ): List<JokerType> {
         if (rollPercent !in 0..99 || rollPercent >= BLOCK_BREAKER_DROP_PERCENT) return inventory
-        if (inventory.size >= RiskSpinState.MAX_INVENTORY_SIZE) return inventory
         return inventory + JokerType.BlockBreaker
     }
 }
