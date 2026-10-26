@@ -79,7 +79,8 @@ fun BoardCanvas(
     contractTargetCells: Set<Cell> = emptySet(),
     blockBreakerTargetCells: Set<Cell> = emptySet(),
     onBlockBreakerCellTapped: (Cell) -> Unit = {},
-    onBoardLayoutChanged: (BoardLayoutInfo) -> Unit = {}
+    onBoardLayoutChanged: (BoardLayoutInfo) -> Unit = {},
+    compact: Boolean = false
 ) {
     val linePulse = remember { Animatable(1f) }
     val bombPulse = remember { Animatable(1f) }
@@ -88,6 +89,7 @@ fun BoardCanvas(
     val theme = LocalGridfallColors.current
     val outerShape = RoundedCornerShape(retroCorner(theme, infernoCorner(theme, 22.dp)))
     val innerShape = RoundedCornerShape(retroCorner(theme, infernoCorner(theme, 14.dp)))
+    val cellSpacing = if (compact) 2.dp else 4.dp
 
     LaunchedEffect(lineClearFeedback?.token) {
         if (lineClearFeedback != null) {
@@ -130,6 +132,7 @@ fun BoardCanvas(
             )
             .padding(
                 when {
+                    compact -> 4.dp
                     theme.isRetroTheme() -> 10.dp
                     theme.isInfernoTheme() -> 12.dp
                     theme.isBlockworldTheme() -> 10.dp
@@ -149,7 +152,7 @@ fun BoardCanvas(
                     height = coordinates.size.height.toFloat(),
                     rows = board.rowCount,
                     columns = board.columnCount,
-                    spacing = with(density) { 4.dp.toPx() }
+                    spacing = with(density) { cellSpacing.toPx() }
                 )
 
                 onBoardLayoutChanged(
@@ -165,7 +168,7 @@ fun BoardCanvas(
                 )
             }
     ) {
-        val targetSpacingPx = with(density) { 4.dp.toPx() }
+        val targetSpacingPx = with(density) { cellSpacing.toPx() }
         Canvas(
             modifier = Modifier
                 .fillMaxSize()
@@ -202,7 +205,7 @@ fun BoardCanvas(
                 height = size.height,
                 rows = board.rowCount,
                 columns = board.columnCount,
-                spacing = 4.dp.toPx()
+                spacing = cellSpacing.toPx()
             )
             val spacing = geometry.spacing
             val cellSize = geometry.cellSize

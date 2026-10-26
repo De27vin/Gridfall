@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -34,6 +35,7 @@ fun GameTopBar(
     combo: Int,
     onSettingsClick: () -> Unit,
     actionLabel: String? = null,
+    compact: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val theme = LocalGridfallColors.current
@@ -66,18 +68,18 @@ fun GameTopBar(
                 theme.panelBorder.copy(alpha = if (theme.isRetroTheme() || theme.isInfernoTheme()) 0.92f else 0.70f),
                 panelShape
             )
-            .padding(12.dp)
+            .padding(if (compact) 6.dp else 12.dp)
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(if (compact) 4.dp else 8.dp)) {
             // Score and Best
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Bottom
             ) {
-                Column(horizontalAlignment = Alignment.Start) {
+                Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.Start) {
                     Text(
-                        text = "SCORE",
+                        text = if (compact) "SCORE · L$level" else "SCORE",
                         color = theme.textMuted,
                         style = MaterialTheme.typography.labelSmall.retroText(theme),
                         fontSize = 11.sp
@@ -85,7 +87,8 @@ fun GameTopBar(
                     Text(
                         text = scoreText,
                         color = theme.textPrimary,
-                        style = MaterialTheme.typography.displayMedium.retroText(theme)
+                        style = if (compact) MaterialTheme.typography.titleMedium.retroText(theme)
+                            else MaterialTheme.typography.displayMedium.retroText(theme)
                     )
                 }
 
@@ -101,6 +104,7 @@ fun GameTopBar(
                             chipShape
                         )
                         .clickable(onClick = onSettingsClick)
+                        .heightIn(min = 48.dp)
                         .padding(horizontal = 11.dp, vertical = 6.dp),
                     contentAlignment = Alignment.Center
                 ) {
@@ -111,9 +115,9 @@ fun GameTopBar(
                     )
                 }
 
-                Column(horizontalAlignment = Alignment.End) {
+                Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.End) {
                     Text(
-                        text = "BEST",
+                        text = if (compact) "BEST · ${(levelProgress * 100).toInt()}%" else "BEST",
                         color = theme.textMuted,
                         style = MaterialTheme.typography.labelSmall.retroText(theme),
                         fontSize = 11.sp
@@ -121,14 +125,15 @@ fun GameTopBar(
                     Text(
                         text = bestText,
                         color = theme.textSecondary,
-                        style = MaterialTheme.typography.displaySmall.retroText(theme)
+                        style = if (compact) MaterialTheme.typography.titleSmall.retroText(theme)
+                            else MaterialTheme.typography.displaySmall.retroText(theme)
                     )
                 }
             }
 
             // Level Display
             Column(modifier = Modifier.fillMaxWidth()) {
-                Row(
+                if (!compact) Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically

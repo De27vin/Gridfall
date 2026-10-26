@@ -34,6 +34,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.example.gridfall.game.Piece
 import com.example.gridfall.ui.theme.GridfallColors
@@ -59,7 +60,10 @@ fun PieceTray(
         modifier = modifier
             .fillMaxWidth()
             .height(116.dp),
-        horizontalArrangement = Arrangement.spacedBy(if (pieces.size > 3) 8.dp else 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(
+            if (pieces.size > 3) 8.dp else 12.dp,
+            Alignment.CenterHorizontally
+        ),
         verticalAlignment = Alignment.CenterVertically
     ) {
         pieces.forEachIndexed { index, piece ->
@@ -71,8 +75,9 @@ fun PieceTray(
 
             Box(
                 modifier = Modifier
-                    .weight(1f)
-                    .aspectRatio(1f)
+                    .weight(1f, fill = false)
+                    .aspectRatio(1f, matchHeightConstraintsFirst = true)
+                    .testTag("gameplay-piece-$index")
                     .clip(slotShape)
                     .background(
                         brush = Brush.verticalGradient(
@@ -134,7 +139,7 @@ fun PieceTray(
         if (nextPiece != null) {
             val previewShape = RoundedCornerShape(retroCorner(theme, infernoCorner(theme, 12.dp)))
             Column(
-                modifier = Modifier.weight(0.7f),
+                modifier = Modifier.weight(0.7f, fill = false),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
@@ -144,8 +149,7 @@ fun PieceTray(
                 )
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(1f)
+                        .aspectRatio(1f, matchHeightConstraintsFirst = true)
                         .clip(previewShape)
                         .background(theme.boardInner.copy(alpha = 0.42f))
                         .border(

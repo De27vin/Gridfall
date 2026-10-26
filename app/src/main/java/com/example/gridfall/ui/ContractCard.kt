@@ -136,6 +136,7 @@ fun ContractOfferPopup(
 fun ContractActiveChip(
     contractState: ContractState,
     piecesPerBatch: Int = 3,
+    compact: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val contract = contractState.activeContract ?: return
@@ -160,7 +161,7 @@ fun ContractActiveChip(
                 theme.panelBorder.copy(alpha = if (theme.isRetroTheme() || theme.isInfernoTheme()) 0.82f else 0.62f),
                 chipShape
             )
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+            .padding(horizontal = 12.dp, vertical = if (compact) 4.dp else 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -201,6 +202,7 @@ fun ContractActiveChip(
 @Composable
 fun ContractResultChip(
     contractState: ContractState,
+    compact: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val contract = contractState.resolvedContract ?: return
@@ -225,8 +227,8 @@ fun ContractResultChip(
             .infernoPanelTexture(theme)
             .retroPanelTexture(theme)
             .border(if (theme.isRetroTheme() || theme.isInfernoTheme()) 2.dp else 1.dp, accent.copy(alpha = 0.72f), chipShape)
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+            .padding(horizontal = 12.dp, vertical = if (compact) 4.dp else 8.dp),
+        verticalArrangement = Arrangement.spacedBy(if (compact) 4.dp else 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Row(
@@ -236,12 +238,13 @@ fun ContractResultChip(
             ContractStatusBadge(
                 symbol = if (contractState.isCompleted) "✓" else "×",
                 color = accent,
-                size = 36.dp
+                size = if (compact) 24.dp else 36.dp
             )
             Text(
                 text = text,
                 color = if (contractState.isCompleted) theme.textPrimary else theme.danger,
-                style = MaterialTheme.typography.titleSmall.retroText(theme)
+                style = if (compact) MaterialTheme.typography.labelMedium.retroText(theme)
+                    else MaterialTheme.typography.titleSmall.retroText(theme)
             )
         }
 
@@ -257,9 +260,15 @@ fun ContractResultChip(
                 JokerIcon(
                     jokerType = jokerType,
                     enabled = true,
-                    modifier = Modifier.size(28.dp)
+                    modifier = Modifier.size(if (compact) 24.dp else 28.dp)
                 )
-                Column {
+                if (compact) {
+                    Text(
+                        text = "Bonus: ${jokerType.title}",
+                        color = theme.success,
+                        style = MaterialTheme.typography.labelMedium.retroText(theme)
+                    )
+                } else Column {
                     Text(
                         text = "BONUS JOKER!",
                         color = theme.success,

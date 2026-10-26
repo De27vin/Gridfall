@@ -15,13 +15,13 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.activity.compose.BackHandler
 import androidx.compose.material3.Button
@@ -49,6 +49,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -1308,15 +1309,19 @@ fun GameScreen(modifier: Modifier = Modifier) {
                     .infernoAppTexture(activeThemeColors)
                     .retroAppTexture(activeThemeColors)
             ) {
-        val gameContentMaxWidth = (maxHeight - 460.dp).coerceIn(280.dp, 480.dp)
+        BoxWithConstraints(
+            modifier = Modifier.fillMaxSize().safeDrawingPadding(),
+            contentAlignment = Alignment.TopCenter
+        ) {
+        val compactGameplay = maxHeight < 600.dp
+        val sectionSpacing = if (maxHeight < 640.dp) 4.dp else 8.dp
+        val trayHeight = if (compactGameplay) 48.dp else (maxHeight * 0.15f).coerceIn(64.dp, 116.dp)
         Column(
             modifier = Modifier
-                .align(Alignment.TopCenter)
-                .widthIn(max = gameContentMaxWidth)
-                .fillMaxWidth()
-                .systemBarsPadding()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 24.dp),
+                .widthIn(max = 480.dp)
+                .fillMaxSize()
+                .padding(horizontal = 16.dp, vertical = sectionSpacing)
+                .testTag("gameplay"),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Top
         ) {
@@ -1326,6 +1331,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 level = currentLevel,
                 nextLevelScore = nextLevelScore,
                 combo = gameState.combo,
+                compact = compactGameplay,
                 onSettingsClick = {
                     if (customMapTestSession != null) {
                         returnToCustomMapEditor()
@@ -1336,8 +1342,27 @@ fun GameScreen(modifier: Modifier = Modifier) {
                     }
                 },
                 actionLabel = if (customMapTestSession != null) "EDITOR" else null,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().testTag("gameplay-score")
             )
+
+            if (showContractResult && gameState.contractState.resolvedContract != null) {
+                ContractResultChip(
+                    contractState = gameState.contractState,
+                    compact = compactGameplay,
+                    modifier = Modifier.padding(top = sectionSpacing).testTag("gameplay-contract")
+                )
+            } else if (gameState.contractState.activeContract != null) {
+                ContractActiveChip(
+                    contractState = gameState.contractState,
+                    compact = compactGameplay,
+                    piecesPerBatch = if (gameState.board.isCustom) {
+                        GridLayoutPreset.Classic.piecesPerBatch
+                    } else {
+                        GridLayoutPreset.fromBoardSize(gameState.board.size).piecesPerBatch
+                    },
+                    modifier = Modifier.padding(top = sectionSpacing).testTag("gameplay-contract")
+                )
+            }
 
             if (customMapTestSession != null) {
                 Text(
@@ -1348,14 +1373,19 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(sectionSpacing))
 
-            val boardWidthFraction = minOf(
-                1f,
-                gameState.board.columnCount.toFloat() / gameState.board.rowCount.toFloat()
-            )
+            // Non-weighted controls are measured first. Only the board receives
+            // the remaining height, after insets and text have been accounted for.
+            BoxWithConstraints(
+                modifier = Modifier.fillMaxWidth().weight(1f),
+                contentAlignment = Alignment.Center
+            ) {
+            val boardAspect = gameState.board.columnCount.toFloat() / gameState.board.rowCount
+            val boardWidth = minOf(maxWidth, maxHeight * boardAspect)
             BoardCanvas(
                 board = gameState.board,
+                compact = compactGameplay,
                 placementPreview = placementPreview,
                 lineClearFeedback = lineClearFeedback,
                 bombPulseFeedback = bombPulseFeedback,
@@ -1398,10 +1428,11 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 onBoardLayoutChanged = { layoutInfo ->
                     boardLayoutInfo = layoutInfo
                 },
-                modifier = Modifier.fillMaxWidth(boardWidthFraction)
+                modifier = Modifier.size(boardWidth, boardWidth / boardAspect).testTag("gameplay-board")
             )
+            }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(sectionSpacing))
 
             PieceTray(
                 pieces = gameState.currentPieces,
@@ -1449,15 +1480,15 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 onPieceDragCancelled = {
                     dragState = DragState()
                 },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().height(trayHeight).testTag("gameplay-tray")
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(sectionSpacing))
 
             val restartShape = RoundedCornerShape(retroCorner(activeThemeColors, infernoCorner(activeThemeColors, 16.dp)))
             val riskSpinAvailability = GameEngine.riskSpinAvailability(gameState)
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().testTag("gameplay-controls"),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -1472,7 +1503,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                     shape = restartShape,
                     modifier = Modifier
                         .weight(1f)
-                        .height(44.dp)
+                        .height(48.dp)
                         .infernoPanelTexture(activeThemeColors)
                         .retroPanelTexture(activeThemeColors)
                         .border(
@@ -1504,7 +1535,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                     shape = restartShape,
                     modifier = Modifier
                         .weight(1f)
-                        .height(44.dp)
+                        .heightIn(min = 48.dp)
                         .infernoPanelTexture(activeThemeColors)
                         .retroPanelTexture(activeThemeColors)
                         .riskSpinAvailabilityGlow(activeThemeColors, riskSpinAvailability.isAvailable)
@@ -1520,14 +1551,21 @@ fun GameScreen(modifier: Modifier = Modifier) {
                             shape = restartShape
                         )
                 ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         text = if (activeThemeColors.isRetroTheme()) "RISK SPIN" else "Risk Spin",
                         style = MaterialTheme.typography.labelLarge.retroText(activeThemeColors)
                     )
+                    if (compactGameplay && !riskSpinAvailability.isAvailable) {
+                        riskSpinAvailability.reason?.let { reason ->
+                            Text(text = reason, style = MaterialTheme.typography.labelSmall.retroText(activeThemeColors))
+                        }
+                    }
+                    }
                 }
             }
 
-            if (!riskSpinAvailability.isAvailable && riskSpinAvailability.reason != null) {
+            if (!compactGameplay && !riskSpinAvailability.isAvailable && riskSpinAvailability.reason != null) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = riskSpinAvailability.reason,
@@ -1536,10 +1574,11 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 )
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(sectionSpacing))
 
             JokerInventoryCarousel(
                 inventory = gameState.riskSpinState.inventory,
+                compact = compactGameplay,
                 draggingJokerInventoryIndex = dragState.jokerInventoryIndex,
                 canUseRevert = gameState.riskSpinState.previousMoveSnapshot != null &&
                     JokerType.Revert in gameState.riskSpinState.inventory,
@@ -1638,8 +1677,9 @@ fun GameScreen(modifier: Modifier = Modifier) {
                         view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                     }
                 },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().testTag("gameplay-inventory")
             )
+        }
         }
 
         val draggedPiece = dragState.piece
@@ -1657,29 +1697,6 @@ fun GameScreen(modifier: Modifier = Modifier) {
                         y = draggedPiecePosition.y.roundToInt()
                     )
                 }
-            )
-        }
-
-        if (showContractResult && gameState.contractState.resolvedContract != null) {
-            ContractResultChip(
-                contractState = gameState.contractState,
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .systemBarsPadding()
-                    .padding(top = 112.dp)
-            )
-        } else if (gameState.contractState.activeContract != null) {
-            ContractActiveChip(
-                contractState = gameState.contractState,
-                piecesPerBatch = if (gameState.board.isCustom) {
-                    GridLayoutPreset.Classic.piecesPerBatch
-                } else {
-                    GridLayoutPreset.fromBoardSize(gameState.board.size).piecesPerBatch
-                },
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .systemBarsPadding()
-                    .padding(top = 112.dp, start = 20.dp, end = 20.dp)
             )
         }
 

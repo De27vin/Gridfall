@@ -35,6 +35,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.example.gridfall.game.JokerType
 import com.example.gridfall.game.Piece
@@ -54,6 +55,7 @@ fun JokerInventoryCarousel(
     onRevertClicked: () -> Unit,
     onBlockBreakerClicked: () -> Unit,
     onClearBoardClicked: () -> Unit,
+    compact: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val colors = LocalGridfallColors.current
@@ -66,10 +68,10 @@ fun JokerInventoryCarousel(
             .infernoPanelTexture(colors)
             .retroPanelTexture(colors)
             .border(1.dp, colors.panelBorder.copy(alpha = 0.55f), shape)
-            .padding(horizontal = 10.dp, vertical = 8.dp),
+            .padding(horizontal = 10.dp, vertical = if (compact) 6.dp else 8.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        Row(
+        if (!compact) Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
@@ -103,9 +105,18 @@ fun JokerInventoryCarousel(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                if (compact) {
+                    Column {
+                        Text("Jokers", color = colors.textPrimary,
+                            style = MaterialTheme.typography.labelMedium.retroText(colors))
+                        Text("${inventory.size}", color = colors.textMuted,
+                            style = MaterialTheme.typography.labelSmall.retroText(colors))
+                    }
+                }
                 inventory.forEachIndexed { index, jokerType ->
                     JokerChip(
                         jokerType = jokerType,
+                        compact = compact,
                         inventoryIndex = index,
                         isDragging = draggingJokerInventoryIndex == index,
                         canUseRevert = canUseRevert,
@@ -127,6 +138,7 @@ fun JokerInventoryCarousel(
 @Composable
 private fun JokerChip(
     jokerType: JokerType,
+    compact: Boolean,
     inventoryIndex: Int,
     isDragging: Boolean,
     canUseRevert: Boolean,
@@ -151,7 +163,8 @@ private fun JokerChip(
 
     Box(
         modifier = Modifier
-            .size(width = 58.dp, height = 54.dp)
+            .size(width = 58.dp, height = if (compact) 48.dp else 54.dp)
+            .testTag("gameplay-joker-$inventoryIndex")
             .clip(shape)
             .background(colors.chipBackground.copy(alpha = if (enabled) 0.82f else 0.42f))
             .infernoPanelTexture(colors)
