@@ -32,8 +32,19 @@ data class Board(
             )
         }
 
+        /**
+         * Largest symmetric center span no wider than half this axis (minimum one cell).
+         * Its length has the axis's parity so both outer margins are equal. Apply
+         * independently to rows and columns for rectangular maps. For sizes 3..10,
+         * lengths are 1, 2, 1, 2, 3, 4, 3, 4; 8x8 therefore retains its middle 4x4.
+         * Degenerate one- or two-cell axes are entirely center.
+         * Shared by contract validation and both target and warning highlights.
+         */
         fun centerZone(size: Int): IntRange {
-            val zoneSize = if (size <= 7) 3.coerceAtMost(size) else 4.coerceAtMost(size)
+            require(size > 0) { "Board dimensions must be positive" }
+            if (size <= 2) return 0 until size
+            val halfSize = (size / 2).coerceAtLeast(1)
+            val zoneSize = if (halfSize % 2 == size % 2) halfSize else halfSize - 1
             val start = (size - zoneSize) / 2
             return start until start + zoneSize
         }
