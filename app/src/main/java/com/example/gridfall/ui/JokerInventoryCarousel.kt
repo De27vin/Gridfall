@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -36,7 +38,9 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.gridfall.game.JokerType
 import com.example.gridfall.game.Piece
 import com.example.gridfall.game.RiskSpinState
@@ -158,6 +162,12 @@ private fun JokerChip(
     val piece = jokerType.toPiece()
     val shape = RoundedCornerShape(retroCorner(colors, infernoCorner(colors, 12.dp)))
     var chipTopLeft by remember { mutableStateOf(Offset.Zero) }
+    val labelStyle = MaterialTheme.typography.labelSmall.retroText(colors).let {
+        if (compact) it.copy(fontSize = 10.sp, lineHeight = 14.sp) else it
+    }
+    val labelHeight = with(LocalDensity.current) { labelStyle.lineHeight.toDp() }
+    val chipHeight = if (compact) 48.dp else 54.dp
+    val iconHeight = (chipHeight - 10.dp - labelHeight).coerceIn(12.dp, 30.dp)
     val enabled = interactionsEnabled && when (jokerType) {
         JokerType.Revert -> canUseRevert
         JokerType.ClearBoard -> canUseClearBoard
@@ -166,7 +176,7 @@ private fun JokerChip(
 
     Box(
         modifier = Modifier
-            .size(width = 58.dp, height = if (compact) 48.dp else 54.dp)
+            .size(width = 58.dp, height = chipHeight)
             .testTag("gameplay-joker-$inventoryIndex")
             .clip(shape)
             .background(colors.chipBackground.copy(alpha = if (enabled) 0.82f else 0.42f))
@@ -226,7 +236,9 @@ private fun JokerChip(
         contentAlignment = Alignment.Center
     ) {
         val iconModifier = Modifier
-            .size(30.dp)
+            .width(30.dp)
+            .height(iconHeight)
+            .align(Alignment.TopCenter)
             .alpha(if (isDragging) 0.35f else 1f)
         if (jokerType == JokerType.Bomb || jokerType == JokerType.MegaBomb) {
             PiecePreview(
@@ -245,7 +257,7 @@ private fun JokerChip(
         Text(
             text = shortJokerLabel(jokerType),
             color = colors.textSecondary,
-            style = MaterialTheme.typography.labelSmall.retroText(colors),
+            style = labelStyle,
             modifier = Modifier.align(Alignment.BottomCenter)
         )
     }

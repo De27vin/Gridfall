@@ -10,8 +10,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -1320,7 +1320,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
             modifier = Modifier.fillMaxSize().safeDrawingPadding(),
             contentAlignment = Alignment.TopCenter
         ) {
-        val compactGameplay = maxHeight < 600.dp
+        val compactGameplay = maxHeight < 600.dp * density.fontScale.coerceAtLeast(1f)
         val sectionSpacing = if (maxHeight < 640.dp) 4.dp else 8.dp
         val trayHeight = if (compactGameplay) 48.dp else (maxHeight * 0.15f).coerceIn(64.dp, 116.dp)
         Column(
@@ -1330,7 +1330,9 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 .padding(horizontal = 16.dp, vertical = sectionSpacing)
                 .testTag("gameplay"),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Top
+            // Parent-owned spacing is reserved during measurement; a shrinking
+            // spacer must never erase the contract/board separation.
+            verticalArrangement = Arrangement.spacedBy(sectionSpacing)
         ) {
             GameTopBar(
                 score = gameState.score,
@@ -1357,7 +1359,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 ContractResultChip(
                     contractState = gameState.contractState,
                     compact = compactGameplay,
-                    modifier = Modifier.padding(top = sectionSpacing).testTag("gameplay-contract")
+                    modifier = Modifier.testTag("gameplay-contract")
                 )
             } else if (gameState.contractState.activeContract != null) {
                 ContractActiveChip(
@@ -1368,7 +1370,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                     } else {
                         GridLayoutPreset.fromBoardSize(gameState.board.size).piecesPerBatch
                     },
-                    modifier = Modifier.padding(top = sectionSpacing).testTag("gameplay-contract")
+                    modifier = Modifier.testTag("gameplay-contract")
                 )
             }
 
@@ -1380,8 +1382,6 @@ fun GameScreen(modifier: Modifier = Modifier) {
                     modifier = Modifier.padding(top = 10.dp)
                 )
             }
-
-            Spacer(modifier = Modifier.height(sectionSpacing))
 
             // Non-weighted controls are measured first. Only the board receives
             // the remaining height, after insets and text have been accounted for.
@@ -1440,8 +1440,6 @@ fun GameScreen(modifier: Modifier = Modifier) {
             )
             }
 
-            Spacer(modifier = Modifier.height(sectionSpacing))
-
             PieceTray(
                 pieces = gameState.currentPieces,
                 enabled = !gameState.isAwaitingContractDecision,
@@ -1497,8 +1495,6 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 modifier = Modifier.fillMaxWidth().height(trayHeight).testTag("gameplay-tray")
             )
 
-            Spacer(modifier = Modifier.height(sectionSpacing))
-
             val restartShape = RoundedCornerShape(retroCorner(activeThemeColors, infernoCorner(activeThemeColors, 16.dp)))
             val riskSpinAvailability = GameEngine.riskSpinAvailability(gameState)
             Row(
@@ -1512,6 +1508,8 @@ fun GameScreen(modifier: Modifier = Modifier) {
                         showRestartConfirmDialog = true
                     },
                     enabled = !gameState.isAwaitingContractDecision,
+                    contentPadding = if (compactGameplay) PaddingValues(horizontal = 8.dp, vertical = 6.dp)
+                        else ButtonDefaults.ContentPadding,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = activeThemeColors.button,
                         contentColor = activeThemeColors.textPrimary
@@ -1543,6 +1541,8 @@ fun GameScreen(modifier: Modifier = Modifier) {
                         riskSpinPaidCost = null
                     },
                     enabled = riskSpinAvailability.isAvailable,
+                    contentPadding = if (compactGameplay) PaddingValues(horizontal = 8.dp, vertical = 6.dp)
+                        else ButtonDefaults.ContentPadding,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = activeThemeColors.button,
                         contentColor = activeThemeColors.textPrimary,
@@ -1583,15 +1583,12 @@ fun GameScreen(modifier: Modifier = Modifier) {
             }
 
             if (!compactGameplay && !riskSpinAvailability.isAvailable && riskSpinAvailability.reason != null) {
-                Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = riskSpinAvailability.reason,
                     color = activeThemeColors.textMuted,
                     style = MaterialTheme.typography.labelSmall.retroText(activeThemeColors)
                 )
             }
-
-            Spacer(modifier = Modifier.height(sectionSpacing))
 
             JokerInventoryCarousel(
                 inventory = gameState.riskSpinState.inventory,

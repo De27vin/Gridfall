@@ -22,7 +22,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.gridfall.game.Contract
 import com.example.gridfall.game.ContractState
 import com.example.gridfall.game.ContractType
@@ -150,7 +152,7 @@ fun ContractActiveChip(
         }
     )
 
-    Row(
+    Column(
         modifier = modifier
             .fillMaxWidth()
             .background(theme.chipBackground.copy(alpha = 0.94f), chipShape)
@@ -162,18 +164,34 @@ fun ContractActiveChip(
                 chipShape
             )
             .padding(horizontal = 12.dp, vertical = if (compact) 4.dp else 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically
+        verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(2.dp)
+        // A separate metadata row keeps reward/badge widths from squeezing the
+        // title and progress into tall columns on narrow or larger-font screens.
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = contract.title,
                 color = theme.textPrimary,
-                style = MaterialTheme.typography.labelLarge.retroText(theme)
+                style = MaterialTheme.typography.labelLarge.retroText(theme),
+                modifier = Modifier.weight(1f)
             )
+            if (goalReached) {
+                ContractStatusBadge(
+                    symbol = "✓",
+                    color = theme.success,
+                    size = if (compact) 24.dp else 30.dp
+                )
+            }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Text(
                 text = if (goalReached) {
                     "Goal reached"
@@ -181,19 +199,13 @@ fun ContractActiveChip(
                     shortProgressText(contractState, piecesPerBatch)
                 },
                 color = if (goalReached) theme.success else theme.textMuted,
-                style = MaterialTheme.typography.labelMedium.retroText(theme)
+                style = MaterialTheme.typography.labelMedium.retroText(theme),
+                modifier = Modifier.weight(1f)
             )
-        }
-        Text(
-            text = "+${contract.rewardPoints}/-${contract.penaltyPoints}",
-            color = theme.success,
-            style = MaterialTheme.typography.labelMedium.retroText(theme)
-        )
-        if (goalReached) {
-            ContractStatusBadge(
-                symbol = "✓",
+            Text(
+                text = "+${contract.rewardPoints}/-${contract.penaltyPoints}",
                 color = theme.success,
-                size = 30.dp
+                style = MaterialTheme.typography.labelMedium.retroText(theme)
             )
         }
     }
@@ -253,7 +265,7 @@ fun ContractResultChip(
                 modifier = Modifier
                     .background(theme.success.copy(alpha = 0.14f), RoundedCornerShape(10.dp))
                     .border(1.dp, theme.success.copy(alpha = 0.60f), RoundedCornerShape(10.dp))
-                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                    .padding(horizontal = 10.dp, vertical = if (compact) 4.dp else 6.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -292,6 +304,7 @@ private fun ContractStatusBadge(
     size: androidx.compose.ui.unit.Dp
 ) {
     val shape = RoundedCornerShape(999.dp)
+    val fontScale = LocalDensity.current.fontScale
     Box(
         modifier = Modifier
             .size(size)
@@ -302,7 +315,11 @@ private fun ContractStatusBadge(
         Text(
             text = symbol,
             color = color,
-            style = MaterialTheme.typography.titleMedium
+            // This is an icon-like glyph: keep it inside the badge at every text scale.
+            style = MaterialTheme.typography.titleMedium.copy(
+                fontSize = (size.value * 0.65f / fontScale).sp,
+                lineHeight = (size.value * 0.80f / fontScale).sp
+            )
         )
     }
 }

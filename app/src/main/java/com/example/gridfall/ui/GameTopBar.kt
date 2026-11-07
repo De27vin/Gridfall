@@ -105,13 +105,14 @@ fun GameTopBar(
                         )
                         .clickable(onClick = onSettingsClick)
                         .heightIn(min = 48.dp)
-                        .padding(horizontal = 11.dp, vertical = 6.dp),
+                        .padding(horizontal = if (compact) 6.dp else 11.dp, vertical = 6.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = actionLabel ?: if (theme.isRetroTheme()) "SETTINGS" else "Settings",
                         color = theme.textSecondary,
-                        style = MaterialTheme.typography.labelMedium.retroText(theme)
+                        style = if (compact) MaterialTheme.typography.labelSmall.retroText(theme)
+                            else MaterialTheme.typography.labelMedium.retroText(theme)
                     )
                 }
 
