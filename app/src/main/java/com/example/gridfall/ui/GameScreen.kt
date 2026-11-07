@@ -52,6 +52,8 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.findViewTreeLifecycleOwner
@@ -889,9 +891,14 @@ fun GameScreen(modifier: Modifier = Modifier) {
         }
     }
 
+    LaunchedEffect(gameState.isAwaitingContractDecision) {
+        if (gameState.isAwaitingContractDecision) {
+            dragState = DragState()
+            isBlockBreakerTargeting = false
+        }
+    }
+
     val canShowContractOffer =
-        gameState.score >= ContractGenerator.CONTRACT_UNLOCK_SCORE &&
-            !dragState.isDragging &&
             !gameState.isGameOver &&
             !showRiskSpinOverlay &&
             !showSettingsScreen &&
@@ -1029,7 +1036,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
     }
 
     fun finishDrag() {
-        if (isBlockBreakerTargeting) {
+        if (gameState.isAwaitingContractDecision || isBlockBreakerTargeting) {
             dragState = DragState()
             return
         }
@@ -1333,6 +1340,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 combo = gameState.combo,
                 compact = compactGameplay,
                 onSettingsClick = {
+                    if (gameState.isAwaitingContractDecision) return@GameTopBar
                     if (customMapTestSession != null) {
                         returnToCustomMapEditor()
                     } else {
@@ -1390,9 +1398,9 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 lineClearFeedback = lineClearFeedback,
                 bombPulseFeedback = bombPulseFeedback,
                 blockBreakerFeedback = blockBreakerFeedback,
-                blockBreakerTargetCells = if (isBlockBreakerTargeting) occupiedBoardCells(gameState.board) else emptySet(),
+                blockBreakerTargetCells = if (isBlockBreakerTargeting && !gameState.isAwaitingContractDecision) occupiedBoardCells(gameState.board) else emptySet(),
                 onBlockBreakerCellTapped = { cell ->
-                    if (!isBlockBreakerTargeting || dragState.isDragging) return@BoardCanvas
+                    if (gameState.isAwaitingContractDecision || !isBlockBreakerTargeting || dragState.isDragging) return@BoardCanvas
                     val nextState = GameEngine.useBlockBreaker(gameState, cell.row, cell.col)
                     if (nextState == gameState) {
                         view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
@@ -1436,10 +1444,12 @@ fun GameScreen(modifier: Modifier = Modifier) {
 
             PieceTray(
                 pieces = gameState.currentPieces,
+                enabled = !gameState.isAwaitingContractDecision,
                 nextPiece = gameState.nextPiece,
                 usedPieceIndices = gameState.usedPieceIndices,
                 draggingPieceIndex = dragState.pieceIndex,
                 onPieceDragStarted = { pieceIndex, piece, position, startOffset ->
+                    if (gameState.isAwaitingContractDecision) return@PieceTray
                     val resolution = calculateCurrentDragPlacementResolution(
                         piece = piece,
                         dragPosition = position,
@@ -1457,6 +1467,10 @@ fun GameScreen(modifier: Modifier = Modifier) {
                     )
                 },
                 onPieceDragged = { dragAmount ->
+                    if (gameState.isAwaitingContractDecision) {
+                        dragState = DragState()
+                        return@PieceTray
+                    }
                     val piece = dragState.piece
                     val nextPosition = dragState.dragPosition + dragAmount
                     val resolution = if (piece != null) {
@@ -1494,8 +1508,10 @@ fun GameScreen(modifier: Modifier = Modifier) {
             ) {
                 Button(
                     onClick = {
+                        if (gameState.isAwaitingContractDecision) return@Button
                         showRestartConfirmDialog = true
                     },
+                    enabled = !gameState.isAwaitingContractDecision,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = activeThemeColors.button,
                         contentColor = activeThemeColors.textPrimary
@@ -1520,6 +1536,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
 
                 Button(
                     onClick = {
+                        if (gameState.isAwaitingContractDecision) return@Button
                         showRiskSpinOverlay = true
                         showRiskSpinOptions = true
                         riskSpinMemorySession = null
@@ -1578,12 +1595,14 @@ fun GameScreen(modifier: Modifier = Modifier) {
 
             JokerInventoryCarousel(
                 inventory = gameState.riskSpinState.inventory,
+                interactionsEnabled = !gameState.isAwaitingContractDecision,
                 compact = compactGameplay,
                 draggingJokerInventoryIndex = dragState.jokerInventoryIndex,
                 canUseRevert = gameState.riskSpinState.previousMoveSnapshot != null &&
                     JokerType.Revert in gameState.riskSpinState.inventory,
                 canUseClearBoard = !gameState.board.isEmpty() && !gameState.isGameOver,
                 onJokerDragStarted = { inventoryIndex, selectedJokerType, jokerPiece, position, startOffset ->
+                    if (gameState.isAwaitingContractDecision) return@JokerInventoryCarousel
                     val resolution = calculateCurrentDragPlacementResolution(
                         piece = jokerPiece,
                         dragPosition = position,
@@ -1603,6 +1622,10 @@ fun GameScreen(modifier: Modifier = Modifier) {
                     )
                 },
                 onJokerDragged = { dragAmount ->
+                    if (gameState.isAwaitingContractDecision) {
+                        dragState = DragState()
+                        return@JokerInventoryCarousel
+                    }
                     val piece = dragState.piece
                     val nextPosition = dragState.dragPosition + dragAmount
                     val resolution = if (piece != null) {
@@ -1628,11 +1651,13 @@ fun GameScreen(modifier: Modifier = Modifier) {
                     dragState = DragState()
                 },
                 onBlockBreakerClicked = {
+                    if (gameState.isAwaitingContractDecision) return@JokerInventoryCarousel
                     if (!dragState.isDragging && !gameState.isGameOver) {
                         isBlockBreakerTargeting = !isBlockBreakerTargeting
                     }
                 },
                 onClearBoardClicked = {
+                    if (gameState.isAwaitingContractDecision) return@JokerInventoryCarousel
                     val previousState = gameState
                     val nextState = GameEngine.useClearBoardJoker(previousState)
                     if (nextState != previousState) {
@@ -1668,6 +1693,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                     }
                 },
                 onRevertClicked = {
+                    if (gameState.isAwaitingContractDecision) return@JokerInventoryCarousel
                     val nextState = GameEngine.useRevertJoker(gameState)
                     if (nextState != gameState) {
                         gameState = nextState
@@ -1717,6 +1743,14 @@ fun GameScreen(modifier: Modifier = Modifier) {
 
         val offeredContract = gameState.contractState.offeredContract
         if (offeredContract != null && canShowContractOffer) {
+            Dialog(
+                onDismissRequest = {},
+                properties = DialogProperties(
+                    dismissOnBackPress = false,
+                    dismissOnClickOutside = false,
+                    usePlatformDefaultWidth = false
+                )
+            ) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -1728,13 +1762,19 @@ fun GameScreen(modifier: Modifier = Modifier) {
             ) {
                 ContractOfferPopup(
                     contract = offeredContract,
+                    modifier = Modifier.testTag("contract-offer"),
                     onAccept = {
+                        dragState = DragState()
+                        isBlockBreakerTargeting = false
                         gameState = GameEngine.acceptContract(gameState)
                     },
                     onSkip = {
+                        dragState = DragState()
+                        isBlockBreakerTargeting = false
                         gameState = GameEngine.skipContract(gameState)
                     }
                 )
+            }
             }
         }
 

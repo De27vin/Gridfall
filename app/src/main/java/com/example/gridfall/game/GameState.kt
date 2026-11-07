@@ -14,4 +14,8 @@ data class GameState(
     val contractState: ContractState = ContractState(),
     val riskSpinState: RiskSpinState = RiskSpinState(),
     val runStats: RunStats = RunStats.newRun()
-)
+) {
+    val isAwaitingContractDecision: Boolean
+        // Offers are not presented after game over; retain restart/undo recovery.
+        get() = !isGameOver && contractState.offeredContract != null
+}

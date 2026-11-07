@@ -176,6 +176,7 @@ object GameEngine {
     fun riskSpinAvailability(state: GameState): RiskSpinAvailability {
         val level = LevelSystem.levelForScore(state.score)
         return when {
+            state.isAwaitingContractDecision -> RiskSpinAvailability(false, "Resolve the contract offer first")
             state.isGameOver -> RiskSpinAvailability(false, "Game over")
             level < 3 -> RiskSpinAvailability(false, "Unlocks at Level 3")
             state.riskSpinState.cooldownBatchesRemaining > 0 -> RiskSpinAvailability(
@@ -196,6 +197,7 @@ object GameEngine {
     }
 
     fun canSelectRiskSpinOption(state: GameState, option: RiskSpinOption): Boolean {
+        if (state.isAwaitingContractDecision) return false
         val scoreAfterPayment = state.score - riskSpinCost(state, option)
         return scoreAfterPayment >= 0 &&
             LevelSystem.levelForScore(scoreAfterPayment) >= 3
@@ -268,6 +270,7 @@ object GameEngine {
         session: RiskSpinMemorySession,
         fieldId: Int
     ): RiskSpinMemoryRevealResult? {
+        if (state.isAwaitingContractDecision) return null
         if (session.revealsLeft <= 0) return null
         val field = session.fields.firstOrNull { it.id == fieldId } ?: return null
         if (field.isRevealed) return null
@@ -353,7 +356,7 @@ object GameEngine {
         startCol: Int,
         random: Random = Random.Default
     ): GameState {
-        if (state.isGameOver) return state
+        if (state.isGameOver || state.isAwaitingContractDecision) return state
         val gridLayout = if (state.board.isCustom) GridLayoutPreset.Classic else {
             GridLayoutPreset.fromBoardSize(state.board.rowCount)
         }
@@ -530,7 +533,7 @@ object GameEngine {
         startRow: Int,
         startCol: Int
     ): GameState {
-        if (state.isGameOver) return state
+        if (state.isGameOver || state.isAwaitingContractDecision) return state
         if (jokerType !in state.riskSpinState.inventory) return state
         val piece = jokerType.toPiece() ?: return state
         if (!canPlace(state.board, piece, startRow, startCol)) return state
@@ -589,7 +592,7 @@ object GameEngine {
     }
 
     fun useBlockBreaker(state: GameState, row: Int, col: Int): GameState {
-        if (state.isGameOver || JokerType.BlockBreaker !in state.riskSpinState.inventory) return state
+        if (state.isGameOver || state.isAwaitingContractDecision || JokerType.BlockBreaker !in state.riskSpinState.inventory) return state
         if (!state.board.isPlayable(row, col) || state.board.get(row, col) == 0) return state
 
         val previousSnapshot = snapshotBeforeMove(state)
@@ -613,7 +616,7 @@ object GameEngine {
     }
 
     fun useClearBoardJoker(state: GameState): GameState {
-        if (state.isGameOver || JokerType.ClearBoard !in state.riskSpinState.inventory) return state
+        if (state.isGameOver || state.isAwaitingContractDecision || JokerType.ClearBoard !in state.riskSpinState.inventory) return state
         if (state.board.isEmpty()) return state
 
         val previousSnapshot = snapshotBeforeMove(state)
@@ -643,6 +646,7 @@ object GameEngine {
     }
 
     fun useRevertJoker(state: GameState): GameState {
+        if (state.isAwaitingContractDecision) return state
         if (JokerType.Revert !in state.riskSpinState.inventory) return state
         if (state.riskSpinState.hasUsedRevertSinceLastMove) return state
         val snapshot = state.riskSpinState.previousMoveSnapshot ?: return state

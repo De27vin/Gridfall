@@ -56,6 +56,7 @@ fun JokerInventoryCarousel(
     onBlockBreakerClicked: () -> Unit,
     onClearBoardClicked: () -> Unit,
     compact: Boolean = false,
+    interactionsEnabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val colors = LocalGridfallColors.current
@@ -117,6 +118,7 @@ fun JokerInventoryCarousel(
                     JokerChip(
                         jokerType = jokerType,
                         compact = compact,
+                        interactionsEnabled = interactionsEnabled,
                         inventoryIndex = index,
                         isDragging = draggingJokerInventoryIndex == index,
                         canUseRevert = canUseRevert,
@@ -139,6 +141,7 @@ fun JokerInventoryCarousel(
 private fun JokerChip(
     jokerType: JokerType,
     compact: Boolean,
+    interactionsEnabled: Boolean,
     inventoryIndex: Int,
     isDragging: Boolean,
     canUseRevert: Boolean,
@@ -155,7 +158,7 @@ private fun JokerChip(
     val piece = jokerType.toPiece()
     val shape = RoundedCornerShape(retroCorner(colors, infernoCorner(colors, 12.dp)))
     var chipTopLeft by remember { mutableStateOf(Offset.Zero) }
-    val enabled = when (jokerType) {
+    val enabled = interactionsEnabled && when (jokerType) {
         JokerType.Revert -> canUseRevert
         JokerType.ClearBoard -> canUseClearBoard
         else -> true
@@ -183,7 +186,8 @@ private fun JokerChip(
             }
             .then(
                 if (piece != null) {
-                    Modifier.pointerInput(inventoryIndex, jokerType) {
+                    Modifier.pointerInput(inventoryIndex, jokerType, interactionsEnabled) {
+                        if (!interactionsEnabled) return@pointerInput
                         detectDragGestures(
                             onDragStart = { offset ->
                                 onJokerDragStarted(
@@ -203,7 +207,8 @@ private fun JokerChip(
                         )
                     }
                 } else {
-                    Modifier.pointerInput(canUseRevert, canUseClearBoard) {
+                    Modifier.pointerInput(canUseRevert, canUseClearBoard, interactionsEnabled) {
+                        if (!interactionsEnabled) return@pointerInput
                         detectTapGestures(
                             onTap = {
                                 when (jokerType) {

@@ -52,7 +52,8 @@ fun PieceTray(
     onPieceDragged: (Offset) -> Unit,
     onPieceDragEnded: () -> Unit,
     onPieceDragCancelled: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true
 ) {
     val theme = LocalGridfallColors.current
 
@@ -68,7 +69,7 @@ fun PieceTray(
     ) {
         pieces.forEachIndexed { index, piece ->
             val isUsed = index in usedPieceIndices
-            val isSelectable = !isUsed
+            val isSelectable = !isUsed && enabled
             val isDragging = draggingPieceIndex == index && isSelectable
             val slotShape = RoundedCornerShape(retroCorner(theme, infernoCorner(theme, 18.dp)))
             var slotTopLeft by remember { mutableStateOf(Offset.Zero) }
