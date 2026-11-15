@@ -47,13 +47,13 @@ model CommunityMap {
   ratingCount   Int      @default(0)
   ratingRank    Float    @default(3.5)
   moderationReason String? @db.VarChar(500)
-  searchVector Unsupported("tsvector") @default(dbgenerated())
+  searchVector Unsupported("tsvector")? @default(dbgenerated())
   ratings       CommunityMapRating[]
   imports       CommunityMapDownload[]
   reports       CommunityMapReport[]
   createdAt     DateTime @default(now()) @db.Timestamptz(3)
   unpublishedAt DateTime? @db.Timestamptz(3)
-  owner         User     @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+  owner         User     @relation(fields: [ownerId], references: [id], onDelete: Restrict, onUpdate: NoAction)
 
   @@unique([ownerId, requestId])
   @@index([ownerId, createdAt, id])
@@ -68,8 +68,8 @@ model CommunityMapRating {
   userId String @db.Uuid
   stars Int
   updatedAt DateTime @updatedAt @db.Timestamptz(3)
-  map CommunityMap @relation(fields: [mapId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  map CommunityMap @relation(fields: [mapId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   @@id([mapId, userId])
 }
 
@@ -78,7 +78,7 @@ model CommunityMapDownload {
   actorHash String @db.VarChar(64)
   requestId String @db.Uuid
   createdAt DateTime @default(now()) @db.Timestamptz(3)
-  map CommunityMap @relation(fields: [mapId], references: [id], onDelete: Cascade)
+  map CommunityMap @relation(fields: [mapId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   @@id([mapId, actorHash])
   @@unique([mapId, requestId])
 }
@@ -89,8 +89,8 @@ model CommunityMapReport {
   reason String @db.VarChar(32)
   notes String @db.VarChar(500)
   createdAt DateTime @default(now()) @db.Timestamptz(3)
-  map CommunityMap @relation(fields: [mapId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  map CommunityMap @relation(fields: [mapId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   @@id([mapId, userId])
   @@index([createdAt, mapId, userId])
 }

@@ -11,6 +11,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -26,6 +31,8 @@ fun CommunityMapsScreen(client: CommunityMapsGateway, eligible: Boolean, token: 
     onImport: (CommunityPublication, Boolean) -> Unit, onClose: () -> Unit) {
     val colors = LocalGridfallColors.current
     val scope = rememberCoroutineScope()
+    val focusManager = LocalFocusManager.current
+    val keyboard = LocalSoftwareKeyboardController.current
     var query by remember { mutableStateOf("") }
     var submitted by remember { mutableStateOf("") }
     var sort by remember { mutableStateOf("rated") }
@@ -48,9 +55,9 @@ fun CommunityMapsScreen(client: CommunityMapsGateway, eligible: Boolean, token: 
         finally { loading = false }
     }
     LaunchedEffect(submitted, sort, mine, refresh) { items = emptyList(); cursor = null; load(false) }
-    Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+    Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         Surface(color = colors.backgroundBottom, contentColor = colors.textPrimary,
-            modifier = Modifier.fillMaxSize().safeDrawingPadding().widthIn(max = 720.dp)) {
+            modifier = Modifier.widthIn(max = 720.dp).fillMaxSize().safeDrawingPadding().imePadding()) {
             LazyColumn(Modifier.fillMaxSize().testTag("community-maps"), contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 item {
@@ -59,9 +66,11 @@ fun CommunityMapsScreen(client: CommunityMapsGateway, eligible: Boolean, token: 
                     Text("Discover new challenges · all maps are unranked", color = colors.textMuted)
                 }
                 item {
-                    OutlinedTextField(query, { query = it.take(80) }, label = { Text("Search maps or creators") }, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(query, { query = it.take(80) }, label = { Text("Search maps or creators") }, modifier = Modifier.fillMaxWidth(),
+                        singleLine = true, keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                        keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus(); keyboard?.hide(); submitted = query.trim(); refresh++ }))
                     FlowRow {
-                        TextButton(onClick = { submitted = query.trim(); refresh++ }, enabled = !loading) { Text("Search") }
+                        TextButton(onClick = { focusManager.clearFocus(); keyboard?.hide(); submitted = query.trim(); refresh++ }, enabled = !loading) { Text("Search") }
                         TextButton(onClick = { mine = !mine }, enabled = eligible && !loading) { Text(if (mine) "Browse All Maps" else "My Published Maps") }
                         TextButton(onClick = { refresh++ }, enabled = !loading) { Text("Refresh") }
                     }

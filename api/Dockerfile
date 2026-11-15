@@ -19,4 +19,4 @@ RUN npm run build
 
 EXPOSE 8080
 
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/server.js"]
+CMD ["node", "dist/server.js"]

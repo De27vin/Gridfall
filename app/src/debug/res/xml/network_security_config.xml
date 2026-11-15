@@ -5,5 +5,7 @@
     <!-- Debug-only local NAS API. Release uses the main HTTPS-only config. -->
     <domain-config cleartextTrafficPermitted="true">
         <domain>192.168.222.172</domain>
+        <!-- Loopback only, for the disposable API reached through adb reverse. -->
+        <domain>127.0.0.1</domain>
     </domain-config>
 </network-security-config>

@@ -1961,8 +1961,8 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 eligible = !accountConnectionState.isAnonymous && !accountConnectionState.backendUser?.username.isNullOrBlank(),
                 token = { authManager.getFreshIdToken() },
                 onImport = { publication, play ->
-                    val local = SavedCustomMap("community_${publication.code}", publication.document.name, publication.document.design)
-                    savedCustomMaps = savedCustomMapStore.save(local)
+                    val local = savedCustomMapStore.importCommunityMap(publication.code, publication.document)
+                    savedCustomMaps = savedCustomMapStore.load()
                     if (play) { showCommunityMaps = false; requestCustomMapStart(local.design) }
                 }, onClose = { showCommunityMaps = false })
         }
@@ -1971,8 +1971,8 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 eligible = !accountConnectionState.isAnonymous && !accountConnectionState.backendUser?.username.isNullOrBlank(),
                 token = { authManager.getFreshIdToken() },
                 onImport = { publication, play ->
-                    val local = SavedCustomMap("community_${publication.code}", publication.document.name, publication.document.design)
-                    savedCustomMaps = savedCustomMapStore.save(local)
+                    val local = savedCustomMapStore.importCommunityMap(publication.code, publication.document)
+                    savedCustomMaps = savedCustomMapStore.load()
                     showCommunityCode = false
                     if (play) requestCustomMapStart(local.design)
                 }, onDismiss = { showCommunityCode = false })

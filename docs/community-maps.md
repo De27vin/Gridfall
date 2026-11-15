@@ -100,7 +100,7 @@ restart ordering. Page size is capped at ten so full validated map previews stay
 bounded. No private ownership identifiers or email addresses are returned.
 
 Phase 4 verification: TypeScript build and all 35 backend tests pass, including
-16 disposable-PostgreSQL publication/marketplace integration tests. The two
+15 disposable-PostgreSQL publication/marketplace integration tests. The two
 additive migrations were applied only to the isolated local test database.
 
 ## Android marketplace (phase 5)
@@ -124,3 +124,24 @@ new emulator tests pass (API 30): guest browsing/sorting/details at 150% font,
 intentional import into the existing local store/custom engine, offline retry,
 and empty search/guest publishing restrictions. HTTP-client tests also verify
 that previews are GET-only and import retries preserve their request ID.
+
+## Integration and rollout (phase 6)
+
+Imported descriptions now survive local saves and re-sharing. Re-importing a map
+preserves any edited local copy instead of overwriting it. Legacy saves retain
+their recovery/migration behavior. Community details reuse the editor's actual
+block-shape previews. The marketplace consumes system/keyboard insets, dismisses
+the keyboard on search/submit, and constrains tablet content width.
+
+Custom/community runs are excluded at Android's submission policy and existing
+submission boundary; the backend also rejects explicit custom/community run
+markers rather than stripping them into official submissions. Legacy official
+payloads remain accepted. An additional partial expression index supports
+popularity sorting. Community Prisma relations reflect the reviewed SQL exactly.
+
+API Docker startup now runs the server only. Production migrations require an
+explicit reviewed job; Compose requires the import deduplication secret. No
+production database changes were made. See the
+[deployment and testing guide](community-maps-deployment.md) and
+[phase/file/test record](community-maps-verification.md). Both GitHub issues stay
+open until approved integration, deployment and manual verification are complete.

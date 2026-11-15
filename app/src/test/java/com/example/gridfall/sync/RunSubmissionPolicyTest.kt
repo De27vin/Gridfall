@@ -11,6 +11,14 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class RunSubmissionPolicyTest {
+    @Test fun customAndImportedMapsNeverSubmitEvenAtOfficialDimensions() {
+        listOf(7, 8, 10).forEach { size ->
+            val state = com.example.gridfall.game.GameEngine.createCustomState(
+                com.example.gridfall.game.CustomMapDesign(size, size, emptySet())).copy(score = 9999, isGameOver = true)
+            assertFalse(RunSubmissionPolicy.shouldSubmitGameOverRun(state))
+            assertFalse(RunSubmissionPolicy.shouldSubmitConfirmedRestartRun(state))
+        }
+    }
     @Test
     fun registryMarksSameRunSubmittedOnlyOnce() {
         val firstDecision = RunSubmissionRegistry().markSubmittedOnce("run-1")

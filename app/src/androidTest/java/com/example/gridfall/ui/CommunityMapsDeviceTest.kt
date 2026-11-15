@@ -43,6 +43,7 @@ class CommunityMapsDeviceTest {
                 CommunityMapsScreen(gateway, false, { error("Guest must not request token") }, { _, _ -> }, {})
             }
         } }
+        compose.onNodeWithTag("community-maps").performScrollToNode(hasText("Small challenge"))
         compose.onNodeWithText("Small challenge").assertIsDisplayed()
         compose.onNodeWithText("Most Downloaded").performScrollTo().performClick()
         compose.waitForIdle()
@@ -74,17 +75,28 @@ class CommunityMapsDeviceTest {
     @Test fun offlineStateHasRetryAndRecoversWithoutAuth() {
         val gateway = FakeGateway().also { it.offline = true }
         compose.setContent { GridfallTheme { CommunityMapsScreen(gateway, false, { error("Guest token") }, { _, _ -> }, {}) } }
-        compose.onNodeWithText("Retry").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("community-maps").performScrollToNode(hasText("Retry"))
+        compose.onNodeWithText("Retry").assertIsDisplayed()
         gateway.offline = false
         compose.onNodeWithText("Retry").performClick()
-        compose.onNodeWithText("Small challenge").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("community-maps").performScrollToNode(hasText("Small challenge"))
+        compose.onNodeWithText("Small challenge").assertIsDisplayed()
     }
     @Test fun emptySearchAndGuestPublishingRestrictionsAreVisible() {
         val gateway = FakeGateway()
         compose.setContent { GridfallTheme { CommunityMapsScreen(gateway, false, { error("Guest token") }, { _, _ -> }, {}) } }
         compose.onNodeWithText("My Published Maps").assertIsNotEnabled()
         compose.onNodeWithText("Search maps or creators").performTextInput("missing")
-        compose.onNodeWithText("Search", substring = false).performClick()
-        compose.onNodeWithText("No maps found. Try another search.").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Search", substring = false).performScrollTo().performClick()
+        compose.onNodeWithTag("community-maps").performScrollToNode(hasText("No maps found. Try another search."))
+        compose.onNodeWithText("No maps found. Try another search.").performScrollTo()
+        compose.waitForIdle()
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val screenshot = InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
+        java.io.File(context.getExternalFilesDir(null), "community-search-empty.png").outputStream().use {
+            screenshot.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
+        }
+        screenshot.recycle()
+        compose.onNodeWithText("No maps found. Try another search.").assertIsDisplayed()
     }
 }

@@ -11,7 +11,12 @@ class CommunityMapFormatTest {
     @Test fun crossLanguageGoldenRoundTrip() {
         val d = CommunityMapFormat.decode(fixture)
         assertEquals(fixture, CommunityMapFormat.export(d.name, d.description, d.design))
-        assertTrue(GameEngine.createCustomState(d.design).board.isCustom)
+        val state = GameEngine.createCustomState(d.design)
+        assertTrue(state.board.isCustom)
+        val played = GameEngine.placePiece(state, 0, 1, 1)
+        assertTrue(played.board.get(1, 1) != 0)
+        assertTrue(played.board.isCustom)
+        assertEquals(d.design.blockedCells, played.board.blockedCells)
     }
     @Test fun preservesPoolOrderProbabilitiesColorsAndDisconnectedShapes() {
         val pool = listOf(MapBlockDefinition("b", "B", setOf(Cell(1, 1), Cell(2, 2)), 123, 4),

@@ -114,4 +114,12 @@ describe.skipIf(!testUrl)("marketplace on disposable PostgreSQL", () => {
     for (let i = 0; i < 31; i++) await app.inject({method: "POST", url, remoteAddress: "127.0.0.66", payload: {requestId: randomUUID()}});
     expect((await app.inject({method: "POST", url, remoteAddress: "127.0.0.66", payload: {requestId: randomUUID()}})).statusCode).toBe(429);
   });
+  it("rejects custom/community leaderboard submissions before writing any run", async () => {
+    const before = await prisma.run.count();
+    for (const marker of [{runKind: "community"}, {isCustomMap: true}, {communityMapCode: codes[0]}]) {
+      expect((await app.inject({method: "POST", url: "/runs", headers: headers(),
+        payload: {score: 99000, level: 20, boardSize: 8, ...marker}})).statusCode).toBe(400);
+    }
+    expect(await prisma.run.count()).toBe(before);
+  });
 });

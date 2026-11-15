@@ -10,6 +10,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
 import com.example.gridfall.game.*
 import com.example.gridfall.network.*
@@ -19,6 +21,8 @@ import kotlinx.coroutines.CancellationException
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import com.example.gridfall.ui.theme.LocalGridfallColors
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.ui.semantics.Role
 
 @Composable
 internal fun CommunityMapsTheme(content: @Composable () -> Unit) {
@@ -36,8 +40,10 @@ fun CommunityMapDialog(savedMap: SavedCustomMap?, client: CommunityMapsGateway, 
     initialCode: String? = null) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val focusManager = LocalFocusManager.current
+    val keyboard = LocalSoftwareKeyboardController.current
     var code by remember { mutableStateOf("") }
-    var description by remember { mutableStateOf("") }
+    var description by remember { mutableStateOf(savedMap?.description.orEmpty()) }
     var visibility by remember { mutableStateOf("unlisted") }
     var publication by remember { mutableStateOf<CommunityPublication?>(null) }
     var busy by remember { mutableStateOf(false) }
@@ -48,7 +54,7 @@ fun CommunityMapDialog(savedMap: SavedCustomMap?, client: CommunityMapsGateway, 
     var notice by remember { mutableStateOf<String?>(null) }
     val requestId = remember { UUID.randomUUID().toString() }
     val importId = remember { UUID.randomUUID().toString() }
-    fun runAction(action: suspend () -> Unit) { scope.launch {
+    fun runAction(action: suspend () -> Unit) { focusManager.clearFocus(); keyboard?.hide(); scope.launch {
         busy = true; error = null
         try { action() } catch (e: CancellationException) { throw e }
         catch (e: Exception) { error = e.message ?: "Map action failed." }
@@ -65,8 +71,10 @@ fun CommunityMapDialog(savedMap: SavedCustomMap?, client: CommunityMapsGateway, 
                     Text(savedMap.name)
                     Text("Publish an immutable copy. Editing your saved map later creates a new publication.")
                     OutlinedTextField(description, { description = it.take(500) }, enabled = !busy, label = { Text("Description (optional)") })
-                    Row { RadioButton(visibility == "unlisted", { visibility = "unlisted" }); Text("Unlisted · code only") }
-                    Row { RadioButton(visibility == "public", { visibility = "public" }); Text("Public · marketplace") }
+                    Row(Modifier.fillMaxWidth().selectable(visibility == "unlisted", enabled = !busy, role = Role.RadioButton,
+                        onClick = { visibility = "unlisted" })) { RadioButton(visibility == "unlisted", null); Text("Unlisted · code only") }
+                    Row(Modifier.fillMaxWidth().selectable(visibility == "public", enabled = !busy, role = Role.RadioButton,
+                        onClick = { visibility = "public" })) { RadioButton(visibility == "public", null); Text("Public · marketplace") }
                     if (!eligible) Text("Sign in and choose a username in Settings before publishing.")
                     Button(enabled = eligible && !busy, onClick = { runAction {
                         publication = client.publish(token(), CommunityMapFormat.export(savedMap.name, description, savedMap.design), visibility, requestId)
@@ -86,7 +94,10 @@ fun CommunityMapDialog(savedMap: SavedCustomMap?, client: CommunityMapsGateway, 
                         .setPrimaryClip(ClipData.newPlainText("Gridfall map code", map.code))
                 }) { Text("Copy Code") }
                 if (savedMap == null) {
-                    Text(map.document.design.blockPool.joinToString("\n") { "${it.name}: ${it.spawnChanceTenthsPercent / 10.0}%" })
+                    map.document.design.blockPool.forEach { block -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        MapBlockPreview(block, Modifier.size(40.dp))
+                        Text("${block.name}: ${block.spawnChanceTenthsPercent / 10.0}%", modifier = Modifier.weight(1f))
+                    } }
                     Button(enabled = !busy, onClick = { runAction { onImport(client.importMap(map.code, importId, if (eligible) token() else null), false) } }) { Text("Save Map Offline") }
                     Button(enabled = !busy, onClick = { runAction { onImport(client.importMap(map.code, importId, if (eligible) token() else null), true) } }) { Text("Import & Play") }
                     Text("Rate this map", style = MaterialTheme.typography.titleSmall)

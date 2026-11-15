@@ -27,7 +27,7 @@ interface CommunityMapsGateway {
 
 class CommunityMapsClient(
     private val endpoint: (String) -> String = ApiConfig::endpoint,
-    private val http: OkHttpClient = OkHttpClient()
+    private val http: OkHttpClient = OkHttpClient.Builder().callTimeout(30, java.util.concurrent.TimeUnit.SECONDS).build()
 ) : CommunityMapsGateway {
     override suspend fun fetch(code: String): CommunityPublication = parse(request("GET", "/community/maps/${normalizeCode(code)}"))
 

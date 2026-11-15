@@ -327,7 +327,7 @@ private fun MapBlockEditorDialog(
 }
 
 @Composable
-private fun MapBlockPreview(block: MapBlockDefinition, modifier: Modifier = Modifier) {
+internal fun MapBlockPreview(block: MapBlockDefinition, modifier: Modifier = Modifier) {
     val theme = LocalGridfallColors.current
     Canvas(modifier = modifier) {
         val normalized = CustomBlockRules.normalize(block.cells)

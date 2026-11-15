@@ -27,10 +27,10 @@ data class RunSubmissionDecision(
 
 object RunSubmissionPolicy {
     fun shouldSubmitGameOverRun(state: GameState): Boolean {
-        return state.isGameOver
+        return !state.board.isCustom && state.isGameOver
     }
 
     fun shouldSubmitConfirmedRestartRun(state: GameState): Boolean {
-        return state.score > 0
+        return !state.board.isCustom && state.score > 0
     }
 }

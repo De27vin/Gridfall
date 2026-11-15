@@ -2,6 +2,11 @@ import { z } from "zod";
 import { prisma } from "../db";
 
 export const submitRunSchema = z.object({
+  // Old official clients omit these fields. Explicit custom/community markers
+  // must never be silently stripped and accepted as an official leaderboard run.
+  runKind: z.literal("official").optional(),
+  isCustomMap: z.literal(false).optional(),
+  communityMapCode: z.never().optional(),
   score: z.number().int().min(0).max(10_000_000),
   level: z.number().int().min(1).max(10_000),
   linesCleared: z.number().int().min(0).max(100_000).default(0),
@@ -12,7 +17,7 @@ export const submitRunSchema = z.object({
   boardSize: z.union([z.literal(7), z.literal(8), z.literal(10)]).default(8),
   durationSeconds: z.number().int().min(0).max(604_800).nullable().optional(),
   appVersion: z.string().trim().max(64).nullable().optional()
-});
+}).strict();
 
 export type SubmitRunInput = z.infer<typeof submitRunSchema>;
 

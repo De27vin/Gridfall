@@ -2,6 +2,13 @@ import { describe, expect, it } from "vitest";
 import { submitRunSchema, summarizeRunStats } from "./runsService";
 
 describe("submitRunSchema", () => {
+  it("rejects custom/community runs without affecting legacy official clients", () => {
+    for (const marker of [{runKind: "custom"}, {runKind: "community"}, {isCustomMap: true},
+      {communityMapCode: "GF-A7K9P23456"}, {customMap: {rows: 8, columns: 8}}]) {
+      expect(submitRunSchema.safeParse({score: 9000, level: 10, boardSize: 8, ...marker}).success).toBe(false);
+    }
+    expect(submitRunSchema.safeParse({score: 9000, level: 10, boardSize: 8}).success).toBe(true);
+  });
   it("accepts a reasonable run payload", () => {
     const parsed = submitRunSchema.parse({
       score: 1234,

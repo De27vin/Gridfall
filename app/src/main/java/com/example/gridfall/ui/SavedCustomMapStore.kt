@@ -8,6 +8,7 @@ import com.example.gridfall.game.CustomMapRules
 import com.example.gridfall.game.MapBlockDefinition
 import com.example.gridfall.game.MapBlockPoolRules
 import com.example.gridfall.game.SavedCustomMap
+import com.example.gridfall.game.CommunityMapDocument
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.UUID
@@ -53,6 +54,16 @@ class SavedCustomMapStore(private val context: Context) {
         return maps
     }
 
+    /** Imports are self-contained. Re-importing must not overwrite a locally edited copy. */
+    fun importCommunityMap(code: String, document: CommunityMapDocument): SavedCustomMap {
+        val id = "community_$code"
+        val imported = SavedCustomMap(id, document.name, document.design, document.description)
+        val previous = load().firstOrNull { it.id == id }
+        val local = if (previous != null && previous != imported) imported.copy(id = UUID.randomUUID().toString()) else imported
+        save(local)
+        return local
+    }
+
     private fun persist(maps: List<SavedCustomMap>) {
         val array = JSONArray().also { json -> maps.forEach { json.put(it.toJson()) } }
         preferences.edit().putString(KEY_MAPS, array.toString()).apply()
@@ -62,6 +73,7 @@ class SavedCustomMapStore(private val context: Context) {
         return JSONObject()
             .put("id", id)
             .put("name", name)
+            .put("description", description)
             .put("rows", design.rows)
             .put("columns", design.columns)
             .put("blockedCells", JSONArray().also { cells ->
@@ -121,7 +133,8 @@ class SavedCustomMapStore(private val context: Context) {
         return SavedCustomMap(
             id = id,
             name = normalizedName(optString("name")),
-            design = CustomMapDesign(rows, columns, blockedCells, blockPool)
+            design = CustomMapDesign(rows, columns, blockedCells, blockPool),
+            description = optString("description").trim().take(500)
         )
     }
 
