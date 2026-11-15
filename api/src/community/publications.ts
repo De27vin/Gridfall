@@ -25,7 +25,9 @@ export async function eligibleUser(auth: AuthenticatedUser) {
 }
 export function publicationDto(map: CommunityMap) {
   return { code: map.code, creator: map.creatorName, createdAt: map.createdAt.toISOString(),
-    visibility: map.visibility, published: map.published, document: map.document };
+    visibility: map.visibility, published: map.published, hidden: map.hidden,
+    downloads: map.downloads, ratingAverage: map.ratingCount ? map.ratingSum / map.ratingCount : 0,
+    ratingCount: map.ratingCount, document: map.document };
 }
 export async function publishMap(auth: AuthenticatedUser, document: unknown, visibility: string,
   requestId: string, makeCode = generateMapCode) {
@@ -53,7 +55,7 @@ export async function publishMap(auth: AuthenticatedUser, document: unknown, vis
 }
 export async function getPublication(raw: string) {
   const code = normalizeMapCode(raw);
-  const map = await prisma.communityMap.findFirst({ where: { code, published: true } });
+  const map = await prisma.communityMap.findFirst({ where: { code, published: true, hidden: false } });
   if (!map) throw new CommunityError(404, "Map is unavailable");
   return publicationDto(map);
 }

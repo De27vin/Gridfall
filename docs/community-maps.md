@@ -57,3 +57,48 @@ Phase 3 verification: Android debug APK builds; 276 unit tests pass, including
 code normalization/path rejection, validated publication parsing, the shared
 format round trip, and existing gameplay regressions. Device journey verification
 is reserved for integration testing once the marketplace UI is complete.
+
+## Marketplace API (phase 4)
+
+- `GET /community/maps?q=&sort=rated|downloads|newest|popular&limit=10&cursor=`:
+  guest discovery; public, published, unhidden maps only. Search matches name and
+  creator word prefixes through PostgreSQL's `simple` full-text GIN index.
+- `GET /community/maps/mine`: same pagination, authenticated owner's maps,
+  including unlisted, unpublished and moderated status. No other owner's data.
+- `POST /community/maps/:code/import` with `{requestId: UUID}`: intentional
+  download only; returns the validated document after checking availability.
+- `PUT /community/maps/:code/rating` with `{stars: 1..5}`: named non-guest users;
+  one editable vote per user; self-ratings rejected.
+- `POST /community/maps/:code/report` with `{reason: "inappropriate"|"spam"|"other",
+  notes?: string}`: named non-guest users; one report per user/map.
+- `GET /community/moderation/reports?page=0` and
+  `PUT /community/moderation/:code` with `{action: "hide"|"remove", reason}`:
+  require a **verified Firebase custom claim** `admin: true`. Public APIs never
+  grant this role. Removal retains records for review but disables publication.
+
+New tables: `CommunityMapRating`, `CommunityMapDownload`, `CommunityMapReport`.
+All aggregate updates are serialized with a map row lock. Database constraints
+enforce unique ratings/import actors/request IDs and valid star ranges. Reports
+are rate limited (5/hour/IP), imports/ratings 30/hour/IP. Discovery has the global
+300/minute/IP limit. Reverse proxies must preserve trustworthy client addresses;
+do not enable blanket trust of forwarded headers from untrusted clients.
+
+Configure a stable, random **32+ character** `COMMUNITY_DOWNLOAD_SECRET` before
+enabling imports. Missing configuration fails closed with 503. Downloads retain
+an HMAC of the authenticated identity or guest IP, never raw IPs/UIDs. They count
+once per map/actor, with request UUID deduplication across retries. Guest devices
+behind one NAT may conservatively share one count; signing in produces a separate
+identity. This is abuse resistance, not a unique-human guarantee. Rotating the
+secret resets actor deduplication and should be avoided routinely.
+
+Rating ranking uses `(35 + sum(stars)) / (10 + voteCount)` (ten prior votes at
+3.5). The UI still shows the actual average/count. Popularity multiplies this
+rank by `ln(2 + downloads)`. Sort ties use creation time and UUID. Cursors bind
+the search/sort/owner and a creation snapshot, preventing new publications from
+displacing later pages. Existing maps can move after votes/imports; refresh to
+restart ordering. Page size is capped at ten so full validated map previews stay
+bounded. No private ownership identifiers or email addresses are returned.
+
+Phase 4 verification: TypeScript build and all 35 backend tests pass, including
+16 disposable-PostgreSQL publication/marketplace integration tests. The two
+additive migrations were applied only to the isolated local test database.
