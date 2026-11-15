@@ -210,6 +210,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
     val authManager = remember { GridfallAuthManager() }
     val communityClient = remember { com.example.gridfall.network.CommunityMapsClient() }
     var showCommunityCode by remember { mutableStateOf(false) }
+    var showCommunityMaps by remember { mutableStateOf(false) }
     var communityShareMap by remember { mutableStateOf<SavedCustomMap?>(null) }
     val apiClient = remember { GridfallApiClient() }
     val pendingRunStore = remember { PendingRunSubmissionStore(context) }
@@ -1245,6 +1246,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 onSavedMapPlay = { savedMap -> requestCustomMapStart(savedMap.design) },
                 onSavedMapShare = { communityShareMap = it; showCommunityCode = true },
                 onEnterMapCode = { communityShareMap = null; showCommunityCode = true },
+                onCommunityMaps = { showCommunityMaps = true },
                 onSavedMapEdit = { savedMap ->
                     editingSavedMap = savedMap
                     customMapEditorDraft = null
@@ -1953,6 +1955,17 @@ fun GameScreen(modifier: Modifier = Modifier) {
             )
         }
 
+        CommunityMapsTheme {
+        if (showCommunityMaps) {
+            CommunityMapsScreen(communityClient,
+                eligible = !accountConnectionState.isAnonymous && !accountConnectionState.backendUser?.username.isNullOrBlank(),
+                token = { authManager.getFreshIdToken() },
+                onImport = { publication, play ->
+                    val local = SavedCustomMap("community_${publication.code}", publication.document.name, publication.document.design)
+                    savedCustomMaps = savedCustomMapStore.save(local)
+                    if (play) { showCommunityMaps = false; requestCustomMapStart(local.design) }
+                }, onClose = { showCommunityMaps = false })
+        }
         if (showCommunityCode) {
             CommunityMapDialog(communityShareMap, communityClient,
                 eligible = !accountConnectionState.isAnonymous && !accountConnectionState.backendUser?.username.isNullOrBlank(),
@@ -1965,6 +1978,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 }, onDismiss = { showCommunityCode = false })
         }
 
+        }
         if (showLogoutConfirmDialog) {
             LogoutConfirmDialog(
                 isLoading = isAuthActionLoading,

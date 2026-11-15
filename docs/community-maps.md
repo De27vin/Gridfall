@@ -102,3 +102,25 @@ bounded. No private ownership identifiers or email addresses are returned.
 Phase 4 verification: TypeScript build and all 35 backend tests pass, including
 16 disposable-PostgreSQL publication/marketplace integration tests. The two
 additive migrations were applied only to the isolated local test database.
+
+## Android marketplace (phase 5)
+
+Settings → Community Maps opens the themed, independently scrolling marketplace.
+Search by map/creator, choose Top Rated / Popular / Most Downloaded / Newest,
+and load subsequent pages. Cards display the actual blocked grid, author,
+dimensions, vote average/count and intentional imports. Details support code
+copying, offline save, import/play, editable 1–5-star voting and reporting.
+My Published Maps includes unlisted/unpublished/hidden states and confirmed
+unpublishing. Existing local copies remain accessible from Saved Maps.
+
+Controls wrap and detail dialogs scroll at large fonts; gameplay layout and
+gestures are untouched. Guest actions never request authentication tokens;
+server-side eligibility and ownership remain authoritative. Loading, empty,
+offline/retry and API failure states are shown. API requests distinguish read-only
+previews from explicit import POSTs and reuse an import UUID for retries.
+
+Verification: debug APK and test APK build, 277 Android unit tests pass, and four
+new emulator tests pass (API 30): guest browsing/sorting/details at 150% font,
+intentional import into the existing local store/custom engine, offline retry,
+and empty search/guest publishing restrictions. HTTP-client tests also verify
+that previews are GET-only and import retries preserve their request ID.

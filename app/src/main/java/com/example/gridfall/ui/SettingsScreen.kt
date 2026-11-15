@@ -93,6 +93,7 @@ fun SettingsScreen(
     onSavedMapDelete: (SavedCustomMap) -> Unit,
     onSavedMapShare: (SavedCustomMap) -> Unit = {},
     onEnterMapCode: () -> Unit = {},
+    onCommunityMaps: () -> Unit = {},
     onSoundEffectsVolumeChange: (Float) -> Unit,
     onBackgroundMusicVolumeChange: (Float) -> Unit,
     accountConnectionState: AccountConnectionState,
@@ -190,6 +191,7 @@ fun SettingsScreen(
                         onClick = onCustomMapClick
                     )
                     TextButton(onClick = onEnterMapCode) { Text("Enter Map Code") }
+                    TextButton(onClick = onCommunityMaps) { Text("Community Maps") }
                     Text(
                         text = "Saved Maps",
                         color = theme.textSecondary,
