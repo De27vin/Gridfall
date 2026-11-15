@@ -41,3 +41,19 @@ The migration file is supplied for review; application startup does not migrate.
 Integration tests require `COMMUNITY_TEST_DATABASE_URL` and `DATABASE_URL` set to
 the same disposable database at `127.0.0.1:55439/gridfall_community_test`.
 They refuse any other database, and skip when the explicit test opt-in is absent.
+
+## Android code sharing (phase 3)
+
+Settings → Saved Maps → Share Map publishes a snapshot with an optional description
+and explicit public/unlisted choice (default unlisted). A named signed-in profile
+is required; guests can use Enter Map Code without authentication. The preview
+shows the actual grid, author, dimensions, pool and code. Copy Code uses Android's
+clipboard. Save Map Offline and Import & Play refetch availability before saving
+to the existing local store. Repeat imports use the same local code-based ID.
+Imported maps run through the custom/unranked engine and need no network to play
+after import. Existing local save encoding and recovery remain unchanged.
+
+Phase 3 verification: Android debug APK builds; 276 unit tests pass, including
+code normalization/path rejection, validated publication parsing, the shared
+format round trip, and existing gameplay regressions. Device journey verification
+is reserved for integration testing once the marketplace UI is complete.

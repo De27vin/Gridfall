@@ -1,5 +1,7 @@
 package com.example.gridfall.ui
 
+import androidx.compose.material3.TextButton
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -89,6 +91,8 @@ fun SettingsScreen(
     onSavedMapPlay: (SavedCustomMap) -> Unit,
     onSavedMapEdit: (SavedCustomMap) -> Unit,
     onSavedMapDelete: (SavedCustomMap) -> Unit,
+    onSavedMapShare: (SavedCustomMap) -> Unit = {},
+    onEnterMapCode: () -> Unit = {},
     onSoundEffectsVolumeChange: (Float) -> Unit,
     onBackgroundMusicVolumeChange: (Float) -> Unit,
     accountConnectionState: AccountConnectionState,
@@ -185,6 +189,7 @@ fun SettingsScreen(
                     CustomMapOptionRow(
                         onClick = onCustomMapClick
                     )
+                    TextButton(onClick = onEnterMapCode) { Text("Enter Map Code") }
                     Text(
                         text = "Saved Maps",
                         color = theme.textSecondary,
@@ -204,6 +209,7 @@ fun SettingsScreen(
                                 active = activeCustomMapDesign == savedMap.design,
                                 onPlay = { onSavedMapPlay(savedMap) },
                                 onEdit = { onSavedMapEdit(savedMap) },
+                                onShare = { onSavedMapShare(savedMap) },
                                 onDelete = { mapPendingDelete = savedMap }
                             )
                         }
@@ -346,6 +352,7 @@ private fun SavedMapOptionRow(
     active: Boolean,
     onPlay: () -> Unit,
     onEdit: () -> Unit,
+    onShare: () -> Unit,
     onDelete: () -> Unit
 ) {
     val theme = LocalGridfallColors.current
@@ -406,6 +413,7 @@ private fun SavedMapOptionRow(
                 SavedMapAction("Edit", theme.textSecondary, onEdit)
                 SavedMapAction("Delete", theme.danger, onDelete)
             }
+            SavedMapAction("Share Map", theme.textSecondary, onShare)
         }
     }
 }
@@ -422,7 +430,7 @@ private fun SavedMapAction(label: String, color: androidx.compose.ui.graphics.Co
 }
 
 @Composable
-private fun SavedMapPreview(design: CustomMapDesign, modifier: Modifier = Modifier) {
+internal fun SavedMapPreview(design: CustomMapDesign, modifier: Modifier = Modifier) {
     val theme = LocalGridfallColors.current
     Canvas(modifier = modifier) {
         val gap = size.minDimension * 0.035f

@@ -208,6 +208,9 @@ fun GameScreen(modifier: Modifier = Modifier) {
     }
     val soundManager = remember { GridfallSoundManager(context) }
     val authManager = remember { GridfallAuthManager() }
+    val communityClient = remember { com.example.gridfall.network.CommunityMapsClient() }
+    var showCommunityCode by remember { mutableStateOf(false) }
+    var communityShareMap by remember { mutableStateOf<SavedCustomMap?>(null) }
     val apiClient = remember { GridfallApiClient() }
     val pendingRunStore = remember { PendingRunSubmissionStore(context) }
     val persistInProgressRun by rememberUpdatedState(newValue = {
@@ -1240,6 +1243,8 @@ fun GameScreen(modifier: Modifier = Modifier) {
                     showCustomMapEditor = true
                 },
                 onSavedMapPlay = { savedMap -> requestCustomMapStart(savedMap.design) },
+                onSavedMapShare = { communityShareMap = it; showCommunityCode = true },
+                onEnterMapCode = { communityShareMap = null; showCommunityCode = true },
                 onSavedMapEdit = { savedMap ->
                     editingSavedMap = savedMap
                     customMapEditorDraft = null
@@ -1946,6 +1951,18 @@ fun GameScreen(modifier: Modifier = Modifier) {
                     showLeaderboardDialog = false
                 }
             )
+        }
+
+        if (showCommunityCode) {
+            CommunityMapDialog(communityShareMap, communityClient,
+                eligible = !accountConnectionState.isAnonymous && !accountConnectionState.backendUser?.username.isNullOrBlank(),
+                token = { authManager.getFreshIdToken() },
+                onImport = { publication, play ->
+                    val local = SavedCustomMap("community_${publication.code}", publication.document.name, publication.document.design)
+                    savedCustomMaps = savedCustomMapStore.save(local)
+                    showCommunityCode = false
+                    if (play) requestCustomMapStart(local.design)
+                }, onDismiss = { showCommunityCode = false })
         }
 
         if (showLogoutConfirmDialog) {
