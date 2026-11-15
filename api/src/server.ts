@@ -9,6 +9,7 @@ import { leaderboardRoutes } from "./routes/leaderboard";
 import { meRoutes } from "./routes/me";
 import { mergeRoutes } from "./routes/merge";
 import { runsRoutes } from "./routes/runs";
+import { communityRoutes } from "./routes/community";
 
 export function buildServer() {
   const app = Fastify({
@@ -29,6 +30,7 @@ export function buildServer() {
   app.register(runsRoutes);
   app.register(leaderboardRoutes);
   app.register(mergeRoutes);
+  app.register(communityRoutes);
 
   app.setErrorHandler((error, _request, reply) => {
     app.log.error(error);

@@ -24,6 +24,28 @@ model User {
   profile            PlayerProfile?
   runs               Run[]
   guestMergeTokens   GuestMergeToken[] @relation("GuestMergeTokenGuest")
+  communityMaps      CommunityMap[]
+}
+
+model CommunityMap {
+  id            String   @id @default(uuid()) @db.Uuid
+  code          String   @unique @db.VarChar(13)
+  ownerId       String   @db.Uuid
+  requestId     String   @db.Uuid
+  payloadHash   String   @db.VarChar(64)
+  name          String   @db.VarChar(24)
+  description   String   @db.VarChar(500)
+  creatorName   String   @db.VarChar(64)
+  visibility    String   @db.VarChar(8)
+  document      Json
+  published     Boolean  @default(true)
+  createdAt     DateTime @default(now()) @db.Timestamptz(3)
+  unpublishedAt DateTime? @db.Timestamptz(3)
+  owner         User     @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+
+  @@unique([ownerId, requestId])
+  @@index([ownerId, createdAt, id])
+  @@index([visibility, published, createdAt, id])
 }
 
 model PlayerProfile {
