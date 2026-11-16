@@ -52,15 +52,27 @@ fun CommunityMapDialog(savedMap: SavedCustomMap?, client: CommunityMapsGateway, 
     var showReport by remember { mutableStateOf(false) }
     var reportNotes by remember { mutableStateOf("") }
     var notice by remember { mutableStateOf<String?>(null) }
+    var pendingDraft by remember { mutableStateOf<PendingPublication?>(null) }
     val requestId = remember { UUID.randomUUID().toString() }
     val importId = remember { UUID.randomUUID().toString() }
-    fun runAction(action: suspend () -> Unit) { focusManager.clearFocus(); keyboard?.hide(); scope.launch {
+    fun runAction(action: suspend () -> Unit) {
+        if (busy) return
         busy = true; error = null
+        focusManager.clearFocus(); keyboard?.hide(); scope.launch {
         try { action() } catch (e: CancellationException) { throw e }
         catch (e: Exception) { error = e.message ?: "Map action failed." }
         finally { busy = false }
     } }
     LaunchedEffect(initialCode) { if (initialCode != null) runAction { publication = client.fetch(initialCode) } }
+    LaunchedEffect(savedMap?.id, eligible) {
+        if (savedMap != null && eligible) runAction {
+            pendingDraft = client.pendingPublication(token(), savedMap.id)
+            pendingDraft?.let {
+                description = CommunityMapFormat.decode(it.document).description
+                visibility = it.visibility
+            }
+        }
+    }
     fun close() { if (savedMap != null) publication?.let { client.finishPublication(it.code) }; onDismiss() }
     AlertDialog(onDismissRequest = { if (!busy) close() }, title = { Text(if (initialCode != null) "Community Map" else if (savedMap == null) "Enter Map Code" else "Share Map") },
         text = { Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -69,16 +81,23 @@ fun CommunityMapDialog(savedMap: SavedCustomMap?, client: CommunityMapsGateway, 
                     OutlinedTextField(code, { code = it.take(32) }, label = { Text("Map code") }, singleLine = true)
                     Button(onClick = { runAction { publication = client.fetch(code) } }, enabled = !busy) { Text("Preview") }
                 } else {
-                    Text(savedMap.name)
+                    Text(pendingDraft?.let { CommunityMapFormat.decode(it.document).name } ?: savedMap.name)
+                    if (pendingDraft != null) Text("A previous publication has an uncertain outcome. Retry its saved snapshot before starting a new publication.")
                     Text("Publish an immutable copy. Editing your saved map later creates a new publication.")
-                    OutlinedTextField(description, { description = it.take(500) }, enabled = !busy, label = { Text("Description (optional)") })
-                    Row(Modifier.fillMaxWidth().selectable(visibility == "unlisted", enabled = !busy, role = Role.RadioButton,
+                    OutlinedTextField(description, { description = it.take(500) }, enabled = !busy && pendingDraft == null, label = { Text("Description (optional)") })
+                    Row(Modifier.fillMaxWidth().selectable(visibility == "unlisted", enabled = !busy && pendingDraft == null, role = Role.RadioButton,
                         onClick = { visibility = "unlisted" })) { RadioButton(visibility == "unlisted", null); Text("Unlisted · code only") }
-                    Row(Modifier.fillMaxWidth().selectable(visibility == "public", enabled = !busy, role = Role.RadioButton,
+                    Row(Modifier.fillMaxWidth().selectable(visibility == "public", enabled = !busy && pendingDraft == null, role = Role.RadioButton,
                         onClick = { visibility = "public" })) { RadioButton(visibility == "public", null); Text("Public · marketplace") }
                     if (!eligible) Text("Sign in and choose a username in Settings before publishing.")
                     Button(enabled = eligible && !busy, onClick = { runAction {
-                        publication = client.publish(token(), CommunityMapFormat.export(savedMap.name, description, savedMap.design), visibility, requestId)
+                        val identity = token()
+                        try {
+                            publication = client.publishSavedMap(identity, savedMap.id,
+                                pendingDraft?.document ?: CommunityMapFormat.export(savedMap.name, description, savedMap.design), visibility, requestId)
+                        } finally {
+                            pendingDraft = client.pendingPublication(identity, savedMap.id)
+                        }
                     } }) { Text("Publish Map") }
                 }
             }

@@ -17,6 +17,9 @@ data class CommunityPublication(val code: String, val creator: String, val docum
 data class CommunityPage(val items: List<CommunityPublication>, val nextCursor: String?)
 interface CommunityMapsGateway {
     fun finishPublication(code: String) {}
+    suspend fun pendingPublication(token: String, mapId: String): PendingPublication? = null
+    suspend fun publishSavedMap(token: String, mapId: String, document: String, visibility: String, requestId: String): CommunityPublication =
+        publish(token, document, visibility, requestId)
     suspend fun fetch(code: String): CommunityPublication
     suspend fun publish(token: String, document: String, visibility: String, requestId: String): CommunityPublication
     suspend fun browse(query: String, sort: String, cursor: String?, ownerToken: String? = null): CommunityPage
@@ -37,6 +40,16 @@ class CommunityMapsClient(
 ) : CommunityMapsGateway {
     override suspend fun fetch(code: String): CommunityPublication = parse(request("GET", "/community/maps/${normalizeCode(code)}"))
 
+    override suspend fun pendingPublication(token: String, mapId: String): PendingPublication? = journal?.pending(identityOfToken(token), mapId)
+    override suspend fun publishSavedMap(token: String, mapId: String, document: String, visibility: String, requestId: String): CommunityPublication {
+        val owner = if (journal != null) identityOfToken(token) else ""
+        val pending = journal?.begin(owner, mapId, document, visibility) ?: PendingPublication(document, visibility)
+        val result = parse(request("POST", "/community/maps", token, JSONObject().put("document", JSONObject(pending.document))
+            .put("visibility", pending.visibility).put("requestId", if (journal != null) pending.requestId else requestId)))
+        journal?.received(owner, pending.document, pending.visibility, result.code)
+        journal?.receivedDraft(owner, mapId, result.code)
+        return result
+    }
     override fun finishPublication(code: String) { journal?.finish(code) }
     override suspend fun publish(token: String, document: String, visibility: String, requestId: String): CommunityPublication {
         val owner = if (journal != null) identityOfToken(token) else ""
