@@ -122,4 +122,25 @@ describe.skipIf(!testUrl)("marketplace on disposable PostgreSQL", () => {
     }
     expect(await prisma.run.count()).toBe(before);
   });
+  it("records concurrent moderation atomically and prevents history mutation", async () => {
+    const code = await publish(prefix + " Audit");
+    const url = `/community/moderation/${code}`;
+    const payload = {action: "hide", reason: "audit test"};
+    expect((await app.inject({method: "PUT", url, headers: headers(), payload})).statusCode).toBe(403);
+    const results = await Promise.all(["hide", "remove"].map(action => app.inject({method: "PUT", url,
+      headers: headers("market-admin"), payload: {action, reason: action}})));
+    expect(results.map(r => r.statusCode)).toEqual([200, 200]);
+    const map = await prisma.communityMap.findUniqueOrThrow({where: {code}});
+    const events = await prisma.communityModerationEvent.findMany({where: {mapId: map.id}});
+    expect(events).toHaveLength(2);
+    expect(events.every(e => e.moderatorId && e.mapId === map.id)).toBe(true);
+    const transitions = events.map(e => e.previousState as {hidden: boolean});
+    expect(transitions.filter(e => !e.hidden)).toHaveLength(1);
+    expect(map).toMatchObject({hidden: true, published: false});
+    expect((await app.inject({url: url + "/history", headers: headers()})).statusCode).toBe(403);
+    expect((await app.inject({url: url + "/history", headers: headers("market-admin")})).json().items).toHaveLength(2);
+    await expect(prisma.communityModerationEvent.update({where: {id: events[0].id}, data: {reason: "tamper"}})).rejects.toThrow();
+    await expect(prisma.communityModerationEvent.delete({where: {id: events[0].id}})).rejects.toThrow();
+  });
+
 });

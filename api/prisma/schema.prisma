@@ -27,6 +27,7 @@ model User {
   communityMaps      CommunityMap[]
   communityRatings CommunityMapRating[]
   communityReports CommunityMapReport[]
+  moderationEvents CommunityModerationEvent[]
 }
 
 model CommunityMap {
@@ -51,6 +52,7 @@ model CommunityMap {
   ratings       CommunityMapRating[]
   imports       CommunityMapDownload[]
   reports       CommunityMapReport[]
+  moderationEvents CommunityModerationEvent[]
   createdAt     DateTime @default(now()) @db.Timestamptz(3)
   unpublishedAt DateTime? @db.Timestamptz(3)
   owner         User     @relation(fields: [ownerId], references: [id], onDelete: Restrict, onUpdate: NoAction)
@@ -145,4 +147,18 @@ model GuestMergeToken {
 
   @@index([guestUserId])
   @@index([expiresAt])
+}
+
+model CommunityModerationEvent {
+  id String @id @default(uuid()) @db.Uuid
+  mapId String @db.Uuid
+  moderatorId String @db.Uuid
+  action String @db.VarChar(6)
+  reason String @db.VarChar(500)
+  previousState Json
+  resultingState Json
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  map CommunityMap @relation(fields: [mapId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  moderator User @relation(fields: [moderatorId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  @@index([mapId, createdAt, id])
 }

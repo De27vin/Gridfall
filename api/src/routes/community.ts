@@ -2,6 +2,7 @@ import type { FastifyPluginAsync } from "fastify";
 import { z } from "zod";
 import { prisma } from "../db";
 import { requireFirebaseAuth } from "../middleware/requireFirebaseAuth";
+import { moderateMap } from "../community/moderation";
 import { communityMapSchema } from "../community/mapFormat";
 import { browseMaps, browseSchema, downloadActor, importMap, rateMap, reportMap } from "../community/marketplace";
 import { CommunityError, eligibleUser, getPublication, normalizeMapCode, publishMap, unpublishMap } from "../community/publications";
@@ -70,11 +71,13 @@ export const communityRoutes: FastifyPluginAsync = async app => {
     if (!request.authUser?.isAdmin) return reply.code(403).send({error: "Administrator required"});
     const body = z.object({action: z.enum(["hide", "remove"]), reason: z.string().trim().min(1).max(500)}).strict().safeParse(request.body);
     if (!body.success) return reply.code(400).send({error: "Invalid moderation action"});
+    return moderateMap(request.authUser!, request.params.code, body.data.action, body.data.reason);
+  });
+  app.get<{Params: {code: string}}>("/community/moderation/:code/history", {preHandler: requireFirebaseAuth}, async (request, reply) => {
+    if (!request.authUser?.isAdmin || request.authUser.isAnonymous) return reply.code(403).send({error: "Administrator required"});
     const code = normalizeMapCode(request.params.code);
-    const result = await prisma.communityMap.updateMany({where: {code}, data: {hidden: true, moderationReason: body.data.reason,
-      ...(body.data.action === "remove" ? {published: false, unpublishedAt: new Date()} : {})}});
-    if (!result.count) return reply.code(404).send({error: "Map is unavailable"});
-    return {code, hidden: true};
+    return {items: await prisma.communityModerationEvent.findMany({where: {map: {code}}, take: 100,
+      orderBy: [{createdAt: "desc"}, {id: "desc"}]})};
   });
   app.get<{Params: {code: string}}>("/community/maps/:code", {
     config: { rateLimit: { max: 30, timeWindow: "1 minute" } }
