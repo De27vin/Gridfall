@@ -10,7 +10,9 @@ export async function databaseReady(): Promise<boolean> {
       to_regclass('"CommunityMapRating"')::text AS ratings,
       to_regclass('"CommunityMapDownload"')::text AS downloads,
       to_regclass('"CommunityMapReport"')::text AS reports,
-      to_regclass('"CommunityModerationEvent"')::text AS audits`;
+      to_regclass('"CommunityModerationEvent"')::text AS audits,
+      to_regclass('"CommunityMapContentRestriction"')::text AS restrictions,
+      to_regprocedure('community_map_content_fingerprint(jsonb)')::text AS content_policy`;
   return rows.length === 1 && Object.values(rows[0]).every(Boolean);
 }
 

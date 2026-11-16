@@ -27,17 +27,19 @@ export async function browseMaps(query: z.infer<typeof browseSchema>, ownerId?: 
     query.sort === "downloads" ? Prisma.sql`"downloads"::float8` :
     query.sort === "popular" ? Prisma.sql`("ratingRank" * ln(2.0 + "downloads"))::float8` : Prisma.sql`0::float8`;
   const search = query.q.match(/[\p{L}\p{N}]+/gu)?.slice(0, 12).map(t => `${t}:*`).join(" & ");
-  const rows = await prisma.$queryRaw<(CommunityMap & {rankValue: number})[]>(Prisma.sql`
+  const rows = await prisma.$queryRaw<(CommunityMap & {rankValue: number; contentRestricted: boolean})[]>(Prisma.sql`
     SELECT "id", "code", "creatorName", "visibility", "published", "hidden", "downloads", "ratingSum", "ratingCount", "document", "createdAt",
+    EXISTS (SELECT 1 FROM "CommunityMapContentRestriction" r WHERE r."ownerId" = "CommunityMap"."ownerId" AND r."fingerprint" = "CommunityMap"."contentFingerprint") AS "contentRestricted",
     ${ranking} AS "rankValue" FROM "CommunityMap"
     WHERE ${ownerId ? Prisma.sql`"ownerId" = ${ownerId}::uuid` : Prisma.sql`"published" AND NOT "hidden" AND "visibility" = 'public'`}
     AND "createdAt" <= ${new Date(snapshot)}
+    ${ownerId ? Prisma.empty : Prisma.sql`AND NOT EXISTS (SELECT 1 FROM "CommunityMapContentRestriction" r WHERE r."ownerId" = "CommunityMap"."ownerId" AND r."fingerprint" = "CommunityMap"."contentFingerprint")`}
     ${query.q ? search ? Prisma.sql`AND "searchVector" @@ to_tsquery('simple', ${search})` : Prisma.sql`AND false` : Prisma.empty}
     ${cursor ? Prisma.sql`AND (${ranking}, "createdAt", "id") < (${cursor.value}, ${new Date(cursor.at)}, ${cursor.id}::uuid)` : Prisma.empty}
     ORDER BY ${ranking} DESC, "createdAt" DESC, "id" DESC LIMIT ${query.limit + 1}`);
   const items = rows.slice(0, query.limit);
   const last = items[items.length - 1];
-  return { items: items.map(publicationDto), nextCursor: rows.length > query.limit && last ?
+  return { items: items.map(map => publicationDto(map, map.contentRestricted)), nextCursor: rows.length > query.limit && last ?
     Buffer.from(JSON.stringify({ id: last.id, at: last.createdAt.toISOString(), value: last.rankValue,
       query: fingerprint, snapshot })).toString("base64url") : null };
 }
@@ -45,7 +47,7 @@ export async function browseMaps(query: z.infer<typeof browseSchema>, ownerId?: 
 async function lockAvailable(tx: Prisma.TransactionClient, raw: string) {
   const rows = await tx.$queryRaw<{id: string}[]>`SELECT "id" FROM "CommunityMap" WHERE "code" = ${normalizeMapCode(raw)} FOR UPDATE`;
   const map = rows[0] ? await tx.communityMap.findUnique({where: {id: rows[0].id}}) : null;
-  if (!map || !map.published || map.hidden) throw new CommunityError(404, "Map is unavailable");
+  if (!map || !map.published || map.hidden || await tx.communityMapContentRestriction.findUnique({where: {ownerId_fingerprint: {ownerId: map.ownerId, fingerprint: map.contentFingerprint}}})) throw new CommunityError(404, "Map is unavailable");
   return map;
 }
 

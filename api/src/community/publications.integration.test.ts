@@ -94,8 +94,9 @@ describe.skipIf(!testUrl)("community publishing on disposable PostgreSQL", () =>
     await prisma.user.update({where: {id: user.id}, data: {username: auth.firebaseUid}});
     const requestId = randomUUID();
     const first = await publishMap(auth, document, "unlisted", requestId);
+    const published = await prisma.communityMap.findUniqueOrThrow({where: {code: first.code}});
     await prisma.communityMap.createMany({data: Array.from({length: 98}, () => ({
-      code: generateMapCode(), ownerId: user.id, requestId: randomUUID(), payloadHash: "quota-test", name: "Quota",
+      code: generateMapCode(), ownerId: user.id, requestId: randomUUID(), payloadHash: "quota-test", contentFingerprint: published.contentFingerprint, name: "Quota",
       description: "", creatorName: "Quota", visibility: "unlisted", document
     }))});
     await prisma.$disconnect();

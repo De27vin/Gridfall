@@ -36,6 +36,9 @@ class PublicationJournal(context: Context) {
         check(preferences.edit().putString(key(owner, mapId, "draft"), raw).commit())
         return pending
     }
+    @Synchronized fun rejectDraft(owner: String, mapId: String) {
+        check(preferences.edit().remove(key(owner, mapId, "draft")).commit())
+    }
     @Synchronized fun receivedDraft(owner: String, mapId: String, code: String) {
         check(preferences.edit().putString("draft_code_$code", key(owner, mapId, "draft")).commit())
     }

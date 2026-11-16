@@ -28,6 +28,7 @@ model User {
   communityRatings CommunityMapRating[]
   communityReports CommunityMapReport[]
   moderationEvents CommunityModerationEvent[]
+  contentRestrictions CommunityMapContentRestriction[]
 }
 
 model CommunityMap {
@@ -36,6 +37,7 @@ model CommunityMap {
   ownerId       String   @db.Uuid
   requestId     String   @db.Uuid
   payloadHash   String   @db.VarChar(64)
+  contentFingerprint String @db.VarChar(64)
   name          String   @db.VarChar(24)
   description   String   @db.VarChar(500)
   creatorName   String   @db.VarChar(64)
@@ -53,11 +55,13 @@ model CommunityMap {
   imports       CommunityMapDownload[]
   reports       CommunityMapReport[]
   moderationEvents CommunityModerationEvent[]
+  restrictionSources CommunityMapContentRestriction[] @relation("RestrictionSource")
   createdAt     DateTime @default(now()) @db.Timestamptz(3)
   unpublishedAt DateTime? @db.Timestamptz(3)
   owner         User     @relation(fields: [ownerId], references: [id], onDelete: Restrict, onUpdate: NoAction)
 
   @@unique([ownerId, requestId])
+  @@index([ownerId, contentFingerprint])
   @@index([ownerId, createdAt, id])
   @@index([visibility, published, createdAt, id])
   @@index([visibility, published, hidden, ratingRank, createdAt, id], map: "CommunityMap_visibility_published_hidden_ratingRank_createdAt_i")
@@ -161,4 +165,14 @@ model CommunityModerationEvent {
   map CommunityMap @relation(fields: [mapId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   moderator User @relation(fields: [moderatorId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   @@index([mapId, createdAt, id])
+}
+
+model CommunityMapContentRestriction {
+  ownerId String @db.Uuid
+  fingerprint String @db.VarChar(64)
+  sourceMapId String @db.Uuid
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  sourceMap CommunityMap @relation("RestrictionSource", fields: [sourceMapId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  @@id([ownerId, fingerprint])
 }

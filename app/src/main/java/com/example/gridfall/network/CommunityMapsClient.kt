@@ -44,8 +44,15 @@ class CommunityMapsClient(
     override suspend fun publishSavedMap(token: String, mapId: String, document: String, visibility: String, requestId: String): CommunityPublication {
         val owner = if (journal != null) identityOfToken(token) else ""
         val pending = journal?.begin(owner, mapId, document, visibility) ?: PendingPublication(document, visibility)
-        val result = parse(request("POST", "/community/maps", token, JSONObject().put("document", JSONObject(pending.document))
-            .put("visibility", pending.visibility).put("requestId", if (journal != null) pending.requestId else requestId)))
+        val result = try {
+            parse(request("POST", "/community/maps", token, JSONObject().put("document", JSONObject(pending.document))
+                .put("visibility", pending.visibility).put("requestId", if (journal != null) pending.requestId else requestId)))
+        } catch (error: CommunityApiException) {
+            // 422 is a definitive owner-content rejection, after server idempotency
+            // lookup. No publication exists for this request: permit a legitimate edit.
+            if (error.status == 422) journal?.rejectDraft(owner, mapId)
+            throw error
+        }
         journal?.received(owner, pending.document, pending.visibility, result.code)
         journal?.receivedDraft(owner, mapId, result.code)
         return result
@@ -107,6 +114,7 @@ class CommunityMapsClient(
             401, 403 -> "Sign in with a completed profile to use this action."
             404 -> "This map was deleted, unpublished, hidden, or does not exist."
             409 -> "This request changed. Close and reopen sharing to publish a new version."
+            422 -> "This content was removed by moderation. Edit the map before publishing again."
             429 -> "Too many requests. Please try again later."
             else -> "Community Maps is temporarily unavailable. Please try again."
         }

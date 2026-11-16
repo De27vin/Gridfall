@@ -6,6 +6,7 @@ import { prisma } from "../db";
 import { publishMap } from "./publications";
 import { getOrCreateUserWithProfile } from "../services/usersService";
 import { ratingRank } from "./marketplace";
+import { moderateMap } from "./moderation";
 
 vi.mock("../firebase", () => ({verifyFirebaseToken: vi.fn(async (token: string) => {
   if (!["market-owner", "market-rater", "market-admin", "market-guest", "market-guest2"].includes(token)) throw Error("Invalid");
@@ -164,10 +165,57 @@ describe.skipIf(!testUrl)("marketplace on disposable PostgreSQL", () => {
       const map = await prisma.communityMap.findUniqueOrThrow({where: {code}});
       expect(map).toMatchObject({hidden: false, published: true, moderationReason: null});
       expect(await prisma.communityModerationEvent.count({where: {mapId: map.id}})).toBe(0);
+      expect(await prisma.communityMapContentRestriction.count({where: {ownerId: map.ownerId, fingerprint: map.contentFingerprint}})).toBe(0);
     } finally {
       await prisma.$executeRawUnsafe('DROP TRIGGER fail_test_audit ON "CommunityModerationEvent"');
       await prisma.$executeRawUnsafe('DROP FUNCTION fail_test_audit_insert()');
     }
+  });
+
+  it("blocks removed owner content across codes, IDs, order and visibility without blocking others or edits", async () => {
+    const original = {...document, name: prefix + " Policy", blockedCells: [{row: 0, col: 0}, {row: 3, col: 3}], blockPool: [
+      {...document.blockPool[0], id: "first", name: "Diagonal", cells: [{row: 0, col: 0}, {row: 1, col: 1}], spawnChanceTenthsPercent: 123},
+      {...document.blockPool[0], id: "second", name: "Single", spawnChanceTenthsPercent: 877}
+    ]};
+    const auth = {firebaseUid: "market-owner", isAnonymous: false};
+    const requestId = randomUUID();
+    const first = await publishMap(auth, original, "public", requestId);
+    const clone = await publishMap(auth, original, "public", randomUUID());
+    await moderateMap({firebaseUid: "market-admin", isAnonymous: false, isAdmin: true}, first.code, "remove", "Policy test");
+    const reordered = {...original, blockedCells: [...original.blockedCells].reverse(), blockPool:
+      [...original.blockPool].reverse().map((block, i) => ({...block, id: `regenerated-${i}`, cells: [...block.cells].reverse()}))};
+    await expect(publishMap(auth, reordered, "unlisted", randomUUID())).rejects.toMatchObject({statusCode: 422});
+    const rejected = await app.inject({method: "POST", url: "/community/maps", headers: headers("market-owner"),
+      payload: {document: original, visibility: "public", requestId: randomUUID()}});
+    expect(rejected.statusCode).toBe(422);
+    expect((await publishMap(auth, original, "public", requestId)).code).toBe(first.code);
+    expect((await app.inject({url: `/community/maps/${clone.code}`})).statusCode).toBe(404);
+    expect((await app.inject({method: "POST", url: `/community/maps/${clone.code}/import`, payload: {requestId: randomUUID()}})).statusCode).toBe(404);
+    const listed = (await app.inject({url: `/community/maps?q=${prefix}`})).json().items;
+    expect(listed.some((m: {code: string}) => m.code === clone.code)).toBe(false);
+    const mine = (await app.inject({url: `/community/maps/mine?q=${prefix}`, headers: headers("market-owner")})).json().items;
+    expect(mine.find((m: {code: string}) => m.code === clone.code).hidden).toBe(true);
+    await app.inject({method: "DELETE", url: `/community/maps/${first.code}`, headers: headers("market-owner")});
+    await expect(publishMap(auth, original, "public", randomUUID())).rejects.toMatchObject({statusCode: 422});
+    const other = await publishMap({firebaseUid: "market-rater", isAnonymous: false}, original, "public", randomUUID());
+    expect((await app.inject({url: `/community/maps/${other.code}`})).statusCode).toBe(200);
+    const edited = await publishMap(auth, {...original, blockedCells: [...original.blockedCells, {row: 0, col: 1}]}, "public", randomUUID());
+    expect((await app.inject({url: `/community/maps/${edited.code}`})).statusCode).toBe(200);
+    expect(await prisma.communityModerationEvent.count({where: {map: {code: first.code}}})).toBe(1);
+  });
+  it("serializes concurrent removal and republication so no copy remains publicly accessible", async () => {
+    const original = {...document, name: prefix + " Race"};
+    const auth = {firebaseUid: "market-owner", isAnonymous: false};
+    const first = await publishMap(auth, original, "public", randomUUID());
+    const [removed, copied] = await Promise.allSettled([
+      moderateMap({firebaseUid: "market-admin", isAnonymous: false, isAdmin: true}, first.code, "remove", "Race test"),
+      publishMap(auth, original, "public", randomUUID())
+    ]);
+    expect(removed.status).toBe("fulfilled");
+    if (copied.status === "fulfilled") {
+      expect((await app.inject({url: `/community/maps/${copied.value.code}`})).statusCode).toBe(404);
+    } else expect(copied.reason.statusCode).toBe(422);
+    await expect(publishMap(auth, original, "public", randomUUID())).rejects.toMatchObject({statusCode: 422});
   });
 
 });

@@ -3,7 +3,7 @@ import { prisma } from "../db";
 import { buildServer } from "../server";
 
 afterEach(() => vi.restoreAllMocks());
-const schema = [{users: "User", profiles: "PlayerProfile", runs: "Run", maps: "CommunityMap", ratings: "CommunityMapRating", downloads: "CommunityMapDownload", reports: "CommunityMapReport", audits: "CommunityModerationEvent"}];
+const schema = [{users: "User", profiles: "PlayerProfile", runs: "Run", maps: "CommunityMap", ratings: "CommunityMapRating", downloads: "CommunityMapDownload", reports: "CommunityMapReport", audits: "CommunityModerationEvent", restrictions: "CommunityMapContentRestriction", content_policy: "community_map_content_fingerprint"}];
 
 describe("database readiness separate from liveness", () => {
   it("returns 503 on outage, keeps liveness healthy and recovers without restart", async () => {
