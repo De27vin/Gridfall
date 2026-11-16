@@ -68,7 +68,7 @@ export function downloadActor(ip: string, auth?: AuthenticatedUser) {
   const secret = process.env.COMMUNITY_DOWNLOAD_SECRET;
   if (!secret || secret.length < 32) throw new CommunityError(503, "Community imports are temporarily unavailable");
   // Guests are conservatively deduplicated by IP; no raw address or Firebase UID is stored.
-  return createHmac("sha256", secret).update(auth ? `account:${auth.firebaseUid}` : `guest:${ip}`).digest("hex");
+  return createHmac("sha256", secret).update(auth && !auth.isAnonymous ? `account:${auth.firebaseUid}` : `guest:${ip}`).digest("hex");
 }
 export async function importMap(code: string, actorHash: string, requestId: string) {
   return prisma.$transaction(async tx => {
