@@ -25,3 +25,20 @@ uncommitted environment; changing this template does not move or reset data.
 Validate interpolation with `docker compose config --quiet` before any approved
 future rollout. No deployment is performed by these checks. Production and staging
 must have separate credentials, databases and secrets.
+
+## Readiness
+
+`GET /health` is liveness only and does not query dependencies. `GET /ready` checks
+connectivity and essential user/run/community tables, returns 200 only when the
+probe succeeds, and otherwise returns 503 without exposing connection details.
+Responses are not cacheable. Probes share one in-flight database operation and
+have a two-second HTTP deadline; this deadline does not claim to cancel underlying
+driver I/O. Configure bounded driver connection/pool timeouts as well. Use readiness,
+explicit migration status and authenticated smoke tests before routing traffic;
+readiness does not certify Firebase credentials, proxy topology or data correctness.
+
+After building/migrating an explicitly disposable database, run
+`NODE_ENV=test node test-support/readiness-outage.cjs` in `api/` with DATABASE_URL
+and COMMUNITY_TEST_DATABASE_URL both set to the documented loopback test URL.
+The script removes/restores a local TCP proxy to prove real dependency failure and
+recovery without restarting the API; it never stops a production database.
