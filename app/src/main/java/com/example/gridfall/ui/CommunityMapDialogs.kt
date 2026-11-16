@@ -61,7 +61,8 @@ fun CommunityMapDialog(savedMap: SavedCustomMap?, client: CommunityMapsGateway, 
         finally { busy = false }
     } }
     LaunchedEffect(initialCode) { if (initialCode != null) runAction { publication = client.fetch(initialCode) } }
-    AlertDialog(onDismissRequest = { if (!busy) onDismiss() }, title = { Text(if (initialCode != null) "Community Map" else if (savedMap == null) "Enter Map Code" else "Share Map") },
+    fun close() { if (savedMap != null) publication?.let { client.finishPublication(it.code) }; onDismiss() }
+    AlertDialog(onDismissRequest = { if (!busy) close() }, title = { Text(if (initialCode != null) "Community Map" else if (savedMap == null) "Enter Map Code" else "Share Map") },
         text = { Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if (publication == null) {
                 if (savedMap == null) {
@@ -123,5 +124,5 @@ fun CommunityMapDialog(savedMap: SavedCustomMap?, client: CommunityMapsGateway, 
             if (busy) CircularProgressIndicator()
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             notice?.let { Text(it) }
-        } }, confirmButton = { TextButton(onClick = onDismiss, enabled = !busy) { Text("Close") } })
+        } }, confirmButton = { TextButton(onClick = { close() }, enabled = !busy) { Text("Close") } })
 }

@@ -73,4 +73,19 @@ describe.skipIf(!testUrl)("community publishing on disposable PostgreSQL", () =>
     for (let i = 0; i < 31; i++) await app.inject({url: "/community/maps/GF-0000000000", remoteAddress: "127.0.0.99"});
     expect((await app.inject({url: "/community/maps/GF-0000000000", remoteAddress: "127.0.0.99"})).statusCode).toBe(429);
   });
+  it("preserves publication identity through concurrent retries and API recreation", async () => {
+    const auth = {firebaseUid: "community-owner", isAnonymous: false};
+    const requestId = randomUUID();
+    const replies = await Promise.all(Array.from({length: 6}, () => publishMap(auth, document, "unlisted", requestId)));
+    expect(new Set(replies.map(r => r.code)).size).toBe(1);
+    await prisma.$disconnect();
+    const restarted = buildServer();
+    try {
+      const response = await restarted.inject({method: "POST", url: "/community/maps", headers: headers("community-owner"),
+        payload: {document, visibility: "unlisted", requestId}});
+      expect(response.statusCode).toBe(201);
+      expect(response.json().code).toBe(replies[0].code);
+    } finally { await restarted.close(); }
+  });
+
 });

@@ -16,6 +16,7 @@ data class CommunityPublication(val code: String, val creator: String, val docum
     val ratingCount: Int = 0, val hidden: Boolean = false)
 data class CommunityPage(val items: List<CommunityPublication>, val nextCursor: String?)
 interface CommunityMapsGateway {
+    fun finishPublication(code: String) {}
     suspend fun fetch(code: String): CommunityPublication
     suspend fun publish(token: String, document: String, visibility: String, requestId: String): CommunityPublication
     suspend fun browse(query: String, sort: String, cursor: String?, ownerToken: String? = null): CommunityPage
@@ -27,13 +28,24 @@ interface CommunityMapsGateway {
 
 class CommunityMapsClient(
     private val endpoint: (String) -> String = ApiConfig::endpoint,
+    private val journal: PublicationJournal? = null,
+    private val identityOfToken: (String) -> String = { token ->
+        val payload = android.util.Base64.decode(token.split(".")[1], android.util.Base64.URL_SAFE)
+        JSONObject(String(payload, Charsets.UTF_8)).getString("sub")
+    },
     private val http: OkHttpClient = OkHttpClient.Builder().callTimeout(30, java.util.concurrent.TimeUnit.SECONDS).build()
 ) : CommunityMapsGateway {
     override suspend fun fetch(code: String): CommunityPublication = parse(request("GET", "/community/maps/${normalizeCode(code)}"))
 
-    override suspend fun publish(token: String, document: String, visibility: String, requestId: String): CommunityPublication =
-        parse(request("POST", "/community/maps", token, JSONObject().put("document", JSONObject(document))
-            .put("visibility", visibility).put("requestId", requestId)))
+    override fun finishPublication(code: String) { journal?.finish(code) }
+    override suspend fun publish(token: String, document: String, visibility: String, requestId: String): CommunityPublication {
+        val owner = if (journal != null) identityOfToken(token) else ""
+        val stableId = journal?.requestId(owner, document, visibility) ?: requestId
+        val result = parse(request("POST", "/community/maps", token, JSONObject().put("document", JSONObject(document))
+            .put("visibility", visibility).put("requestId", stableId)))
+        journal?.received(owner, document, visibility, result.code)
+        return result
+    }
 
     override suspend fun browse(query: String, sort: String, cursor: String?, ownerToken: String?): CommunityPage {
         fun escape(value: String) = java.net.URLEncoder.encode(value, "UTF-8")
