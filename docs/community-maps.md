@@ -145,3 +145,30 @@ production database changes were made. See the
 [deployment and testing guide](community-maps-deployment.md) and
 [phase/file/test record](community-maps-verification.md). Both GitHub issues stay
 open until approved integration, deployment and manual verification are complete.
+
+## Audit remediation contracts
+
+Moderation now inserts `CommunityModerationEvent` in the same locked transaction
+as the map change. The record references the verified moderator's internal user ID,
+target map, action, reason, prior/resulting states and timestamp. SQL rejects row
+updates/deletes; foreign keys preserve referenced records. This is application/DB
+role immutability, not protection against a table owner or PostgreSQL administrator disabling
+triggers. `GET /community/moderation/:code/history` is administrator-only and
+returns the latest 100 records; no public endpoint exposes moderator identities.
+Deploy `20261116000000_moderation_history` explicitly after backup/rehearsal.
+
+Android writes an account/map-scoped pending snapshot and request UUID before
+sending publication requests. It retains exact content, visibility and description
+through uncertain responses and process recreation. Reopening an uncertain share
+resumes that snapshot, even if the local map was edited. The player resolves it
+before starting a different publication. Closing a failed/cancelled operation
+retains its retry state; cancellation does not undo a server commit. After success,
+dismissing the result clears the operation so a later deliberate publication can
+receive a new code. Server-side owner/request uniqueness remains authoritative.
+
+Anonymous Firebase identities share guest IP-based import deduplication. Registered
+accounts and network addresses are not unique-human identities. See
+[rate-limit architecture](community-maps-rate-limits.md) for the persistent
+100-publication/account rolling-day quota, safe single-instance behavior and
+proxy/multiple-replica deployment gates. No new shared infrastructure dependency
+is introduced.

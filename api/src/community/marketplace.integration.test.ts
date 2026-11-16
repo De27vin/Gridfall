@@ -8,8 +8,8 @@ import { getOrCreateUserWithProfile } from "../services/usersService";
 import { ratingRank } from "./marketplace";
 
 vi.mock("../firebase", () => ({verifyFirebaseToken: vi.fn(async (token: string) => {
-  if (!["market-owner", "market-rater", "market-admin", "market-guest"].includes(token)) throw Error("Invalid");
-  return {firebaseUid: token, isAnonymous: token === "market-guest", isAdmin: token === "market-admin"};
+  if (!["market-owner", "market-rater", "market-admin", "market-guest", "market-guest2"].includes(token)) throw Error("Invalid");
+  return {firebaseUid: token, isAnonymous: token.startsWith("market-guest"), isAdmin: token === "market-admin"};
 })}));
 const testUrl = process.env.COMMUNITY_TEST_DATABASE_URL;
 if (testUrl && (!/^postgresql:\/\/[^/]+@127\.0\.0\.1:55439\/gridfall_community_test$/.test(testUrl) || process.env.DATABASE_URL !== testUrl))
@@ -83,6 +83,9 @@ describe.skipIf(!testUrl)("marketplace on disposable PostgreSQL", () => {
     expect(results.every(r => r.statusCode === 200 && r.json().downloads === 1)).toBe(true);
     expect((await app.inject({method: "POST", url, payload: {requestId: randomUUID()}})).json().downloads).toBe(1);
     expect((await app.inject({method: "POST", url, remoteAddress: "127.0.0.5", payload: {requestId}})).json().downloads).toBe(1);
+    for (const guest of ["market-guest", "market-guest2"]) {
+      expect((await app.inject({method: "POST", url, headers: headers(guest), payload: {requestId: randomUUID()}})).json().downloads).toBe(1);
+    }
     expect((await app.inject({method: "POST", url, headers: headers(), payload: {requestId: randomUUID()}})).json().downloads).toBe(2);
     expect((await app.inject({url: `/community/maps?q=${prefix}&sort=downloads`})).json().items[0].code).toBe(code);
     expect((await app.inject({url: `/community/maps?q=${prefix}&sort=popular`})).statusCode).toBe(200);
@@ -141,6 +144,30 @@ describe.skipIf(!testUrl)("marketplace on disposable PostgreSQL", () => {
     expect((await app.inject({url: url + "/history", headers: headers("market-admin")})).json().items).toHaveLength(2);
     await expect(prisma.communityModerationEvent.update({where: {id: events[0].id}, data: {reason: "tamper"}})).rejects.toThrow();
     await expect(prisma.communityModerationEvent.delete({where: {id: events[0].id}})).rejects.toThrow();
+  });
+
+  it("does not accept arbitrary forwarded headers as rate-limit identities", async () => {
+    for (let i = 0; i < 31; i++) await app.inject({url: "/community/maps/GF-0000000000", remoteAddress: "127.0.0.177",
+      headers: {"x-forwarded-for": `192.0.2.${i}`, "cf-connecting-ip": `2001:db8::${i}`}});
+    expect((await app.inject({url: "/community/maps/GF-0000000000", remoteAddress: "127.0.0.177",
+      headers: {"x-forwarded-for": "198.51.100.9"}})).statusCode).toBe(429);
+  });
+
+  it("rolls back moderation when durable audit insertion fails", async () => {
+    const code = await publish(prefix + " Rollback");
+    await prisma.$executeRawUnsafe("CREATE FUNCTION fail_test_audit_insert() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'simulated audit storage failure'; END; $$");
+    await prisma.$executeRawUnsafe('CREATE TRIGGER fail_test_audit BEFORE INSERT ON "CommunityModerationEvent" FOR EACH ROW EXECUTE FUNCTION fail_test_audit_insert()');
+    try {
+      const response = await app.inject({method: "PUT", url: `/community/moderation/${code}`, headers: headers("market-admin"),
+        payload: {action: "remove", reason: "must roll back"}});
+      expect(response.statusCode).toBe(500);
+      const map = await prisma.communityMap.findUniqueOrThrow({where: {code}});
+      expect(map).toMatchObject({hidden: false, published: true, moderationReason: null});
+      expect(await prisma.communityModerationEvent.count({where: {mapId: map.id}})).toBe(0);
+    } finally {
+      await prisma.$executeRawUnsafe('DROP TRIGGER fail_test_audit ON "CommunityModerationEvent"');
+      await prisma.$executeRawUnsafe('DROP FUNCTION fail_test_audit_insert()');
+    }
   });
 
 });

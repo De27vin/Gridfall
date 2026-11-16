@@ -6,15 +6,18 @@ local checks below. Never point test commands at the NAS database.
 
 ## Production rollout (requires explicit approval)
 
-1. Review the feature branch and all three additive migrations:
-   `20261115000000_community_publications` and
-   `20261115010000_community_marketplace`, and
-   `20261115020000_community_popularity_index`. Existing users, profiles, runs and
+1. Review the feature branch and all four additive migrations:
+   `20261115000000_community_publications`,
+   `20261115010000_community_marketplace`,
+   `20261115020000_community_popularity_index`, and
+   `20261116000000_moderation_history`. Existing users, profiles, runs and
    leaderboards are retained. The second migration adds tables, aggregate
    columns, a generated full-text search column and indexes; it needs no extra
    PostgreSQL extensions. The third adds a partial expression index for popularity
    discovery (maintained in SQL because Prisma cannot represent expression indexes).
-   PostgreSQL 16+ is supported (tests use 17).
+   PostgreSQL 16 migration/upgrade rehearsals and PostgreSQL 17 integration tests are supported.
+   The fourth migration adds immutable moderation history; its UPDATE/DELETE trigger
+   intentionally prevents routine history edits, including ORM deletion.
 2. Rehearse on a **restored copy** of production data with isolated credentials,
    Firebase project and hostname. Confirm migration timing/locks and old Android
    clients' login, run submission and leaderboards. Building the generated search

@@ -94,11 +94,15 @@ describe.skipIf(!testUrl)("community publishing on disposable PostgreSQL", () =>
     await prisma.user.update({where: {id: user.id}, data: {username: auth.firebaseUid}});
     const requestId = randomUUID();
     const first = await publishMap(auth, document, "unlisted", requestId);
-    await prisma.communityMap.createMany({data: Array.from({length: 99}, () => ({
+    await prisma.communityMap.createMany({data: Array.from({length: 98}, () => ({
       code: generateMapCode(), ownerId: user.id, requestId: randomUUID(), payloadHash: "quota-test", name: "Quota",
       description: "", creatorName: "Quota", visibility: "unlisted", document
     }))});
     await prisma.$disconnect();
+    const competing = await Promise.allSettled([0, 1].map(() => publishMap(auth, document, "unlisted", randomUUID())));
+    expect(competing.filter(r => r.status === "fulfilled")).toHaveLength(1);
+    expect(competing.filter(r => r.status === "rejected")).toHaveLength(1);
+    expect(await prisma.communityMap.count({where: {ownerId: user.id}})).toBe(100);
     await expect(publishMap(auth, document, "unlisted", randomUUID())).rejects.toMatchObject({statusCode: 429});
     expect((await publishMap(auth, document, "unlisted", requestId)).code).toBe(first.code);
   });

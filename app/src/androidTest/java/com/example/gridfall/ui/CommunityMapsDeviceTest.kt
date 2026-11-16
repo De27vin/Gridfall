@@ -97,6 +97,12 @@ class CommunityMapsDeviceTest {
             screenshot.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
         }
         screenshot.recycle()
-        compose.onNodeWithText("No maps found. Try another search.").assertIsDisplayed()
+        // IME dismissal animates outside Compose's idle clock. Verify the final
+        // visible state, allowing insets to settle rather than asserting mid-animation.
+        compose.waitUntil(5_000) {
+            runCatching {
+                compose.onNodeWithText("No maps found. Try another search.").performScrollTo().assertIsDisplayed()
+            }.isSuccess
+        }
     }
 }
