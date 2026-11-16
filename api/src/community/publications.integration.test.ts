@@ -88,4 +88,19 @@ describe.skipIf(!testUrl)("community publishing on disposable PostgreSQL", () =>
     } finally { await restarted.close(); }
   });
 
+  it("enforces a durable account quota while permitting uncertain-outcome retries", async () => {
+    const auth = {firebaseUid: `quota-${randomUUID()}`, isAnonymous: false};
+    const {user} = await getOrCreateUserWithProfile(auth);
+    await prisma.user.update({where: {id: user.id}, data: {username: auth.firebaseUid}});
+    const requestId = randomUUID();
+    const first = await publishMap(auth, document, "unlisted", requestId);
+    await prisma.communityMap.createMany({data: Array.from({length: 99}, () => ({
+      code: generateMapCode(), ownerId: user.id, requestId: randomUUID(), payloadHash: "quota-test", name: "Quota",
+      description: "", creatorName: "Quota", visibility: "unlisted", document
+    }))});
+    await prisma.$disconnect();
+    await expect(publishMap(auth, document, "unlisted", randomUUID())).rejects.toMatchObject({statusCode: 429});
+    expect((await publishMap(auth, document, "unlisted", requestId)).code).toBe(first.code);
+  });
+
 });

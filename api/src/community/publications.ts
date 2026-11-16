@@ -42,11 +42,22 @@ export async function publishMap(auth: AuthenticatedUser, document: unknown, vis
       return publicationDto(existing);
     }
     try {
-      return publicationDto(await prisma.communityMap.create({ data: {
+      return publicationDto(await prisma.$transaction(async tx => {
+        await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${user.id}::uuid FOR UPDATE`;
+        const retry = await tx.communityMap.findUnique({where: {ownerId_requestId: {ownerId: user.id, requestId}}});
+        if (retry) {
+          if (retry.payloadHash !== payloadHash) throw new CommunityError(409, "Publish request was already used for different content");
+          return retry;
+        }
+        const recent = await tx.communityMap.count({where: {ownerId: user.id,
+          createdAt: {gte: new Date(Date.now() - 24 * 60 * 60 * 1000)}}});
+        if (recent >= 100) throw new CommunityError(429, "Daily publication limit reached");
+        return tx.communityMap.create({ data: {
         code: makeCode(), ownerId: user.id, requestId, payloadHash, name: map.name,
         description: map.description, creatorName: user.username!, visibility,
         document: JSON.parse(canonical) as Prisma.InputJsonValue
-      } }));
+      } });
+      }));
     } catch (error) {
       if ((error as {code?: string}).code !== "P2002") throw error;
     }
