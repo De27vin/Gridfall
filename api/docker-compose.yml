@@ -7,7 +7,11 @@ services:
       POSTGRES_USER: gridfall
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
     volumes:
-      - /volume1/docker/gridfall-db/postgres-data:/var/lib/postgresql/data
+      - type: bind
+        source: ${GRIDFALL_DATABASE_STORAGE:?set an explicit isolated database storage path}
+        target: /var/lib/postgresql/data
+        bind:
+          create_host_path: false
     networks:
       - gridfall-internal
 
@@ -26,7 +30,12 @@ services:
       CORS_ORIGINS: ${CORS_ORIGINS:-}
       COMMUNITY_DOWNLOAD_SECRET: ${COMMUNITY_DOWNLOAD_SECRET:?set COMMUNITY_DOWNLOAD_SECRET}
     volumes:
-      - /volume1/docker/gridfall/firebase/firebase-service-account.json:/run/secrets/firebase-service-account.json:ro
+      - type: bind
+        source: ${GRIDFALL_FIREBASE_CREDENTIALS_FILE:?set an explicit credentials file path}
+        target: /run/secrets/firebase-service-account.json
+        read_only: true
+        bind:
+          create_host_path: false
     ports:
       - "8080:8080"
     networks:

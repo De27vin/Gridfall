@@ -36,7 +36,7 @@ class CommunityMapsClient(
         val payload = android.util.Base64.decode(token.split(".")[1], android.util.Base64.URL_SAFE)
         JSONObject(String(payload, Charsets.UTF_8)).getString("sub")
     },
-    private val http: OkHttpClient = OkHttpClient.Builder().callTimeout(30, java.util.concurrent.TimeUnit.SECONDS).build()
+    private val http: OkHttpClient = ApiHttpPolicy.builder().callTimeout(30, java.util.concurrent.TimeUnit.SECONDS).build()
 ) : CommunityMapsGateway {
     override suspend fun fetch(code: String): CommunityPublication = parse(request("GET", "/community/maps/${normalizeCode(code)}"))
 

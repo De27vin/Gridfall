@@ -39,3 +39,6 @@ local.properties
 !.dev.vars.example
 .env*
 !.env.example
+
+# Environment-specific Firebase clients
+/app/src/staging/google-services.json

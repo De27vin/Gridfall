@@ -1,4 +1,5 @@
 import java.util.Properties
+import java.net.URI
 
 plugins {
     alias(libs.plugins.android.application)
@@ -23,6 +24,45 @@ val hasReleaseSigningProperties = listOf(
     "keyAlias",
     "keyPassword"
 ).all { releaseSigningProperty(it) != null }
+
+abstract class ValidateStagingIsolation : org.gradle.api.DefaultTask() {
+    @get:org.gradle.api.tasks.Input
+    abstract val endpoint: org.gradle.api.provider.Property<String>
+    @get:org.gradle.api.tasks.Internal
+    abstract val stagingConfig: org.gradle.api.file.RegularFileProperty
+    @get:org.gradle.api.tasks.Internal
+    abstract val defaultConfig: org.gradle.api.file.RegularFileProperty
+
+    @org.gradle.api.tasks.TaskAction
+    fun validate() {
+        val uri = runCatching { URI(endpoint.get()) }.getOrNull()
+        val host = uri?.host?.lowercase()?.trimEnd('.')
+        require(uri != null && uri.scheme == "https" && !host.isNullOrBlank() &&
+            host !in setOf("api.gridfall.site", "gridfall.site", "www.gridfall.site", "192.168.222.172") &&
+            uri.userInfo == null && uri.query == null && uri.fragment == null && uri.port in listOf(-1, 443)) {
+            "Staging requires a non-production HTTPS GRIDFALL_STAGING_API_BASE_URL (or -PgridfallStagingApiBaseUrl)"
+        }
+        val config = stagingConfig.get().asFile
+        require(config.isFile) { "Staging requires its own uncommitted src/staging/google-services.json" }
+        val staging = groovy.json.JsonSlurper().parse(config) as Map<*, *>
+        val project = (staging["project_info"] as? Map<*, *>)?.get("project_id")
+        require(project is String && project.isNotBlank()) { "Missing staging Firebase project" }
+        val production = defaultConfig.get().asFile
+        if (production.isFile) {
+            val existing = groovy.json.JsonSlurper().parse(production) as Map<*, *>
+            require(project != (existing["project_info"] as? Map<*, *>)?.get("project_id")) { "Staging Firebase project must differ from the default project" }
+        }
+    }
+}
+val stagingEndpoint = providers.gradleProperty("gridfallStagingApiBaseUrl")
+    .orElse(providers.environmentVariable("GRIDFALL_STAGING_API_BASE_URL")).getOrElse("")
+val validateStagingIsolation = tasks.register<ValidateStagingIsolation>("validateStagingIsolation") {
+    endpoint.set(stagingEndpoint)
+    stagingConfig.set(layout.projectDirectory.file("src/staging/google-services.json"))
+    defaultConfig.set(layout.projectDirectory.file("google-services.json"))
+}
+tasks.matching { it.name in setOf("preStagingBuild", "generateStagingBuildConfig", "processStagingGoogleServices") }
+    .configureEach { dependsOn(validateStagingIsolation) }
 
 android {
     namespace = "com.example.gridfall"
@@ -61,14 +101,16 @@ android {
                 "\"http://192.168.222.172:8080\""
             )
         }
-        // Public HTTPS test build. It remains debuggable so Settings displays the active API URL.
+        // Isolated staging: explicit endpoint and separate Firebase configuration are mandatory.
         create("staging") {
             initWith(getByName("debug"))
             matchingFallbacks += listOf("debug")
+            applicationIdSuffix = ".staging"
+            versionNameSuffix = "-staging"
             buildConfigField(
                 "String",
                 "GRIDFALL_API_BASE_URL",
-                "\"https://api.gridfall.site\""
+                "\"${stagingEndpoint.ifBlank { "https://staging.invalid" }.replace("\\", "\\\\").replace("\"", "\\\"")}\""
             )
         }
         release {
