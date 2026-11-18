@@ -13,7 +13,9 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             GridfallTheme {
-                GameScreen()
+                // Explicit debug-only entry point for production READ-ONLY QA; no guest creation.
+                val readOnlyQa = BuildConfig.BUILD_TYPE == "debug" && intent.getBooleanExtra("communityReadOnlyQa", false)
+                GameScreen(autoCreateGuest = !readOnlyQa, startInCommunityMaps = readOnlyQa)
             }
         }
     }

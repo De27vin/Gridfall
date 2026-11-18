@@ -35,6 +35,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.key
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
@@ -120,7 +122,12 @@ private data class CustomMapTestSession(
 )
 
 @Composable
-fun GameScreen(modifier: Modifier = Modifier) {
+fun GameScreen(
+    modifier: Modifier = Modifier,
+    communityGateway: com.example.gridfall.network.CommunityMapsGateway? = null,
+    autoCreateGuest: Boolean = true,
+    startInCommunityMaps: Boolean = false
+) {
     val context = LocalContext.current.applicationContext
     val view = LocalView.current
     val lifecycleOwner = view.findViewTreeLifecycleOwner()
@@ -177,7 +184,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
     }
     var showSettingsScreen by remember { mutableStateOf(false) }
     var showCustomMapEditor by remember { mutableStateOf(false) }
-    var pendingCustomMap by remember { mutableStateOf<CustomMapDesign?>(null) }
+    var pendingCustomMap by remember { mutableStateOf<CustomMapStartRequest?>(null) }
     var selectedThemeMode by remember { mutableStateOf(ThemePreferenceStore.load(context)) }
     var soundEffectsVolume by remember { mutableStateOf(SoundPreferenceStore.loadSoundEffectsVolume(context)) }
     var backgroundMusicVolume by remember { mutableStateOf(SoundPreferenceStore.loadBackgroundMusicVolume(context)) }
@@ -208,9 +215,9 @@ fun GameScreen(modifier: Modifier = Modifier) {
     }
     val soundManager = remember { GridfallSoundManager(context) }
     val authManager = remember { GridfallAuthManager() }
-    val communityClient = remember { com.example.gridfall.network.CommunityMapsClient(journal = com.example.gridfall.network.PublicationJournal(context)) }
+    val communityClient = remember(communityGateway) { communityGateway ?: com.example.gridfall.network.CommunityMapsClient(journal = com.example.gridfall.network.PublicationJournal(context)) }
     var showCommunityCode by remember { mutableStateOf(false) }
-    var showCommunityMaps by remember { mutableStateOf(false) }
+    var showCommunityMaps by rememberSaveable { mutableStateOf(startInCommunityMaps) }
     var communityShareMap by remember { mutableStateOf<SavedCustomMap?>(null) }
     val apiClient = remember { GridfallApiClient() }
     val pendingRunStore = remember { PendingRunSubmissionStore(context) }
@@ -590,7 +597,8 @@ fun GameScreen(modifier: Modifier = Modifier) {
             authUiMessage = null
             accountConnectionState = accountConnectionState.copy(isLoading = true)
             try {
-                val authSession = authManager.ensureAnonymousUser()
+                val authSession = if (autoCreateGuest) authManager.ensureAnonymousUser()
+                    else authManager.existingSession() ?: error("Sign in to connect your account.")
                 refreshAccountState(authSession)
             } catch (error: Exception) {
                 accountConnectionState = AccountConnectionState(
@@ -721,6 +729,11 @@ fun GameScreen(modifier: Modifier = Modifier) {
         accountConnectionState = AccountConnectionState(isLoading = true)
         refreshPendingRunCount()
 
+        if (!autoCreateGuest) {
+            accountConnectionState = AccountConnectionState(isLoading = false)
+            return@LaunchedEffect
+        }
+
         try {
             val authSession = authManager.ensureAnonymousUser()
             Log.i(
@@ -738,7 +751,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
     }
 
     LaunchedEffect(pendingRunCount > 0, isAppInForeground) {
-        if (!isAppInForeground || pendingRunCount == 0) return@LaunchedEffect
+        if (!autoCreateGuest || !isAppInForeground || pendingRunCount == 0) return@LaunchedEffect
 
         while (isAppInForeground && pendingRunStore.pendingCount() > 0) {
             delay(RunSyncAutoRetryPolicy.delayMillis(pendingRunStore.load()))
@@ -778,7 +791,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
     LaunchedEffect(showSettingsScreen) {
         if (showSettingsScreen) {
             refreshPendingRunCount()
-            retryPendingRunsWithFreshToken()
+            if (autoCreateGuest) retryPendingRunsWithFreshToken()
         }
     }
 
@@ -1011,9 +1024,9 @@ fun GameScreen(modifier: Modifier = Modifier) {
         returnToCustomMapEditor()
     }
 
-    fun requestCustomMapStart(design: CustomMapDesign) {
+    fun requestCustomMapStart(design: CustomMapDesign, keepSettingsOpen: Boolean = true) {
         if (InProgressRunJson.hasProgress(gameState, riskSpinMemorySession)) {
-            pendingCustomMap = design
+            pendingCustomMap = CustomMapStartRequest(design, keepSettingsOpen)
         } else {
             selectedGridLayout = GridLayoutPreset.Classic
             GridLayoutPreferenceStore.save(context, GridLayoutPreset.Classic)
@@ -1026,7 +1039,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 customColumns = design.columns,
                 customBlockPool = design.blockPool,
                 isCustomMap = true,
-                keepSettingsOpen = true
+                keepSettingsOpen = keepSettingsOpen
             )
         }
     }
@@ -1894,7 +1907,8 @@ fun GameScreen(modifier: Modifier = Modifier) {
             )
         }
 
-        pendingCustomMap?.let { design ->
+        pendingCustomMap?.let { request ->
+            val design = request.design
             RestartConfirmDialog(
                 title = "Start custom map?",
                 message = "Your current run will end. Custom-map scores are not ranked.",
@@ -1916,7 +1930,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                         customColumns = design.columns,
                         customBlockPool = design.blockPool,
                         isCustomMap = true,
-                        keepSettingsOpen = true
+                        keepSettingsOpen = request.keepSettingsOpen
                     )
                 }
             )
@@ -1955,6 +1969,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
             )
         }
 
+        key(accountConnectionState.firebaseUid) {
         CommunityMapsTheme {
         if (showCommunityMaps) {
             CommunityMapsScreen(communityClient,
@@ -1963,7 +1978,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 onImport = { publication, play ->
                     val local = savedCustomMapStore.importCommunityMap(publication.code, publication.document)
                     savedCustomMaps = savedCustomMapStore.load()
-                    if (play) { showCommunityMaps = false; requestCustomMapStart(local.design) }
+                    if (play) { showCommunityMaps = false; showCommunityCode = false; showLeaderboardScreen = false; requestCustomMapStart(local.design, keepSettingsOpen = false) }
                 }, onClose = { showCommunityMaps = false })
         }
         if (showCommunityCode) {
@@ -1974,10 +1989,11 @@ fun GameScreen(modifier: Modifier = Modifier) {
                     val local = savedCustomMapStore.importCommunityMap(publication.code, publication.document)
                     savedCustomMaps = savedCustomMapStore.load()
                     showCommunityCode = false
-                    if (play) requestCustomMapStart(local.design)
+                    if (play) { showCommunityMaps = false; showLeaderboardScreen = false; requestCustomMapStart(local.design, keepSettingsOpen = false) }
                 }, onDismiss = { showCommunityCode = false })
         }
 
+        }
         }
         if (showLogoutConfirmDialog) {
             LogoutConfirmDialog(

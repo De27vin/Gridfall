@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalFocusManager
@@ -33,26 +34,30 @@ fun CommunityMapsScreen(client: CommunityMapsGateway, eligible: Boolean, token: 
     val scope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
-    var query by remember { mutableStateOf("") }
-    var submitted by remember { mutableStateOf("") }
-    var sort by remember { mutableStateOf("rated") }
-    var mine by remember { mutableStateOf(false) }
+    var query by rememberSaveable { mutableStateOf("") }
+    var submitted by rememberSaveable { mutableStateOf("") }
+    var sort by rememberSaveable { mutableStateOf("rated") }
+    var mine by rememberSaveable { mutableStateOf(false) }
     var refresh by remember { mutableStateOf(0) }
     var items by remember { mutableStateOf(emptyList<CommunityPublication>()) }
     var cursor by remember { mutableStateOf<String?>(null) }
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
-    var detail by remember { mutableStateOf<String?>(null) }
+    var detail by rememberSaveable { mutableStateOf<String?>(null) }
     var unpublish by remember { mutableStateOf<CommunityPublication?>(null) }
+    var loadGeneration by remember { mutableIntStateOf(0) }
     suspend fun load(append: Boolean) {
+        if (append && loading) return
+        val generation = ++loadGeneration
         loading = true; error = null
         try {
             val page = client.browse(submitted, sort, if (append) cursor else null, if (mine) token() else null)
+            if (generation != loadGeneration) return
             items = ((if (append) items else emptyList()) + page.items).distinctBy { it.code }
             cursor = page.nextCursor
         } catch (e: CancellationException) { throw e
-        } catch (e: Exception) { error = e.message ?: "Could not load maps." }
-        finally { loading = false }
+        } catch (e: Exception) { if (generation == loadGeneration) error = e.message ?: "Could not load maps." }
+        finally { if (generation == loadGeneration) loading = false }
     }
     LaunchedEffect(submitted, sort, mine, refresh) { items = emptyList(); cursor = null; load(false) }
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {

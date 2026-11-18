@@ -29,6 +29,10 @@ class GridfallAuthManager(
         return sessionForCurrentUser()
     }
 
+    /** Does not create an identity; used by explicit debug read-only QA. */
+    suspend fun existingSession(): GridfallAuthSession? =
+        if (firebaseAuth.currentUser == null) null else sessionForCurrentUser()
+
     suspend fun signInAnonymouslyIfNeeded(): GridfallAuthSession = ensureAnonymousUser()
 
     suspend fun registerWithEmailPasswordAndLinkAnonymous(
@@ -69,7 +73,9 @@ class GridfallAuthManager(
 
     suspend fun getFreshIdToken(): String {
         val user = firebaseAuth.currentUser ?: throw GridfallAuthException("No Firebase user is signed in.")
-        return user.getIdToken(true).await().token ?: throw GridfallAuthException("Firebase returned no ID token.")
+        val token = user.getIdToken(true).await().token ?: throw GridfallAuthException("Firebase returned no ID token.")
+        if (firebaseAuth.currentUser?.uid != user.uid) throw GridfallAuthException("Account changed. Please retry.")
+        return token
     }
 
     private suspend fun sessionForCurrentUser(expectedUid: String? = null): GridfallAuthSession {
@@ -80,6 +86,7 @@ class GridfallAuthManager(
         val token = user.getIdToken(false).await().token
             ?: error("Firebase returned no ID token")
 
+        if (firebaseAuth.currentUser?.uid != user.uid) throw GridfallAuthException("Account changed. Please retry.")
         return GridfallAuthSession(
             firebaseUid = user.uid,
             isAnonymous = user.isAnonymous,

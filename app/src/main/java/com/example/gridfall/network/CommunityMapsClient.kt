@@ -69,12 +69,11 @@ class CommunityMapsClient(
 
     override suspend fun browse(query: String, sort: String, cursor: String?, ownerToken: String?): CommunityPage {
         fun escape(value: String) = java.net.URLEncoder.encode(value, "UTF-8")
-        val path = "/community/maps${if (ownerToken != null) "/mine" else ""}?q=${escape(query)}&sort=${escape(sort)}" +
+        val path = "/community/maps${if (ownerToken != null) "/mine" else ""}?q=${escape(query)}&sort=${escape(sort)}&limit=10" +
             (cursor?.let { "&cursor=${escape(it)}" } ?: "")
-        val response = request("GET", path, ownerToken)
-        val items = response.getJSONArray("items")
-        return CommunityPage((0 until items.length()).map { parse(items.getJSONObject(it)) },
-            response.optString("nextCursor").takeUnless { it.isBlank() || it == "null" })
+        val page = parsePage(request("GET", path, ownerToken))
+        if (cursor != null && page.nextCursor == cursor) throw CommunityProtocolException("Community Maps returned a repeated page. Please refresh.")
+        return page
     }
     override suspend fun importMap(code: String, requestId: String, token: String?) =
         parse(request("POST", "/community/maps/${normalizeCode(code)}/import", token, JSONObject().put("requestId", requestId)))
@@ -93,12 +92,22 @@ class CommunityMapsClient(
                 .toRequestBody("application/json; charset=utf-8".toMediaType()))
             try {
                 http.newCall(builder.build()).execute().use { response ->
-                    if (!response.isSuccessful) throw CommunityApiException(response.code, errorMessage(response.code))
                     val source = response.body?.source() ?: throw IOException("Empty response")
-                    if (source.request(1_048_577)) throw IOException("Community response is too large")
-                    JSONObject(source.readUtf8())
+                    if (source.request(1_048_577)) throw CommunityProtocolException("Community Maps returned an oversized response.")
+                    val raw = source.readUtf8()
+                    if (!response.isSuccessful) {
+                        val permissionMessage = if (response.code == 403) runCatching {
+                            JSONObject(raw).getString("error").trim().takeIf { it.length in 1..240 && it.none { c -> c.code < 32 } }
+                        }.getOrNull() else null
+                        val message = if (response.code == 403) permissionMessage
+                            ?: "Access to Community Maps was blocked before reaching the API. Please retry later."
+                            else errorMessage(response.code)
+                        throw CommunityApiException(response.code, message)
+                    }
+                    try { JSONObject(raw) } catch (e: org.json.JSONException) { throw invalidResponse(e) }
                 }
             } catch (e: CommunityApiException) { throw e
+            } catch (e: CommunityProtocolException) { throw e
             } catch (e: IOException) { throw IOException("Cannot reach Community Maps. Check your connection and try again.", e) }
         }
 
@@ -106,9 +115,32 @@ class CommunityMapsClient(
         fun normalizeCode(raw: String): String = raw.trim().uppercase(java.util.Locale.ROOT).also {
             require(it.matches(Regex("GF-[0-9A-HJKMNP-TV-Z]{10}"))) { "Enter a valid code: GF-XXXXXXXXXX" }
         }
-        fun parse(json: JSONObject) = CommunityPublication(json.getString("code"), json.getString("creator"),
-            CommunityMapFormat.decode(json.getJSONObject("document").toString()), json.getBoolean("published"), json.getString("visibility"),
-            json.optInt("downloads"), json.optDouble("ratingAverage", 0.0), json.optInt("ratingCount"), json.optBoolean("hidden"))
+        private fun invalidResponse(cause: Exception) = CommunityProtocolException("Community Maps returned an invalid response. Please retry.", cause)
+        fun parsePage(json: JSONObject): CommunityPage = try {
+            val items = json.getJSONArray("items")
+            val cursor = json.get("nextCursor")
+            require(cursor === JSONObject.NULL || cursor is String && cursor.isNotBlank() && cursor.length <= 4096)
+            CommunityPage((0 until items.length()).map { parse(items.getJSONObject(it)) }, cursor as? String)
+        } catch (e: org.json.JSONException) { throw invalidResponse(e)
+        } catch (e: IllegalArgumentException) { throw invalidResponse(e) }
+
+        fun parse(json: JSONObject): CommunityPublication = try {
+            fun count(key: String): Int {
+                if (!json.has(key)) return 0
+                val n = json.get(key)
+                require(n is Number && n.toDouble().isFinite() && n.toDouble() in 0.0..Int.MAX_VALUE.toDouble() && n.toDouble() % 1.0 == 0.0)
+                return n.toInt()
+            }
+            val average = if (json.has("ratingAverage")) json.get("ratingAverage") else 0.0
+            require(average is Number && average.toDouble().isFinite() && average.toDouble() in 0.0..5.0)
+            val visibility = json.getString("visibility")
+            require(visibility == "public" || visibility == "unlisted")
+            require(json.get("published") is Boolean)
+            CommunityPublication(normalizeCode(json.getString("code")), json.getString("creator"),
+                CommunityMapFormat.decode(json.getJSONObject("document").toString()), json.getBoolean("published"), visibility,
+                count("downloads"), average.toDouble(), count("ratingCount"), json.optBoolean("hidden"))
+        } catch (e: org.json.JSONException) { throw invalidResponse(e)
+        } catch (e: IllegalArgumentException) { throw invalidResponse(e) }
         fun errorMessage(status: Int): String = when(status) {
             400 -> "Invalid map code or map data."
             401, 403 -> "Sign in with a completed profile to use this action."
@@ -121,3 +153,4 @@ class CommunityMapsClient(
     }
 }
 class CommunityApiException(val status: Int, message: String): IOException(message)
+class CommunityProtocolException(message: String, cause: Exception? = null): IOException(message, cause)

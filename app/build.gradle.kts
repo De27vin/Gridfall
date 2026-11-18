@@ -64,6 +64,14 @@ val validateStagingIsolation = tasks.register<ValidateStagingIsolation>("validat
 tasks.matching { it.name in setOf("preStagingBuild", "generateStagingBuildConfig", "processStagingGoogleServices") }
     .configureEach { dependsOn(validateStagingIsolation) }
 
+// Explicit override for controlled QA. Default debug LAN and release/staging rules stay intact.
+val debugEndpoint = providers.gradleProperty("gridfallDebugApiBaseUrl")
+    .orElse(providers.environmentVariable("GRIDFALL_DEBUG_API_BASE_URL"))
+    .getOrElse("http://192.168.222.172:8080")
+val debugUri = runCatching { URI(debugEndpoint) }.getOrNull()
+require(debugUri != null && debugUri.scheme in listOf("http", "https") && !debugUri.host.isNullOrBlank() &&
+    debugUri.userInfo == null && debugUri.query == null && debugUri.fragment == null) { "Invalid debug API base URL" }
+
 android {
     namespace = "com.example.gridfall"
     compileSdk {
@@ -98,7 +106,7 @@ android {
             buildConfigField(
                 "String",
                 "GRIDFALL_API_BASE_URL",
-                "\"http://192.168.222.172:8080\""
+                "\"${debugEndpoint.replace("\\", "\\\\").replace("\"", "\\\"")}\""
             )
         }
         // Isolated staging: explicit endpoint and separate Firebase configuration are mandatory.

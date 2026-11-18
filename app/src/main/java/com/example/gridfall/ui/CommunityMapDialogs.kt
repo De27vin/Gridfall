@@ -8,6 +8,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
@@ -53,8 +54,8 @@ fun CommunityMapDialog(savedMap: SavedCustomMap?, client: CommunityMapsGateway, 
     var reportNotes by remember { mutableStateOf("") }
     var notice by remember { mutableStateOf<String?>(null) }
     var pendingDraft by remember { mutableStateOf<PendingPublication?>(null) }
-    val requestId = remember { UUID.randomUUID().toString() }
-    val importId = remember { UUID.randomUUID().toString() }
+    val requestId = rememberSaveable(savedMap?.id, initialCode) { UUID.randomUUID().toString() }
+    val importId = rememberSaveable(savedMap?.id, initialCode) { UUID.randomUUID().toString() }
     fun runAction(action: suspend () -> Unit) {
         if (busy) return
         busy = true; error = null
