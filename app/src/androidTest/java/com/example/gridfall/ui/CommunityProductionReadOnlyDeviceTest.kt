@@ -33,20 +33,23 @@ class CommunityProductionReadOnlyDeviceTest {
         val code="GF-"+UUID.randomUUID().toString().replace("-", "").take(10).uppercase()
         assertEquals(404,(runCatching { client.fetch(code) }.exceptionOrNull() as CommunityApiException).status)
     }
-    @Test fun realGuestBrowserCanSearchSortAndRenderEmptyResult() {
+    @Test fun realGuestBrowserCanSearchSortAndRenderEmptySearchResult() {
         val client=client()
         compose.setContent { GridfallTheme { CommunityMapsTheme {
             CommunityMapsScreen(client,false,{ error("Guest browsing must never authenticate") },{_,_->error("No imports authorized in read-only test")},{})
         } } }
         compose.waitUntil(20_000) { compose.onAllNodesWithTag("community-loading").fetchSemanticsNodes().isEmpty() &&
             compose.onAllNodesWithText("Retry").fetchSemanticsNodes().isEmpty() &&
-            compose.onAllNodesWithText("No maps found. Try another search.").fetchSemanticsNodes().isNotEmpty() }
+            (compose.onAllNodesWithText("No maps found. Try another search.").fetchSemanticsNodes().isNotEmpty() ||
+             compose.onAllNodesWithText("Preview / Play").fetchSemanticsNodes().isNotEmpty()) }
         compose.onNodeWithText("My Published Maps").assertIsNotEnabled()
         compose.onNodeWithText("Search maps or creators").performTextInput("qa${UUID.randomUUID().toString().take(8)}")
         compose.onNodeWithText("Search",substring=false).performScrollTo().performClick()
-        compose.waitUntil(20_000) { compose.onAllNodesWithTag("community-loading").fetchSemanticsNodes().isEmpty() }
+        compose.waitUntil(20_000) { compose.onAllNodesWithTag("community-loading").fetchSemanticsNodes().isEmpty() &&
+            compose.onAllNodesWithText("No maps found. Try another search.").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("Newest").performScrollTo().performClick()
-        compose.waitUntil(20_000) { compose.onAllNodesWithTag("community-loading").fetchSemanticsNodes().isEmpty() }
+        compose.waitUntil(20_000) { compose.onAllNodesWithTag("community-loading").fetchSemanticsNodes().isEmpty() &&
+            compose.onAllNodesWithText("No maps found. Try another search.").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("No maps found. Try another search.").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Retry").assertDoesNotExist()
     }

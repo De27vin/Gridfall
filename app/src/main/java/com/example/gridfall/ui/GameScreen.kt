@@ -126,7 +126,9 @@ fun GameScreen(
     modifier: Modifier = Modifier,
     communityGateway: com.example.gridfall.network.CommunityMapsGateway? = null,
     autoCreateGuest: Boolean = true,
-    startInCommunityMaps: Boolean = false
+    startInCommunityMaps: Boolean = false,
+    startInLogin: Boolean = false,
+    connectExistingAccount: Boolean = false
 ) {
     val context = LocalContext.current.applicationContext
     val view = LocalView.current
@@ -192,7 +194,7 @@ fun GameScreen(
     var accountConnectionState by remember { mutableStateOf(AccountConnectionState()) }
     var savePromptDismissed by remember { mutableStateOf(AuthPromptStore.isSavePromptDismissed(context)) }
     var showSaveProgressPrompt by remember { mutableStateOf(false) }
-    var authDialogMode by remember { mutableStateOf<AuthDialogMode?>(null) }
+    var authDialogMode by remember { mutableStateOf<AuthDialogMode?>(if (startInLogin) AuthDialogMode.Login else null) }
     var showLogoutConfirmDialog by remember { mutableStateOf(false) }
     var isAuthActionLoading by remember { mutableStateOf(false) }
     var authUiError by remember { mutableStateOf<String?>(null) }
@@ -414,7 +416,7 @@ fun GameScreen(
                 backendUser = backendUser
             )
             syncHighScoreFromBackend(backendUser)
-            val retriedCount = retryPendingRuns(authSession.idToken)
+            val retriedCount = if (autoCreateGuest) retryPendingRuns(authSession.idToken) else 0
             if (retriedCount > 0) {
                 runCatching { apiClient.getMe(authSession.idToken) }.getOrNull()?.let { refreshedUser ->
                     accountConnectionState = accountConnectionState.copy(
@@ -460,7 +462,7 @@ fun GameScreen(
                 syncHighScoreFromBackend(backendUser)
 
                 val updatedUser = apiClient.setUsername(token, username)
-                val retriedCount = retryPendingRuns(token)
+                val retriedCount = if (autoCreateGuest) retryPendingRuns(token) else 0
                 accountConnectionState = accountConnectionState.copy(
                     backendUser = updatedUser,
                     backendError = null
@@ -496,7 +498,7 @@ fun GameScreen(
             var mergeToken: String? = null
 
             try {
-                if (accountConnectionState.isAnonymous) {
+                if (autoCreateGuest && accountConnectionState.isAnonymous) {
                     mergeToken = runCatching {
                         apiClient.createGuestMergeToken(authManager.getFreshIdToken())
                     }.getOrNull()
@@ -519,7 +521,7 @@ fun GameScreen(
                     backendUser = apiClient.getMe(token)
                 }
 
-                val retriedCount = retryPendingRuns(token)
+                val retriedCount = if (autoCreateGuest) retryPendingRuns(token) else 0
                 accountConnectionState = AccountConnectionState(
                     isLoading = false,
                     firebaseUid = authSession.firebaseUid,
@@ -550,7 +552,7 @@ fun GameScreen(
             try {
                 val token = authManager.getFreshIdToken()
                 val updatedUser = apiClient.setUsername(token, username)
-                val retriedCount = retryPendingRuns(token)
+                val retriedCount = if (autoCreateGuest) retryPendingRuns(token) else 0
                 accountConnectionState = accountConnectionState.copy(
                     backendUser = updatedUser,
                     isAnonymous = updatedUser.isAnonymous,
@@ -578,10 +580,14 @@ fun GameScreen(
             isAuthActionLoading = true
             authUiError = null
             try {
-                val authSession = authManager.logoutToAnonymous()
+                val authSession = if (autoCreateGuest) authManager.logoutToAnonymous() else {
+                    authManager.signOutWithoutGuest()
+                    null
+                }
                 highScore = 0
                 HighScoreStore.clear(context)
-                refreshAccountState(authSession)
+                if (authSession != null) refreshAccountState(authSession)
+                else accountConnectionState = AccountConnectionState(isLoading = false)
                 showLogoutConfirmDialog = false
             } catch (error: Exception) {
                 authUiError = friendlyUiError(error, fallback = "Logout failed.")
@@ -627,6 +633,8 @@ fun GameScreen(
     }
 
     fun submitEndedRunOnce(endedState: GameState) {
+        // Explicit QA sessions must never submit unrelated official scores.
+        if (!autoCreateGuest) return
         if (endedState.board.isCustom) {
             runSyncState = RunSyncState(
                 runId = endedState.runStats.runId,
@@ -731,6 +739,13 @@ fun GameScreen(
 
         if (!autoCreateGuest) {
             accountConnectionState = AccountConnectionState(isLoading = false)
+            if (connectExistingAccount) {
+                try {
+                    authManager.existingSession()?.let { refreshAccountState(it) }
+                } catch (_: Exception) {
+                    accountConnectionState = AccountConnectionState(isLoading = false, authError = "Sign in to reconnect.")
+                }
+            }
             return@LaunchedEffect
         }
 

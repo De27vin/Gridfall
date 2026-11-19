@@ -66,6 +66,9 @@ class GridfallAuthManager(
         }
     }
 
+    /** QA may switch existing accounts without creating new guest identities. */
+    fun signOutWithoutGuest() = firebaseAuth.signOut()
+
     suspend fun logoutToAnonymous(): GridfallAuthSession {
         firebaseAuth.signOut()
         return ensureAnonymousUser()
