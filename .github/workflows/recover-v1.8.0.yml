@@ -1,0 +1,15 @@
+name: Recover immutable v1.8.0 publication
+on:
+  push:
+    branches: [master]
+    paths:
+      - ".github/workflows/recover-v1.8.0.yml"
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  publish-verified-runtime:
+    uses: ./.github/workflows/publish-android-apk.yml
+    with:
+      release_tag: v1.8.0
+    secrets: inherit
