@@ -16,20 +16,29 @@ concurrency:
 jobs:
   build-and-publish:
     runs-on: ubuntu-latest
-
+    permissions:
+      contents: write
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
-
+      - name: Validate official stable tag
+        run: |
+          test "$GITHUB_REF_TYPE" = tag
+          [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          printf 'RELEASE_APK=Gridfall-%s.apk\n' "$GITHUB_REF_NAME" >> "$GITHUB_ENV"
+      - name: Verify current R2 configuration read-only
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_R2_BUCKET: ${{ secrets.CLOUDFLARE_R2_BUCKET }}
+        run: python3 scripts/release/check_r2.py
       - name: Set up Java
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
-
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v5
-
       - name: Restore release signing files
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -38,6 +47,8 @@ jobs:
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
           GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
         run: |
+          set -euo pipefail
+          umask 077
           test -n "$KEYSTORE_BASE64"
           test -n "$STORE_PASSWORD"
           test -n "$KEY_ALIAS"
@@ -50,26 +61,84 @@ jobs:
           printf 'storePassword=%s\n' "$STORE_PASSWORD" >> keystore.properties
           printf 'keyAlias=%s\n' "$KEY_ALIAS" >> keystore.properties
           printf 'keyPassword=%s\n' "$KEY_PASSWORD" >> keystore.properties
-
       - name: Test and build signed release APK
-        run: bash ./gradlew :app:testDebugUnitTest :app:assembleRelease --console=plain
-
+        run: bash ./gradlew :app:testDebugUnitTest :app:assembleRelease --console=plain --max-workers=2
+      - name: Verify release identity and prepare assets
+        run: |
+          set -euo pipefail
+          cp app/build/outputs/apk/release/app-release.apk "$RELEASE_APK"
+          python3 scripts/release/verify_apk.py "$RELEASE_APK" "${GITHUB_REF_NAME#v}"
+          sha256sum "$RELEASE_APK" > "$RELEASE_APK.sha256"
+      - name: Publish official GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            # Retry using immutable, already-published bytes rather than replacing an asset.
+            gh release view "$GITHUB_REF_NAME" --json isDraft,isPrerelease | python3 -c 'import json,sys; r=json.load(sys.stdin); assert not r["isDraft"] and not r["isPrerelease"]'
+            mkdir -p "$RUNNER_TEMP/published-release"
+            gh release download "$GITHUB_REF_NAME" --pattern "$RELEASE_APK" --pattern "$RELEASE_APK.sha256" --dir "$RUNNER_TEMP/published-release"
+            (cd "$RUNNER_TEMP/published-release" && sha256sum -c "$RELEASE_APK.sha256")
+            python3 scripts/release/verify_apk.py "$RUNNER_TEMP/published-release/$RELEASE_APK" "${GITHUB_REF_NAME#v}"
+            cp "$RUNNER_TEMP/published-release/$RELEASE_APK" "$RELEASE_APK"
+            cp "$RUNNER_TEMP/published-release/$RELEASE_APK.sha256" "$RELEASE_APK.sha256"
+            gh release edit "$GITHUB_REF_NAME" --latest
+          else
+            gh release create "$GITHUB_REF_NAME" --verify-tag --latest --draft=false --prerelease=false \
+              --title "Gridfall $GITHUB_REF_NAME — Community Maps" \
+              --notes-file docs/releases/v1.8.0.md "$RELEASE_APK" "$RELEASE_APK.sha256"
+          fi
       - name: Keep APK as workflow artifact
         uses: actions/upload-artifact@v4
         with:
           name: gridfall-${{ github.ref_name }}
-          path: app/build/outputs/apk/release/app-release.apk
+          path: |
+            ${{ env.RELEASE_APK }}
+            ${{ env.RELEASE_APK }}.sha256
           if-no-files-found: error
-
-      - name: Upload APK to Cloudflare R2
+      - name: Upload identical APK to Cloudflare R2
         uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: >-
             r2 object put ${{ secrets.CLOUDFLARE_R2_BUCKET }}/gridfall.apk
-            --file app/build/outputs/apk/release/app-release.apk
+            --file ${{ env.RELEASE_APK }}
             --content-type application/vnd.android.package-archive
             --content-disposition=attachment
             --cache-control=public,max-age=300
             --remote
+      - name: Remove restored signing files
+        if: always()
+        run: rm -f keystore.properties keystore/gridfall-release.keystore app/google-services.json
+
+  publish-website:
+    needs: build-and-publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Check existing Git-connected deployment
+        id: live
+        run: |
+          python3 - <<'PY'
+          import json, os, urllib.request
+          try:
+              def read(path):
+                  req=urllib.request.Request('https://gridfall.site/'+path,headers={'Cache-Control':'no-cache','User-Agent':'Gridfall-release'})
+                  with urllib.request.urlopen(req,timeout=25) as r: return r.read()
+              expected=json.load(open('website/release.json'))
+              actual=json.loads(read('release.json'))
+              html=read('').decode()
+              ready=actual==expected and 'Version: '+expected['version'] in html and 'Community Maps' in html
+          except Exception:
+              ready=False
+          with open(os.environ['GITHUB_OUTPUT'],'a') as output: output.write('ready='+str(ready).lower()+'\n')
+          print('Live website matches release:',ready)
+          PY
+      - name: Publish only the verified existing website
+        if: steps.live.outputs.ready != 'true'
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_WEBSITE_ACCOUNT_ID || secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_WEBSITE_API_TOKEN || secrets.CLOUDFLARE_API_TOKEN }}
+        run: python3 scripts/release/publish_website.py

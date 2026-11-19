@@ -58,7 +58,7 @@ class ContractOfferInteractionDeviceTest {
         )
         ThemePreferenceStore.save(context, GridfallThemeMode.PremiumTactical)
         InProgressRunStore(context).save(SavedInProgressRun(state))
-        compose.setContent { GridfallTheme { GameScreen() } }
+        compose.setContent { GridfallTheme { GameScreen(autoCreateGuest = false) } }
         return state
     }
 

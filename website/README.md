@@ -1,26 +1,26 @@
 # Gridfall website
 
-Static Cloudflare Pages site for `gridfall.site`.
+Static assets for the existing `gridfall.site` Cloudflare site. The root
+`wrangler.jsonc` describes the asset-only `gridfall` Worker; some installations
+may use an existing Cloudflare Pages project instead. Never guess the production
+target or create a replacement project during a release.
 
-## Deploy with Cloudflare Pages
+Update `release.json` plus the HTML fallback version/date and feature copy together.
+The JSON drives the release highlights and version history. APKs are distributed
+from https://apk.gridfall.site/gridfall.apk and are not committed to this folder.
+Newsletter signup/links are independent and are not changed by a release.
 
-Create a Pages project from this repository and configure:
+The official `v*` GitHub publisher first releases the signed APK to GitHub and R2,
+then checks the actual live site. If an existing Git-connected deployment already
+updated the site, no extra deployment runs. Otherwise
+`scripts/release/publish_website.py` requires a unique existing `gridfall.site`
+binding, preserves known site aliases, and deploys only that Worker/Pages project.
+It refuses unknown/ambiguous targets and does not modify API/tunnel resources.
 
-- **Build command:** leave blank
-- **Build output directory:** `website`
+The R2 token may lack website permissions. Configure a dedicated GitHub secret
+`CLOUDFLARE_WEBSITE_API_TOKEN` with read/deploy access to the existing website, and
+`CLOUDFLARE_WEBSITE_ACCOUNT_ID` only if different from the existing R2 account.
+Never put tokens in source or chat. Without existing-site access or functioning
+Git auto-deployment, publication is partial; do not claim a push updated the site.
 
-Cloudflare Pages serves `website/index.html` directly. Point `gridfall.site` and optionally `www.gridfall.site` to that Pages project. Do not alter `api.gridfall.site`; it is the backend API hostname.
-
-## Assets
-
-- `assets/icon.png` is copied from the Android app icon.
-- The page uses CSS gameplay mockups, so `assets/preview.png` is optional. Add a real screenshot there later and update `index.html` if desired.
-- Place the signed APK at `downloads/gridfall.apk` before deployment. APK files should not be committed.
-
-## Release updates
-
-Update `release.json` whenever a new APK is published. It drives the version, release date, "What's new" list, and version history on the download section, so the same information can be used in the newsletter announcement.
-
-## Local preview
-
-Open `index.html` directly in a browser, or serve this folder with any static file server.
+For local preview, open index.html or serve this directory using a static server.

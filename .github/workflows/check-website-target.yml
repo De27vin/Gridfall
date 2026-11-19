@@ -1,0 +1,26 @@
+name: Verify existing Gridfall website target (read-only)
+on:
+  push:
+    branches: ["fix/community-maps-android-e2e"]
+    paths:
+      - "scripts/release/publish_website.py"
+      - "scripts/release/check_r2.py"
+      - ".github/workflows/check-website-target.yml"
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Verify current R2 token and bucket read-only
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_R2_BUCKET: ${{ secrets.CLOUDFLARE_R2_BUCKET }}
+        run: python3 scripts/release/check_r2.py
+      - name: Resolve existing domain binding without deploying
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_WEBSITE_ACCOUNT_ID || secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_WEBSITE_API_TOKEN || secrets.CLOUDFLARE_API_TOKEN }}
+        run: python3 scripts/release/publish_website.py --inspect-only

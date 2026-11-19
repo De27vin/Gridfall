@@ -24,6 +24,81 @@ model User {
   profile            PlayerProfile?
   runs               Run[]
   guestMergeTokens   GuestMergeToken[] @relation("GuestMergeTokenGuest")
+  communityMaps      CommunityMap[]
+  communityRatings CommunityMapRating[]
+  communityReports CommunityMapReport[]
+  moderationEvents CommunityModerationEvent[]
+  contentRestrictions CommunityMapContentRestriction[]
+}
+
+model CommunityMap {
+  id            String   @id @default(uuid()) @db.Uuid
+  code          String   @unique @db.VarChar(13)
+  ownerId       String   @db.Uuid
+  requestId     String   @db.Uuid
+  payloadHash   String   @db.VarChar(64)
+  contentFingerprint String @db.VarChar(64)
+  name          String   @db.VarChar(24)
+  description   String   @db.VarChar(500)
+  creatorName   String   @db.VarChar(64)
+  visibility    String   @db.VarChar(8)
+  document      Json
+  published     Boolean  @default(true)
+  hidden        Boolean  @default(false)
+  downloads     Int      @default(0)
+  ratingSum     Int      @default(0)
+  ratingCount   Int      @default(0)
+  ratingRank    Float    @default(3.5)
+  moderationReason String? @db.VarChar(500)
+  searchVector Unsupported("tsvector")? @default(dbgenerated())
+  ratings       CommunityMapRating[]
+  imports       CommunityMapDownload[]
+  reports       CommunityMapReport[]
+  moderationEvents CommunityModerationEvent[]
+  restrictionSources CommunityMapContentRestriction[] @relation("RestrictionSource")
+  createdAt     DateTime @default(now()) @db.Timestamptz(3)
+  unpublishedAt DateTime? @db.Timestamptz(3)
+  owner         User     @relation(fields: [ownerId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([ownerId, requestId])
+  @@index([ownerId, contentFingerprint])
+  @@index([ownerId, createdAt, id])
+  @@index([visibility, published, createdAt, id])
+  @@index([visibility, published, hidden, ratingRank, createdAt, id], map: "CommunityMap_visibility_published_hidden_ratingRank_createdAt_i")
+  @@index([visibility, published, hidden, downloads, createdAt, id], map: "CommunityMap_visibility_published_hidden_downloads_createdAt_id")
+  @@index([searchVector], type: Gin, map: "CommunityMap_search_idx")
+}
+
+model CommunityMapRating {
+  mapId String @db.Uuid
+  userId String @db.Uuid
+  stars Int
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  map CommunityMap @relation(fields: [mapId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  @@id([mapId, userId])
+}
+
+model CommunityMapDownload {
+  mapId String @db.Uuid
+  actorHash String @db.VarChar(64)
+  requestId String @db.Uuid
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  map CommunityMap @relation(fields: [mapId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  @@id([mapId, actorHash])
+  @@unique([mapId, requestId])
+}
+
+model CommunityMapReport {
+  mapId String @db.Uuid
+  userId String @db.Uuid
+  reason String @db.VarChar(32)
+  notes String @db.VarChar(500)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  map CommunityMap @relation(fields: [mapId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  @@id([mapId, userId])
+  @@index([createdAt, mapId, userId])
 }
 
 model PlayerProfile {
@@ -76,4 +151,28 @@ model GuestMergeToken {
 
   @@index([guestUserId])
   @@index([expiresAt])
+}
+
+model CommunityModerationEvent {
+  id String @id @default(uuid()) @db.Uuid
+  mapId String @db.Uuid
+  moderatorId String @db.Uuid
+  action String @db.VarChar(6)
+  reason String @db.VarChar(500)
+  previousState Json
+  resultingState Json
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  map CommunityMap @relation(fields: [mapId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  moderator User @relation(fields: [moderatorId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  @@index([mapId, createdAt, id])
+}
+
+model CommunityMapContentRestriction {
+  ownerId String @db.Uuid
+  fingerprint String @db.VarChar(64)
+  sourceMapId String @db.Uuid
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  sourceMap CommunityMap @relation("RestrictionSource", fields: [sourceMapId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  @@id([ownerId, fingerprint])
 }

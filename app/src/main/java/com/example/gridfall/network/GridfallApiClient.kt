@@ -21,7 +21,7 @@ import org.json.JSONObject
 
 class GridfallApiClient(
     private val apiConfig: ApiConfig = ApiConfig,
-    private val httpClient: OkHttpClient = OkHttpClient()
+    private val httpClient: OkHttpClient = ApiHttpPolicy.builder().build()
 ) {
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
 

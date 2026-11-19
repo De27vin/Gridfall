@@ -159,7 +159,7 @@ class GameplayViewportTest {
         InProgressRunStore(context).save(SavedInProgressRun(state))
         ThemePreferenceStore.save(context, theme)
         compose.activityRule.scenario.onActivity { it.enableEdgeToEdge() }
-        compose.setContent { GridfallTheme { GameScreen() } }
+        compose.setContent { GridfallTheme { GameScreen(autoCreateGuest = false) } }
         compose.onNodeWithTag("gameplay-board").assertIsDisplayed()
     }
 

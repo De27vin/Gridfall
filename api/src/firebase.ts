@@ -6,6 +6,7 @@ export interface AuthenticatedUser {
   firebaseUid: string;
   email?: string;
   isAnonymous: boolean;
+  isAdmin?: boolean;
 }
 
 function ensureFirebaseInitialized(): void {
@@ -31,7 +32,8 @@ export async function verifyFirebaseToken(idToken: string): Promise<Authenticate
   return {
     firebaseUid: decoded.uid,
     email: decoded.email,
-    isAnonymous: signInProvider === "anonymous"
+    isAnonymous: signInProvider === "anonymous",
+    isAdmin: decoded.admin === true
   };
 }
 

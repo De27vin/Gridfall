@@ -1,12 +1,18 @@
 {
-  "version": "1.5.3",
-  "releasedAt": "2026-09-13",
+  "version": "1.8.0",
+  "releasedAt": "2026-11-19",
   "highlights": [
-    "Design custom maps by blocking individual fields in the new map editor.",
-    "Expand custom boards horizontally or vertically up to 10x10.",
-    "Save, edit, replay, and delete custom layouts from the new Saved Maps section."
+    "Publish custom maps with public or unlisted sharing codes.",
+    "Browse, search and sort Community Maps, then import them for offline play.",
+    "Rate and report community maps, and manage your published creations.",
+    "Import & Play closes Settings and takes you directly into the selected map."
   ],
   "history": [
+    {
+      "version": "1.8.0",
+      "releasedAt": "2026-11-19",
+      "summary": "Community Maps sharing, marketplace discovery, offline imports, ratings and reporting."
+    },
     {
       "version": "1.5.3",
       "releasedAt": "2026-09-13",

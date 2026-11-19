@@ -35,6 +35,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.key
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
@@ -120,7 +122,14 @@ private data class CustomMapTestSession(
 )
 
 @Composable
-fun GameScreen(modifier: Modifier = Modifier) {
+fun GameScreen(
+    modifier: Modifier = Modifier,
+    communityGateway: com.example.gridfall.network.CommunityMapsGateway? = null,
+    autoCreateGuest: Boolean = true,
+    startInCommunityMaps: Boolean = false,
+    startInLogin: Boolean = false,
+    connectExistingAccount: Boolean = false
+) {
     val context = LocalContext.current.applicationContext
     val view = LocalView.current
     val lifecycleOwner = view.findViewTreeLifecycleOwner()
@@ -177,7 +186,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
     }
     var showSettingsScreen by remember { mutableStateOf(false) }
     var showCustomMapEditor by remember { mutableStateOf(false) }
-    var pendingCustomMap by remember { mutableStateOf<CustomMapDesign?>(null) }
+    var pendingCustomMap by remember { mutableStateOf<CustomMapStartRequest?>(null) }
     var selectedThemeMode by remember { mutableStateOf(ThemePreferenceStore.load(context)) }
     var soundEffectsVolume by remember { mutableStateOf(SoundPreferenceStore.loadSoundEffectsVolume(context)) }
     var backgroundMusicVolume by remember { mutableStateOf(SoundPreferenceStore.loadBackgroundMusicVolume(context)) }
@@ -185,7 +194,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
     var accountConnectionState by remember { mutableStateOf(AccountConnectionState()) }
     var savePromptDismissed by remember { mutableStateOf(AuthPromptStore.isSavePromptDismissed(context)) }
     var showSaveProgressPrompt by remember { mutableStateOf(false) }
-    var authDialogMode by remember { mutableStateOf<AuthDialogMode?>(null) }
+    var authDialogMode by remember { mutableStateOf<AuthDialogMode?>(if (startInLogin) AuthDialogMode.Login else null) }
     var showLogoutConfirmDialog by remember { mutableStateOf(false) }
     var isAuthActionLoading by remember { mutableStateOf(false) }
     var authUiError by remember { mutableStateOf<String?>(null) }
@@ -208,6 +217,10 @@ fun GameScreen(modifier: Modifier = Modifier) {
     }
     val soundManager = remember { GridfallSoundManager(context) }
     val authManager = remember { GridfallAuthManager() }
+    val communityClient = remember(communityGateway) { communityGateway ?: com.example.gridfall.network.CommunityMapsClient(journal = com.example.gridfall.network.PublicationJournal(context)) }
+    var showCommunityCode by remember { mutableStateOf(false) }
+    var showCommunityMaps by rememberSaveable { mutableStateOf(startInCommunityMaps) }
+    var communityShareMap by remember { mutableStateOf<SavedCustomMap?>(null) }
     val apiClient = remember { GridfallApiClient() }
     val pendingRunStore = remember { PendingRunSubmissionStore(context) }
     val persistInProgressRun by rememberUpdatedState(newValue = {
@@ -403,7 +416,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 backendUser = backendUser
             )
             syncHighScoreFromBackend(backendUser)
-            val retriedCount = retryPendingRuns(authSession.idToken)
+            val retriedCount = if (autoCreateGuest) retryPendingRuns(authSession.idToken) else 0
             if (retriedCount > 0) {
                 runCatching { apiClient.getMe(authSession.idToken) }.getOrNull()?.let { refreshedUser ->
                     accountConnectionState = accountConnectionState.copy(
@@ -449,7 +462,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 syncHighScoreFromBackend(backendUser)
 
                 val updatedUser = apiClient.setUsername(token, username)
-                val retriedCount = retryPendingRuns(token)
+                val retriedCount = if (autoCreateGuest) retryPendingRuns(token) else 0
                 accountConnectionState = accountConnectionState.copy(
                     backendUser = updatedUser,
                     backendError = null
@@ -485,7 +498,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
             var mergeToken: String? = null
 
             try {
-                if (accountConnectionState.isAnonymous) {
+                if (autoCreateGuest && accountConnectionState.isAnonymous) {
                     mergeToken = runCatching {
                         apiClient.createGuestMergeToken(authManager.getFreshIdToken())
                     }.getOrNull()
@@ -508,7 +521,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                     backendUser = apiClient.getMe(token)
                 }
 
-                val retriedCount = retryPendingRuns(token)
+                val retriedCount = if (autoCreateGuest) retryPendingRuns(token) else 0
                 accountConnectionState = AccountConnectionState(
                     isLoading = false,
                     firebaseUid = authSession.firebaseUid,
@@ -539,7 +552,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
             try {
                 val token = authManager.getFreshIdToken()
                 val updatedUser = apiClient.setUsername(token, username)
-                val retriedCount = retryPendingRuns(token)
+                val retriedCount = if (autoCreateGuest) retryPendingRuns(token) else 0
                 accountConnectionState = accountConnectionState.copy(
                     backendUser = updatedUser,
                     isAnonymous = updatedUser.isAnonymous,
@@ -567,10 +580,14 @@ fun GameScreen(modifier: Modifier = Modifier) {
             isAuthActionLoading = true
             authUiError = null
             try {
-                val authSession = authManager.logoutToAnonymous()
+                val authSession = if (autoCreateGuest) authManager.logoutToAnonymous() else {
+                    authManager.signOutWithoutGuest()
+                    null
+                }
                 highScore = 0
                 HighScoreStore.clear(context)
-                refreshAccountState(authSession)
+                if (authSession != null) refreshAccountState(authSession)
+                else accountConnectionState = AccountConnectionState(isLoading = false)
                 showLogoutConfirmDialog = false
             } catch (error: Exception) {
                 authUiError = friendlyUiError(error, fallback = "Logout failed.")
@@ -586,7 +603,8 @@ fun GameScreen(modifier: Modifier = Modifier) {
             authUiMessage = null
             accountConnectionState = accountConnectionState.copy(isLoading = true)
             try {
-                val authSession = authManager.ensureAnonymousUser()
+                val authSession = if (autoCreateGuest) authManager.ensureAnonymousUser()
+                    else authManager.existingSession() ?: error("Sign in to connect your account.")
                 refreshAccountState(authSession)
             } catch (error: Exception) {
                 accountConnectionState = AccountConnectionState(
@@ -615,6 +633,8 @@ fun GameScreen(modifier: Modifier = Modifier) {
     }
 
     fun submitEndedRunOnce(endedState: GameState) {
+        // Explicit QA sessions must never submit unrelated official scores.
+        if (!autoCreateGuest) return
         if (endedState.board.isCustom) {
             runSyncState = RunSyncState(
                 runId = endedState.runStats.runId,
@@ -717,6 +737,18 @@ fun GameScreen(modifier: Modifier = Modifier) {
         accountConnectionState = AccountConnectionState(isLoading = true)
         refreshPendingRunCount()
 
+        if (!autoCreateGuest) {
+            accountConnectionState = AccountConnectionState(isLoading = false)
+            if (connectExistingAccount) {
+                try {
+                    authManager.existingSession()?.let { refreshAccountState(it) }
+                } catch (_: Exception) {
+                    accountConnectionState = AccountConnectionState(isLoading = false, authError = "Sign in to reconnect.")
+                }
+            }
+            return@LaunchedEffect
+        }
+
         try {
             val authSession = authManager.ensureAnonymousUser()
             Log.i(
@@ -734,7 +766,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
     }
 
     LaunchedEffect(pendingRunCount > 0, isAppInForeground) {
-        if (!isAppInForeground || pendingRunCount == 0) return@LaunchedEffect
+        if (!autoCreateGuest || !isAppInForeground || pendingRunCount == 0) return@LaunchedEffect
 
         while (isAppInForeground && pendingRunStore.pendingCount() > 0) {
             delay(RunSyncAutoRetryPolicy.delayMillis(pendingRunStore.load()))
@@ -774,7 +806,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
     LaunchedEffect(showSettingsScreen) {
         if (showSettingsScreen) {
             refreshPendingRunCount()
-            retryPendingRunsWithFreshToken()
+            if (autoCreateGuest) retryPendingRunsWithFreshToken()
         }
     }
 
@@ -1007,9 +1039,9 @@ fun GameScreen(modifier: Modifier = Modifier) {
         returnToCustomMapEditor()
     }
 
-    fun requestCustomMapStart(design: CustomMapDesign) {
+    fun requestCustomMapStart(design: CustomMapDesign, keepSettingsOpen: Boolean = true) {
         if (InProgressRunJson.hasProgress(gameState, riskSpinMemorySession)) {
-            pendingCustomMap = design
+            pendingCustomMap = CustomMapStartRequest(design, keepSettingsOpen)
         } else {
             selectedGridLayout = GridLayoutPreset.Classic
             GridLayoutPreferenceStore.save(context, GridLayoutPreset.Classic)
@@ -1022,7 +1054,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 customColumns = design.columns,
                 customBlockPool = design.blockPool,
                 isCustomMap = true,
-                keepSettingsOpen = true
+                keepSettingsOpen = keepSettingsOpen
             )
         }
     }
@@ -1240,6 +1272,9 @@ fun GameScreen(modifier: Modifier = Modifier) {
                     showCustomMapEditor = true
                 },
                 onSavedMapPlay = { savedMap -> requestCustomMapStart(savedMap.design) },
+                onSavedMapShare = { communityShareMap = it; showCommunityCode = true },
+                onEnterMapCode = { communityShareMap = null; showCommunityCode = true },
+                onCommunityMaps = { showCommunityMaps = true },
                 onSavedMapEdit = { savedMap ->
                     editingSavedMap = savedMap
                     customMapEditorDraft = null
@@ -1887,7 +1922,8 @@ fun GameScreen(modifier: Modifier = Modifier) {
             )
         }
 
-        pendingCustomMap?.let { design ->
+        pendingCustomMap?.let { request ->
+            val design = request.design
             RestartConfirmDialog(
                 title = "Start custom map?",
                 message = "Your current run will end. Custom-map scores are not ranked.",
@@ -1909,7 +1945,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                         customColumns = design.columns,
                         customBlockPool = design.blockPool,
                         isCustomMap = true,
-                        keepSettingsOpen = true
+                        keepSettingsOpen = request.keepSettingsOpen
                     )
                 }
             )
@@ -1948,6 +1984,32 @@ fun GameScreen(modifier: Modifier = Modifier) {
             )
         }
 
+        key(accountConnectionState.firebaseUid) {
+        CommunityMapsTheme {
+        if (showCommunityMaps) {
+            CommunityMapsScreen(communityClient,
+                eligible = !accountConnectionState.isAnonymous && !accountConnectionState.backendUser?.username.isNullOrBlank(),
+                token = { authManager.getFreshIdToken() },
+                onImport = { publication, play ->
+                    val local = savedCustomMapStore.importCommunityMap(publication.code, publication.document)
+                    savedCustomMaps = savedCustomMapStore.load()
+                    if (play) { showCommunityMaps = false; showCommunityCode = false; showLeaderboardScreen = false; requestCustomMapStart(local.design, keepSettingsOpen = false) }
+                }, onClose = { showCommunityMaps = false })
+        }
+        if (showCommunityCode) {
+            CommunityMapDialog(communityShareMap, communityClient,
+                eligible = !accountConnectionState.isAnonymous && !accountConnectionState.backendUser?.username.isNullOrBlank(),
+                token = { authManager.getFreshIdToken() },
+                onImport = { publication, play ->
+                    val local = savedCustomMapStore.importCommunityMap(publication.code, publication.document)
+                    savedCustomMaps = savedCustomMapStore.load()
+                    showCommunityCode = false
+                    if (play) { showCommunityMaps = false; showLeaderboardScreen = false; requestCustomMapStart(local.design, keepSettingsOpen = false) }
+                }, onDismiss = { showCommunityCode = false })
+        }
+
+        }
+        }
         if (showLogoutConfirmDialog) {
             LogoutConfirmDialog(
                 isLoading = isAuthActionLoading,

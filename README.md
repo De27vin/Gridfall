@@ -37,6 +37,8 @@ npm run dev
 
 Signed release builds require the local keystore configuration described in [docs/signed-release-apk.md](docs/signed-release-apk.md).
 
+Community Maps format/API details are in [docs/community-maps.md](docs/community-maps.md); see the [deployment and testing guide](docs/community-maps-deployment.md) before enabling the backend feature. Database migrations are an explicit deployment step.
+
 ## Download
 
 The current Android build is available at [gridfall.site](https://gridfall.site).

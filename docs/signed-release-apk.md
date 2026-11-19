@@ -20,8 +20,9 @@ The signed APK is written to:
 app/build/outputs/apk/release/app-release.apk
 ```
 
-Release and staging use `https://api.gridfall.site`. Debug continues to use
-`http://192.168.222.172:8080`.
+Release uses `https://api.gridfall.site`. Staging requires an explicit isolated HTTPS
+endpoint and separate Firebase configuration, and rejects production. Debug defaults to
+`http://192.168.222.172:8080` and supports the explicit `gridfallDebugApiBaseUrl` override.
 
 ## Automated publishing
 
@@ -60,3 +61,34 @@ After the secrets are configured, publish a release with:
 git tag v1.5.3
 git push origin v1.5.3
 ```
+
+## Community Maps beta releases
+
+Keep the existing production signing key for updates. Never replace it for a beta.
+The dedicated `publish-android-beta.yml` workflow runs only for
+`beta-community-maps-*` tags and creates a public GitHub prerelease with a signed
+APK and SHA-256 file. It reuses the existing Android signing/Firebase secrets and
+GitHub's job-scoped release token. It has no Cloudflare credentials or R2 step.
+Never use a `v*` tag or dispatch the production publishing workflow for a beta.
+
+Beta versionCode must exceed the currently public APK. Moving back to an older
+versionCode cannot preserve a normal in-place update path; a later stable release
+must use a higher versionCode. Do not uninstall to work around this.
+
+## Official stable publication
+
+For v1.8.0, versionCode23 is above both the public1.7.1/code21 and beta/code22.
+The `v*` publisher verifies the original certificate and release package/version,
+creates a normal latest GitHub Release with APK and SHA-256, then uploads those
+same bytes to R2. Retrying an existing release reuses and verifies its published
+assets instead of overwriting them. Manual workflow recovery must select the
+release tag ref, not master. Signing material is removed in an always-run cleanup.
+
+After APK publication, the workflow checks whether the live website already matches
+`website/release.json` and HTML. Otherwise it discovers the existing Cloudflare
+Worker/Pages project by the exact `gridfall.site` binding before deployment; it
+never creates a project or targets the API hostname. A dedicated optional
+`CLOUDFLARE_WEBSITE_API_TOKEN` (and, if different, `CLOUDFLARE_WEBSITE_ACCOUNT_ID`)
+can supply existing-site read/deploy permissions separately from the R2 token.
+If discovery is forbidden or ambiguous, website deployment stops safely and the
+release must be reported as partial until live verification succeeds.
