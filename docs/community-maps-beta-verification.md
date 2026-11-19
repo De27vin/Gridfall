@@ -104,4 +104,34 @@ The diagnostic retry also built successfully but could not parse its signer text
 report; it did not establish a certificate mismatch. Verification now pins stable
 Android build-tools36.0.0 and hashes the DER certificate bytes extracted from the
 verified PEM output, removing preview-tool/text-label dependence. The complete
-verification shell block is executed locally before the new `-r3` tag.
+verification shell block also passed locally after correcting a selector error in
+the local verification helper. The `-r3` tag retains the strict certificate gate.
+
+## Published asset verification
+
+GitHub run44501505121 succeeded for release commit `653bea0`. The actual public
+prerelease and both downloadable assets were retrieved after publication:
+
+- Release: https://github.com/De27vin/Gridfall/releases/tag/beta-community-maps-20261119-r3
+- APK: https://github.com/De27vin/Gridfall/releases/download/beta-community-maps-20261119-r3/Gridfall-Community-Maps-Beta.apk
+- Hosted APK bytes: 31485034
+- Hosted APK SHA-256: `50bd15d8a8b87a2ef04de787f9c4eff12d8bc84c7acb000fb41a6f4a3dbf5b63`
+
+The downloaded APK signature verified, its certificate matched the current
+website APK, and package/version were `com.example.gridfall`,22,1.8.0-beta.1.
+The downloaded SHA-256 sidecar and GitHub asset digest matched the downloaded
+APK bytes. The website/R2 APK was downloaded again and remained byte-for-byte
+unchanged (`d8f31291a504136d702765b2c295e786cebe001e06e9b446bd01c5c9d9c84b0e`). The production publisher's latest run
+remained the pre-existing v1.7.1 run. No v* tag or manual production workflow was
+triggered. The first two beta attempts published no assets.
+
+This confirms public **beta** publication, not completion of the outstanding
+authenticated or physical-device tests listed above.
+
+The **exact downloaded GitHub APK** was subsequently installed over the public
+1.7.1 APK on another fresh disposable Android11 emulator. Both installs succeeded,
+versionCode22 / 1.8.0-beta.1 was confirmed and a synthetic app-private local marker
+survived the update. The app was not launched and no accounts/API writes were
+created by this install check. Only the disposable headless emulator was stopped;
+the visible Pixel7 emulator remains open on Community Maps. This is emulator
+install/update evidence, not a claim of physical GrapheneOS verification.
