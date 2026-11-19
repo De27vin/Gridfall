@@ -6,7 +6,7 @@ const releaseNotesList = document.getElementById("release-notes-list");
 const releaseHistoryList = document.getElementById("release-history-list");
 
 if (releaseVersion && releaseDate && releaseNotesList) {
-  fetch("release.json")
+  fetch("release.json", { cache: "no-store" })
     .then((response) => {
       if (!response.ok) throw new Error("Release metadata is unavailable");
       return response.json();
