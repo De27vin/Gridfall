@@ -2,7 +2,7 @@
 
 ## Release scope
 
-Public GitHub prerelease only, tag `beta-community-maps-20261119-r2`, from
+Public GitHub prerelease only, tag `beta-community-maps-20261119-r3`, from
 `fix/community-maps-android-e2e`. No merge into master, backend deployment,
 production migration, Play Store publication or website/R2 replacement is included.
 The owner explicitly authorized this beta before authenticated two-account E2E.
@@ -99,3 +99,9 @@ pre-publication verification. No release asset was published. The verification
 now prints only the public certificate fingerprint and gives an explicit mismatch
 error, retaining the strict production-certificate requirement. A fresh `-r2`
 beta tag is used rather than moving or force-pushing the original tag.
+
+The diagnostic retry also built successfully but could not parse its signer text
+report; it did not establish a certificate mismatch. Verification now pins stable
+Android build-tools36.0.0 and hashes the DER certificate bytes extracted from the
+verified PEM output, removing preview-tool/text-label dependence. The complete
+verification shell block is executed locally before the new `-r3` tag.
