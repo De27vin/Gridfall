@@ -55,7 +55,19 @@ jobs:
           cp app/build/outputs/apk/release/app-release.apk "$apk"
           signer=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -1)
           "$signer" verify --print-certs "$apk" > "$RUNNER_TEMP/beta-signature.txt"
-          grep -Fx 'Signer #1 certificate SHA-256 digest: cb43563295f8134b162e71dfe43db34f325d4f22336129aa5dc825c6ad221d24' "$RUNNER_TEMP/beta-signature.txt"
+          python3 - <<'PYCERT'
+          import os, re
+          from pathlib import Path
+          report = Path(os.environ['RUNNER_TEMP'], 'beta-signature.txt').read_text()
+          match = re.search(r'Signer #1 certificate SHA-256 digest:\s*([0-9a-fA-F]{64})', report)
+          if not match:
+              raise SystemExit('Cannot identify signing certificate; refusing publication')
+          actual = match.group(1).lower()
+          print('Beta signing certificate SHA-256:', actual)
+          expected = 'cb43563295f8134b162e71dfe43db34f325d4f22336129aa5dc825c6ad221d24'
+          if actual != expected:
+              raise SystemExit('Signing certificate differs from website production APK; refusing publication')
+          PYCERT
           aapt=$(find "$ANDROID_HOME/build-tools" -name aapt -type f | sort -V | tail -1)
           "$aapt" dump badging "$apk" > "$RUNNER_TEMP/beta-metadata.txt"
           grep -F "package: name='com.example.gridfall' versionCode='22' versionName='1.8.0-beta.1'" "$RUNNER_TEMP/beta-metadata.txt"

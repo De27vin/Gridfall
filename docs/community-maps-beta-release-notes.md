@@ -26,5 +26,5 @@ This beta uses versionCode 22, higher than public 1.7.1 (21). Returning to that 
 is a downgrade and is not a supported in-place update. Wait for a stable release with a
 higher versionCode to retain the normal update path.
 
-The prerelease tag is `beta-community-maps-20261119`; it does not match `v*` and does not
+The prerelease tag is `beta-community-maps-20261119-r2`; it does not match `v*` and does not
 trigger the production R2 publisher. The website's production APK is not replaced.

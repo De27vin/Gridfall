@@ -2,7 +2,7 @@
 
 ## Release scope
 
-Public GitHub prerelease only, tag `beta-community-maps-20261119`, from
+Public GitHub prerelease only, tag `beta-community-maps-20261119-r2`, from
 `fix/community-maps-android-e2e`. No merge into master, backend deployment,
 production migration, Play Store publication or website/R2 replacement is included.
 The owner explicitly authorized this beta before authenticated two-account E2E.
@@ -91,3 +91,11 @@ summary says “OK (64 tests)”; individual instrumentation statuses distinguis
 two opt-in isolated local API/PostgreSQL journeys. Those are not counted as passes.
 Both real production read-only tests passed, including populated browse and empty
 search. The prior failing assumption is fixed and no failure remains in the rerun.
+
+### First CI attempt
+
+Run44499736432 successfully built and tested the signed APK, but exited during
+pre-publication verification. No release asset was published. The verification
+now prints only the public certificate fingerprint and gives an explicit mismatch
+error, retaining the strict production-certificate requirement. A fresh `-r2`
+beta tag is used rather than moving or force-pushing the original tag.
