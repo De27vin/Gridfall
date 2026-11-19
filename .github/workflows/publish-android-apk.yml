@@ -5,6 +5,17 @@ on:
     tags:
       - "v*"
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Existing v1.8.0 tag for test/CI-only recovery from master; otherwise leave empty"
+        required: false
+        type: string
+  workflow_call:
+    inputs:
+      release_tag:
+        required: false
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -18,14 +29,35 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
+      RECOVERY_BUILD: ${{ inputs.release_tag != '' }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
-      - name: Validate official stable tag
+        with:
+          fetch-depth: 0
+      - name: Validate official stable tag and recovery runtime
         run: |
-          test "$GITHUB_REF_TYPE" = tag
-          [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
-          printf 'RELEASE_APK=Gridfall-%s.apk\n' "$GITHUB_REF_NAME" >> "$GITHUB_ENV"
+          set -euo pipefail
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          if [ "$RECOVERY_BUILD" = true ]; then
+            test "$GITHUB_REF" = refs/heads/master
+            test "$RELEASE_TAG" = v1.8.0
+            git merge-base --is-ancestor "$RELEASE_TAG" HEAD
+            python3 - <<'PYGUARD'
+          import os, subprocess
+          changed = subprocess.check_output(['git','diff','--name-only',os.environ['RELEASE_TAG'],'HEAD'],text=True).splitlines()
+          allowed = ('app/src/test/','docs/','.github/workflows/','scripts/release/')
+          forbidden = [path for path in changed if not path.startswith(allowed)]
+          if forbidden:
+              raise SystemExit('Recovery refuses runtime/build/site changes: '+', '.join(forbidden))
+          print('Recovery runtime, build inputs and website match immutable release tag')
+          PYGUARD
+          else
+            test "$GITHUB_REF_TYPE" = tag
+          fi
+          printf 'RELEASE_APK=Gridfall-%s.apk\n' "$RELEASE_TAG" >> "$GITHUB_ENV"
       - name: Verify current R2 configuration read-only
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -67,26 +99,26 @@ jobs:
         run: |
           set -euo pipefail
           cp app/build/outputs/apk/release/app-release.apk "$RELEASE_APK"
-          python3 scripts/release/verify_apk.py "$RELEASE_APK" "${GITHUB_REF_NAME#v}"
+          python3 scripts/release/verify_apk.py "$RELEASE_APK" "${RELEASE_TAG#v}"
           sha256sum "$RELEASE_APK" > "$RELEASE_APK.sha256"
       - name: Publish official GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
             # Retry using immutable, already-published bytes rather than replacing an asset.
-            gh release view "$GITHUB_REF_NAME" --json isDraft,isPrerelease | python3 -c 'import json,sys; r=json.load(sys.stdin); assert not r["isDraft"] and not r["isPrerelease"]'
+            gh release view "$RELEASE_TAG" --json isDraft,isPrerelease | python3 -c 'import json,sys; r=json.load(sys.stdin); assert not r["isDraft"] and not r["isPrerelease"]'
             mkdir -p "$RUNNER_TEMP/published-release"
-            gh release download "$GITHUB_REF_NAME" --pattern "$RELEASE_APK" --pattern "$RELEASE_APK.sha256" --dir "$RUNNER_TEMP/published-release"
+            gh release download "$RELEASE_TAG" --pattern "$RELEASE_APK" --pattern "$RELEASE_APK.sha256" --dir "$RUNNER_TEMP/published-release"
             (cd "$RUNNER_TEMP/published-release" && sha256sum -c "$RELEASE_APK.sha256")
-            python3 scripts/release/verify_apk.py "$RUNNER_TEMP/published-release/$RELEASE_APK" "${GITHUB_REF_NAME#v}"
+            python3 scripts/release/verify_apk.py "$RUNNER_TEMP/published-release/$RELEASE_APK" "${RELEASE_TAG#v}"
             cp "$RUNNER_TEMP/published-release/$RELEASE_APK" "$RELEASE_APK"
             cp "$RUNNER_TEMP/published-release/$RELEASE_APK.sha256" "$RELEASE_APK.sha256"
-            gh release edit "$GITHUB_REF_NAME" --latest
+            gh release edit "$RELEASE_TAG" --latest
           else
-            gh release create "$GITHUB_REF_NAME" --verify-tag --latest --draft=false --prerelease=false \
-              --title "Gridfall $GITHUB_REF_NAME — Community Maps" \
+            gh release create "$RELEASE_TAG" --verify-tag --latest --draft=false --prerelease=false \
+              --title "Gridfall $RELEASE_TAG — Community Maps" \
               --notes-file docs/releases/v1.8.0.md "$RELEASE_APK" "$RELEASE_APK.sha256"
           fi
       - name: Keep APK as workflow artifact
