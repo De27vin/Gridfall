@@ -13,10 +13,24 @@ class CommunityMapFormatTest {
         assertEquals(fixture, CommunityMapFormat.export(d.name, d.description, d.design))
         val state = GameEngine.createCustomState(d.design)
         assertTrue(state.board.isCustom)
-        val played = GameEngine.placePiece(state, 0, 1, 1)
+        // Generation intentionally has a random bomb chance, even in a single-shape pool.
+        // This format/normal-placement assertion must choose its piece explicitly.
+        val normalState = state.copy(currentPieces = listOf(d.design.blockPool.single().toPiece()) + state.currentPieces.drop(1))
+        val played = GameEngine.placePiece(normalState, 0, 1, 1)
         assertTrue(played.board.get(1, 1) != 0)
         assertTrue(played.board.isCustom)
         assertEquals(d.design.blockedCells, played.board.blockedCells)
+        // Reproduce the former flaky outcome deliberately: bombs clear instead of occupying.
+        val bombState = state.copy(
+            currentPieces = listOf(PieceLibrary.bombPiece) + state.currentPieces.drop(1),
+            board = state.board.fill(1, 2)
+        )
+        val bombed = GameEngine.placePiece(bombState, 0, 1, 1)
+        assertEquals(0, bombed.board.get(1, 1))
+        assertEquals(0, bombed.board.get(1, 2))
+        assertTrue(0 in bombed.usedPieceIndices)
+        assertTrue(bombed.board.isCustom)
+        assertEquals(d.design.blockedCells, bombed.board.blockedCells)
     }
     @Test fun preservesPoolOrderProbabilitiesColorsAndDisconnectedShapes() {
         val pool = listOf(MapBlockDefinition("b", "B", setOf(Cell(1, 1), Cell(2, 2)), 123, 4),
