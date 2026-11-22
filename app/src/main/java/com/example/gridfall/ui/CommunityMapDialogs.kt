@@ -4,8 +4,6 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -75,8 +73,21 @@ fun CommunityMapDialog(savedMap: SavedCustomMap?, client: CommunityMapsGateway, 
         }
     }
     fun close() { if (savedMap != null) publication?.let { client.finishPublication(it.code) }; onDismiss() }
-    AlertDialog(onDismissRequest = { if (!busy) close() }, title = { Text(if (initialCode != null) "Community Map" else if (savedMap == null) "Enter Map Code" else "Share Map") },
-        text = { Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    CommunityDialogLayout(
+        title = if (initialCode != null) "Community Map" else if (savedMap == null) "Enter Map Code" else "Share Map",
+        busy = busy, onClose = ::close,
+        actions = if (publication != null && savedMap == null) ({
+            val map = publication!!
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(modifier = Modifier.weight(1f).heightIn(min = 48.dp), enabled = !busy, onClick = {
+                    runAction { onImport(client.importMap(map.code, importId, if (eligible) token() else null), false) }
+                }) { Text("Save Map Offline", textAlign = androidx.compose.ui.text.style.TextAlign.Center) }
+                Button(modifier = Modifier.weight(1f).heightIn(min = 48.dp), enabled = !busy, onClick = {
+                    runAction { onImport(client.importMap(map.code, importId, if (eligible) token() else null), true) }
+                }) { Text("Import & Play", textAlign = androidx.compose.ui.text.style.TextAlign.Center) }
+            }
+        }) else null
+    ) { previewHeight, poolHeight ->
             if (publication == null) {
                 if (savedMap == null) {
                     OutlinedTextField(code, { code = it.take(32) }, label = { Text("Map code") }, singleLine = true)
@@ -103,32 +114,18 @@ fun CommunityMapDialog(savedMap: SavedCustomMap?, client: CommunityMapsGateway, 
                 }
             }
             publication?.let { map ->
-                Text(map.document.name, style = MaterialTheme.typography.titleLarge)
-                SavedMapPreview(map.document.design, Modifier.fillMaxWidth().height(140.dp))
-                Text("By ${map.creator} · ${map.document.design.columns}×${map.document.design.rows}")
-                Text("${map.document.design.blockPool.size} blocks · ${map.visibility} · unranked")
-                Text("${String.format(java.util.Locale.ROOT, "%.1f", map.ratingAverage)} ★ (${map.ratingCount}) · ${map.downloads} imports")
-                if (map.document.description.isNotEmpty()) Text(map.document.description)
-                Text(map.code)
+                CommunityMapOverview(map, previewHeight)
                 TextButton(onClick = {
                     (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager)
                         .setPrimaryClip(ClipData.newPlainText("Gridfall map code", map.code))
                 }) { Text("Copy Code") }
+                if (savedMap != null && map.document.description.isNotEmpty()) Text(map.document.description)
                 if (savedMap == null) {
-                    map.document.design.blockPool.forEach { block -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        MapBlockPreview(block, Modifier.size(40.dp))
-                        Text("${block.name}: ${block.spawnChanceTenthsPercent / 10.0}%", modifier = Modifier.weight(1f))
+                    CommunityRatings(rating, eligible && !busy) { stars -> runAction {
+                        publication = client.rate(map.code, stars, token()); rating = stars; notice = "Rating saved."
                     } }
-                    Button(enabled = !busy, onClick = { runAction { onImport(client.importMap(map.code, importId, if (eligible) token() else null), false) } }) { Text("Save Map Offline") }
-                    Button(enabled = !busy, onClick = { runAction { onImport(client.importMap(map.code, importId, if (eligible) token() else null), true) } }) { Text("Import & Play") }
-                    Text("Rate this map", style = MaterialTheme.typography.titleSmall)
-                    FlowRow {
-                        (1..5).forEach { stars ->
-                            TextButton(enabled = eligible && !busy, onClick = { runAction {
-                                publication = client.rate(map.code, stars, token()); rating = stars; notice = "Rating saved."
-                            } }) { Text("$stars ${if (rating == stars) "★" else "☆"}") }
-                        }
-                    }
+                    CommunityBlockPool(map.document.design.blockPool, poolHeight)
+                    if (map.document.description.isNotEmpty()) Text(map.document.description)
                     if (!eligible) Text("Sign in with a username to rate or report maps.")
                     TextButton(enabled = eligible && !busy, onClick = { showReport = !showReport }) { Text("Report Map") }
                     if (showReport) {
@@ -144,5 +141,5 @@ fun CommunityMapDialog(savedMap: SavedCustomMap?, client: CommunityMapsGateway, 
             if (busy) CircularProgressIndicator()
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             notice?.let { Text(it) }
-        } }, confirmButton = { TextButton(onClick = { close() }, enabled = !busy) { Text("Close") } })
+    }
 }

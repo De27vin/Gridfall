@@ -50,7 +50,7 @@ class CommunityMapsDeviceTest {
         assertEquals("downloads", gateway.lastSort)
         compose.onNodeWithText("Preview / Play").performScrollTo().performClick()
         compose.onNodeWithText("By Creator · 4×4").assertExists()
-        compose.onNodeWithText("Import & Play").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Import & Play").assertIsDisplayed().assertIsDisplayed()
     }
     @Test fun codeImportUsesIntentionalEndpointAndExistingOfflineStore() {
         val gateway = FakeGateway()
@@ -64,7 +64,7 @@ class CommunityMapsDeviceTest {
                 store.save(SavedCustomMap(id, publication.document.name, publication.document.design))
             }, {}, initialCode = map.code)
         } }
-        compose.onNodeWithText("Import & Play").performScrollTo().performClick()
+        compose.onNodeWithText("Import & Play").assertIsDisplayed().performClick()
         compose.waitForIdle()
         assertEquals(1, gateway.imports)
         val saved = SavedCustomMapStore(context).load().first { it.id == id }

@@ -74,36 +74,36 @@ class CommunityNavigationDeviceTest {
     }
     @Test fun browserImportWithNoProgressClosesSettingsAndPlays() {
         val gateway=Gateway();open(gateway)
-        compose.onNodeWithText("Import & Play").performScrollTo().performClick();assertGameplay()
+        compose.onNodeWithText("Import & Play").assertIsDisplayed().performClick();assertGameplay()
         assertEquals(design,SavedCustomMapStore(context).load().first { it.id=="community_$code" }.design)
         assertEquals(1,gateway.ids.size)
     }
     @Test fun confirmedImportAlsoClosesSettingsAndPlays() {
         InProgressRunStore(context).save(SavedInProgressRun(GameEngine.createCustomState(design).copy(score=25)))
         val gateway=Gateway();open(gateway)
-        compose.onNodeWithText("Import & Play").performScrollTo().performClick()
+        compose.onNodeWithText("Import & Play").assertIsDisplayed().performClick()
         compose.waitUntil(5_000) { compose.onAllNodesWithText("Start custom map?").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("Start",substring=false).performClick();assertGameplay()
     }
     @Test fun failedImportStaysOpenAndRetryReusesIntentId() {
         val gateway=Gateway().also { it.fail=true };open(gateway)
-        compose.onNodeWithText("Import & Play").performScrollTo().performClick()
+        compose.onNodeWithText("Import & Play").assertIsDisplayed().performClick()
         compose.waitUntil(5_000) { compose.onAllNodesWithText("Offline fixture — retry").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("Offline fixture — retry").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("community-maps").assertExists()
         gateway.fail=false
-        compose.onNodeWithText("Import & Play").performScrollTo().performClick();assertGameplay()
+        compose.onNodeWithText("Import & Play").assertIsDisplayed().performClick();assertGameplay()
         assertEquals(2,gateway.ids.size);assertEquals(gateway.ids[0],gateway.ids[1])
     }
     @Test fun codeImportRepeatedTapsStartOnlyOneRequest() {
         val gateway=Gateway();open(gateway,true)
-        compose.onNodeWithText("Import & Play").performScrollTo().performTouchInput { click();click() }
+        compose.onNodeWithText("Import & Play").assertIsDisplayed().performTouchInput { click();click() }
         assertGameplay();assertEquals(1,gateway.ids.size)
     }
     @Test fun cancellingProgressResetPreservesThePreviousRun() {
         InProgressRunStore(context).save(SavedInProgressRun(GameEngine.createCustomState(design).copy(score=25)))
         val gateway=Gateway();open(gateway)
-        compose.onNodeWithText("Import & Play").performScrollTo().performClick()
+        compose.onNodeWithText("Import & Play").assertIsDisplayed().performClick()
         compose.waitUntil(5_000) { compose.onAllNodesWithText("Start custom map?").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("Cancel",substring=false).performClick()
         compose.runOnIdle { compose.activity.onBackPressedDispatcher.onBackPressed() }

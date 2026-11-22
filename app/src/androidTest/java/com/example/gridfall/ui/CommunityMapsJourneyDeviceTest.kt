@@ -61,7 +61,7 @@ class CommunityMapsJourneyDeviceTest {
         }
         compose.onNodeWithText("Close").performClick()
         compose.waitUntil(15_000) { compose.onAllNodesWithText("Import & Play").fetchSemanticsNodes().isNotEmpty() }
-        compose.onNodeWithText("Import & Play").performScrollTo().performClick()
+        compose.onNodeWithText("Import & Play").assertIsDisplayed().performClick()
         compose.waitUntil(15_000) { imported != null }
         val local = store.load().first { it.id == imported!!.id }
         assertEquals(design, local.design)

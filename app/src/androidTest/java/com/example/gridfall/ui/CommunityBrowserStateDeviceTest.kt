@@ -68,7 +68,7 @@ class CommunityBrowserStateDeviceTest {
         compose.onNodeWithTag("community-maps").performScrollToNode(hasText("Fixture first"))
         compose.onNodeWithText("Preview / Play").performScrollTo().performClick()
         compose.waitUntil(5_000) { compose.onAllNodesWithText("Import & Play").fetchSemanticsNodes().isNotEmpty() }
-        compose.onNodeWithText("Import & Play").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Import & Play").assertIsDisplayed().assertIsDisplayed()
         val context=androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext
         val screenshot=androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
         java.io.File(context.getExternalFilesDir(null),"community-light.png").outputStream().use { screenshot.compress(android.graphics.Bitmap.CompressFormat.PNG,100,it) }
