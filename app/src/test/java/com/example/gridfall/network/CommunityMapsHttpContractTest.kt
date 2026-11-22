@@ -52,6 +52,27 @@ class CommunityMapsHttpContractTest {
             assertTrue(runCatching { CommunityMapsClient.parse(bad) }.exceptionOrNull() is CommunityProtocolException)
         }
     }
+    @Test fun ownedHistoryFilteringWorksAfterClientRecreationWithoutNewApiParameters() = server { server, client -> runBlocking {
+        val received = mutableListOf<String>()
+        server.createContext("/community/maps/mine") { e ->
+            assertEquals("Bearer owner-fixture", e.requestHeaders.getFirst("Authorization"))
+            val query = e.requestURI.rawQuery
+            received.add(query)
+            assertTrue(query.contains("q=fixture") && query.contains("sort=newest") && query.contains("limit=10"))
+            assertFalse(query.contains("publishedOnly"))
+            val next = query.contains("cursor=next")
+            val publication = map().put("published", next).put("code", if (next) "GF-B7K9P23456" else "GF-A7K9P23456")
+            val response = JSONObject().put("items", JSONArray().put(publication))
+                .put("nextCursor", if (next) JSONObject.NULL else "next").toString().toByteArray()
+            e.sendResponseHeaders(200, response.size.toLong()); e.responseBody.use { it.write(response) }
+        }
+        repeat(2) { attempt ->
+            val fresh = if (attempt == 0) client else CommunityMapsClient(endpoint = { "http://127.0.0.1:${server.address.port}$it" })
+            val page = loadVisibleCommunityPage(null, true) { fresh.browse("fixture", "newest", it, "owner-fixture") }
+            assertEquals(listOf("GF-B7K9P23456"), page.items.map { it.code }); assertNull(page.nextCursor)
+        }
+        assertEquals(4, received.size)
+    } }
     @Test fun apiPermissionAndEdgeDenialHaveDifferentMessages() = server { server, client -> runBlocking {
         var edge = false
         server.createContext("/community/maps") { e ->
