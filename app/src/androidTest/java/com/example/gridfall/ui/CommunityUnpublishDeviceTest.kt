@@ -88,7 +88,7 @@ class CommunityUnpublishDeviceTest {
             compose.onNodeWithText("Target fixture").assertDoesNotExist()
             restore.emulateSavedInstanceStateRestore(); settled(); see("Second fixture")
             compose.onNodeWithText("Target fixture").assertDoesNotExist()
-            compose.onNodeWithText("Load More").performScrollTo().performClick(); settled(); see("Third fixture")
+            see("Load More"); compose.onNodeWithText("Load More").performClick(); settled(); see("Third fixture")
             assertEquals(saved, store.load().first { it.id == saved.id })
         } finally { store.delete(saved.id) }
     }
@@ -105,7 +105,7 @@ class CommunityUnpublishDeviceTest {
         val gateway = HistoryGateway().also { it.published = false }; val restore = StateRestorationTester(compose)
         open(gateway, restore); see("Second fixture")
         assertEquals(listOf(0, 1, 2), gateway.requests.map { it.third })
-        compose.onNodeWithText("Load More").performScrollTo().performClick(); settled(); see("Third fixture")
+        see("Load More"); compose.onNodeWithText("Load More").performClick(); settled(); see("Third fixture")
         compose.onNodeWithText("Target fixture").assertDoesNotExist()
         compose.onNodeWithText("Search maps or creators").performTextInput("Target")
         compose.onNodeWithText("Search", substring = false).performScrollTo().performClick(); settled()
