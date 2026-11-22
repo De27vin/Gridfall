@@ -63,6 +63,12 @@ class CommunityNavigationDeviceTest {
             compose.onNodeWithText("Preview / Play").performScrollTo().performClick()
         }
         compose.waitUntil(5_000) { compose.onAllNodesWithText("Import & Play").fetchSemanticsNodes().isNotEmpty() }
+        // Code entry opens the IME. Let it close before coordinate-based repeated taps;
+        // on small phones its animation otherwise moves the footer between bounds lookup and tap.
+        if (codeEntry) {
+            androidx.test.espresso.Espresso.closeSoftKeyboard()
+            compose.waitForIdle()
+        }
     }
     private fun assertGameplay() {
         compose.waitUntil(5_000) { compose.onAllNodesWithTag("gameplay").fetchSemanticsNodes().isNotEmpty() }
