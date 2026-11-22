@@ -51,10 +51,20 @@ class CommunityBrowserStateDeviceTest {
     @Test fun queryAndSortSurviveStateRestoration() {
         val gateway=Gateway();val restoration=StateRestorationTester(compose)
         restoration.setContent { GridfallTheme { CommunityMapsTheme { CommunityMapsScreen(gateway,false,{error("No auth")},{_,_->},{}) } } }
+        compose.waitUntil(5_000) { gateway.lastSort == "rated" &&
+            compose.onAllNodesWithTag("community-loading").fetchSemanticsNodes().isEmpty() }
         compose.onNodeWithText("Search maps or creators").performTextInput("restored fixture")
-        compose.onNodeWithText("Search",substring=false).performScrollTo().performClick()
+        androidx.test.espresso.Espresso.closeSoftKeyboard()
+        compose.onNodeWithText("Search",substring=false).performScrollTo().assertIsEnabled().performClick()
+        compose.waitUntil(5_000) { gateway.lastQuery == "restored fixture" &&
+            compose.onAllNodesWithTag("community-loading").fetchSemanticsNodes().isEmpty() }
         compose.onNodeWithText("Newest").performScrollTo().performClick()
-        compose.waitForIdle();restoration.emulateSavedInstanceStateRestore();compose.waitForIdle()
+        compose.waitUntil(5_000) { gateway.lastSort == "newest" }
+        compose.waitForIdle()
+        val previousRequests = gateway.cursors.size
+        restoration.emulateSavedInstanceStateRestore()
+        compose.waitUntil(5_000) { gateway.cursors.size > previousRequests &&
+            gateway.lastQuery == "restored fixture" && gateway.lastSort == "newest" }
         assertEquals("restored fixture",gateway.lastQuery);assertEquals("newest",gateway.lastSort)
     }
     @Test fun lightThemeDetailsAndBackRemainUsable() {
