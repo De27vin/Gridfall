@@ -118,8 +118,10 @@ jobs:
             gh release edit "$RELEASE_TAG" --latest
           else
             test -f "docs/releases/$RELEASE_TAG.md"
+            RELEASE_TITLE="Gridfall $RELEASE_TAG — Community Maps"
+            if [ "$RELEASE_TAG" = v1.8.1 ]; then RELEASE_TITLE="$RELEASE_TITLE Improvements"; fi
             gh release create "$RELEASE_TAG" --verify-tag --latest --draft=false --prerelease=false \
-              --title "Gridfall $RELEASE_TAG — Community Maps" \
+              --title "$RELEASE_TITLE" \
               --notes-file "docs/releases/$RELEASE_TAG.md" "$RELEASE_APK" "$RELEASE_APK.sha256"
           fi
       - name: Keep APK as workflow artifact
