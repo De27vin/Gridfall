@@ -43,7 +43,7 @@ fun CommunityMapDialog(savedMap: SavedCustomMap?, client: CommunityMapsGateway, 
     val keyboard = LocalSoftwareKeyboardController.current
     var code by remember { mutableStateOf("") }
     var description by remember { mutableStateOf(savedMap?.description.orEmpty()) }
-    var visibility by remember { mutableStateOf("unlisted") }
+    var visibility by rememberSaveable(savedMap?.id, initialCode) { mutableStateOf("public") }
     var publication by remember { mutableStateOf<CommunityPublication?>(null) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -97,10 +97,14 @@ fun CommunityMapDialog(savedMap: SavedCustomMap?, client: CommunityMapsGateway, 
                     if (pendingDraft != null) Text("A previous publication has an uncertain outcome. Retry its saved snapshot before starting a new publication.")
                     Text("Publish an immutable copy. Editing your saved map later creates a new publication.")
                     OutlinedTextField(description, { description = it.take(500) }, enabled = !busy && pendingDraft == null, label = { Text("Description (optional)") })
-                    Row(Modifier.fillMaxWidth().selectable(visibility == "unlisted", enabled = !busy && pendingDraft == null, role = Role.RadioButton,
-                        onClick = { visibility = "unlisted" })) { RadioButton(visibility == "unlisted", null); Text("Unlisted · code only") }
                     Row(Modifier.fillMaxWidth().selectable(visibility == "public", enabled = !busy && pendingDraft == null, role = Role.RadioButton,
-                        onClick = { visibility = "public" })) { RadioButton(visibility == "public", null); Text("Public · marketplace") }
+                        onClick = { visibility = "public" }), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                        RadioButton(visibility == "public", null); Text("Public · marketplace")
+                    }
+                    Row(Modifier.fillMaxWidth().selectable(visibility == "unlisted", enabled = !busy && pendingDraft == null, role = Role.RadioButton,
+                        onClick = { visibility = "unlisted" }), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                        RadioButton(visibility == "unlisted", null); Text("Unlisted · code only")
+                    }
                     if (!eligible) Text("Sign in and choose a username in Settings before publishing.")
                     Button(enabled = eligible && !busy, onClick = { runAction {
                         val identity = token()

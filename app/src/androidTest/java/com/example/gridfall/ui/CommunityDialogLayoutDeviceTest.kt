@@ -28,7 +28,7 @@ internal fun communityUiFixture(blockCount: Int = 64): CommunityPublication {
 internal open class CommunityUiGateway(val map: CommunityPublication = communityUiFixture()) : CommunityMapsGateway {
     override suspend fun fetch(code: String) = map
     override suspend fun browse(query: String, sort: String, cursor: String?, ownerToken: String?) = CommunityPage(listOf(map), null)
-    override suspend fun publish(token: String, document: String, visibility: String, requestId: String) = error("Publishing not configured in this fixture")
+    override suspend fun publish(token: String, document: String, visibility: String, requestId: String): CommunityPublication = error("Publishing not configured in this fixture")
     override suspend fun importMap(code: String, requestId: String, token: String?) = map
     override suspend fun rate(code: String, stars: Int, token: String) = map.copy(ratingAverage = stars.toDouble())
     override suspend fun unpublish(code: String, token: String) = Unit
