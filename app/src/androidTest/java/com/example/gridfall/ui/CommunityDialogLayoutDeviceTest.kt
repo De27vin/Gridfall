@@ -85,7 +85,7 @@ class CommunityDialogLayoutDeviceTest {
         (1..5).forEach { compose.onNodeWithTag("community-rating-$it").assertIsDisplayed() }
         compose.onNodeWithTag("community-rating-3").performClick()
         compose.waitUntil(5_000) { runCatching { compose.onNodeWithTag("community-rating-3").assertIsSelected() }.isSuccess }
-        compose.onNodeWithContentDescription("3 out of 5 stars").assertExists()
+        compose.onNodeWithContentDescription("Rate 3 out of 5 stars").assertExists()
     }
     @Test fun longPiecePoolScrollsIndependentlyWithoutMovingTheBody() {
         open()

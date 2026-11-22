@@ -1,6 +1,11 @@
 package com.example.gridfall.ui
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.stateDescription
+import com.example.gridfall.ui.theme.RewardMint
+import com.example.gridfall.ui.theme.LocalGridfallColors
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -9,13 +14,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -105,22 +108,27 @@ internal fun CommunityBlockPool(blocks: List<MapBlockDefinition>, height: Dp) {
 
 @Composable
 internal fun CommunityRatings(rating: Int, enabled: Boolean, onRate: (Int) -> Unit) {
-    Text("Rate this map", style = MaterialTheme.typography.titleSmall)
-    Row(Modifier.fillMaxWidth().testTag("community-rating-row"), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-        (1..5).forEach { stars ->
-            TextButton(
-                enabled = enabled,
-                onClick = { onRate(stars) },
-                modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("community-rating-$stars").semantics {
-                    contentDescription = "$stars out of 5 stars"
-                    selected = rating == stars
-                },
-                contentPadding = PaddingValues(2.dp),
-                colors = ButtonDefaults.textButtonColors(
-                    containerColor = if (rating == stars) MaterialTheme.colorScheme.primary.copy(alpha = 0.20f) else Color.Transparent)
-            ) {
-                Text(stars.toString(), maxLines = 1, textAlign = TextAlign.Center)
-                Icon(painterResource(R.drawable.ic_rating_star), contentDescription = null, modifier = Modifier.size(14.dp))
+    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+        Row(Modifier.widthIn(max = 320.dp).fillMaxWidth().testTag("community-rating-row").semantics {
+            stateDescription = if (rating == 0) "Not rated" else "$rating out of 5 stars"
+        },
+            horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+            (1..5).forEach { stars ->
+                val filled = stars <= rating
+                Box(
+                    modifier = Modifier.weight(1f).heightIn(min = 48.dp)
+                        .testTag("community-rating-$stars")
+                        .clickable(enabled = enabled, role = Role.Button) { onRate(stars) }
+                        .semantics {
+                            contentDescription = "Rate $stars out of 5 stars"
+                            selected = filled
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(painterResource(if (filled) R.drawable.ic_rating_star else R.drawable.ic_rating_star_outline),
+                        contentDescription = null, tint = if (filled) RewardMint else LocalGridfallColors.current.textMuted,
+                        modifier = Modifier.size(32.dp))
+                }
             }
         }
     }

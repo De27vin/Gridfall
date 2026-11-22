@@ -52,6 +52,14 @@ class CommunityMapsHttpContractTest {
             assertTrue(runCatching { CommunityMapsClient.parse(bad) }.exceptionOrNull() is CommunityProtocolException)
         }
     }
+    @Test fun personalRatingIsSeparateFromTheAggregateAndStrictlyValidated() {
+        assertNull(CommunityMapsClient.parse(map()).yourRating)
+        assertNull(CommunityMapsClient.parse(map().put("yourRating", JSONObject.NULL)).yourRating)
+        assertEquals(4, CommunityMapsClient.parse(map().put("yourRating", 4)).yourRating)
+        for (bad in listOf(0, 6, 1.5, 4294967297L, "4")) {
+            assertTrue(runCatching { CommunityMapsClient.parse(map().put("yourRating", bad)) }.exceptionOrNull() is CommunityProtocolException)
+        }
+    }
     @Test fun ownedHistoryFilteringWorksAfterClientRecreationWithoutNewApiParameters() = server { server, client -> runBlocking {
         val received = mutableListOf<String>()
         server.createContext("/community/maps/mine") { e ->

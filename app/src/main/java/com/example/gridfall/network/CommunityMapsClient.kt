@@ -13,13 +13,14 @@ import org.json.JSONObject
 
 data class CommunityPublication(val code: String, val creator: String, val document: CommunityMapDocument,
     val published: Boolean, val visibility: String, val downloads: Int = 0, val ratingAverage: Double = 0.0,
-    val ratingCount: Int = 0, val hidden: Boolean = false)
+    val ratingCount: Int = 0, val hidden: Boolean = false, val yourRating: Int? = null)
 data class CommunityPage(val items: List<CommunityPublication>, val nextCursor: String?)
 interface CommunityMapsGateway {
     fun finishPublication(code: String) {}
     suspend fun pendingPublication(token: String, mapId: String): PendingPublication? = null
     suspend fun publishSavedMap(token: String, mapId: String, document: String, visibility: String, requestId: String): CommunityPublication =
         publish(token, document, visibility, requestId)
+    suspend fun personalRating(code: String, token: String): Int? = null
     suspend fun fetch(code: String): CommunityPublication
     suspend fun publish(token: String, document: String, visibility: String, requestId: String): CommunityPublication
     suspend fun browse(query: String, sort: String, cursor: String?, ownerToken: String? = null): CommunityPage
@@ -32,6 +33,7 @@ interface CommunityMapsGateway {
 class CommunityMapsClient(
     private val endpoint: (String) -> String = ApiConfig::endpoint,
     private val journal: PublicationJournal? = null,
+    private val ratings: CommunityRatingStore? = null,
     private val identityOfToken: (String) -> String = { token ->
         val payload = android.util.Base64.decode(token.split(".")[1], android.util.Base64.URL_SAFE)
         JSONObject(String(payload, Charsets.UTF_8)).getString("sub")
@@ -77,8 +79,15 @@ class CommunityMapsClient(
     }
     override suspend fun importMap(code: String, requestId: String, token: String?) =
         parse(request("POST", "/community/maps/${normalizeCode(code)}/import", token, JSONObject().put("requestId", requestId)))
-    override suspend fun rate(code: String, stars: Int, token: String) =
-        parse(request("PUT", "/community/maps/${normalizeCode(code)}/rating", token, JSONObject().put("stars", stars)))
+    override suspend fun personalRating(code: String, token: String): Int? =
+        ratings?.load(identityOfToken(token), normalizeCode(code))
+    override suspend fun rate(code: String, stars: Int, token: String): CommunityPublication {
+        val normalized = normalizeCode(code)
+        val owner = if (ratings != null) identityOfToken(token) else null
+        val result = parse(request("PUT", "/community/maps/$normalized/rating", token, JSONObject().put("stars", stars)))
+        if (owner != null) ratings?.save(owner, normalized, result.yourRating ?: stars)
+        return result
+    }
     override suspend fun unpublish(code: String, token: String) { request("DELETE", "/community/maps/${normalizeCode(code)}", token) }
     override suspend fun report(code: String, reason: String, notes: String, token: String) {
         request("POST", "/community/maps/${normalizeCode(code)}/report", token, JSONObject().put("reason", reason).put("notes", notes))
@@ -136,9 +145,14 @@ class CommunityMapsClient(
             val visibility = json.getString("visibility")
             require(visibility == "public" || visibility == "unlisted")
             require(json.get("published") is Boolean)
+            val ownRating = if (json.has("yourRating") && !json.isNull("yourRating")) {
+                val own = json.get("yourRating")
+                require(own is Number && own.toDouble().isFinite() && own.toDouble() % 1.0 == 0.0 && own.toDouble() in 1.0..5.0)
+                own.toInt()
+            } else null
             CommunityPublication(normalizeCode(json.getString("code")), json.getString("creator"),
                 CommunityMapFormat.decode(json.getJSONObject("document").toString()), json.getBoolean("published"), visibility,
-                count("downloads"), average.toDouble(), count("ratingCount"), json.optBoolean("hidden"))
+                count("downloads"), average.toDouble(), count("ratingCount"), json.optBoolean("hidden"), ownRating)
         } catch (e: org.json.JSONException) { throw invalidResponse(e)
         } catch (e: IllegalArgumentException) { throw invalidResponse(e) }
         fun errorMessage(status: Int): String = when(status) {

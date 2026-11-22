@@ -8,6 +8,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -48,6 +49,8 @@ fun CommunityMapDialog(savedMap: SavedCustomMap?, client: CommunityMapsGateway, 
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var rating by remember { mutableStateOf(0) }
+    var savedRating by remember { mutableStateOf(0) }
+    var ratingError by remember { mutableStateOf<String?>(null) }
     var showReport by remember { mutableStateOf(false) }
     var reportNotes by remember { mutableStateOf("") }
     var notice by remember { mutableStateOf<String?>(null) }
@@ -62,7 +65,18 @@ fun CommunityMapDialog(savedMap: SavedCustomMap?, client: CommunityMapsGateway, 
         catch (e: Exception) { error = e.message ?: "Map action failed." }
         finally { busy = false }
     } }
-    LaunchedEffect(initialCode) { if (initialCode != null) runAction { publication = client.fetch(initialCode) } }
+    suspend fun showPublication(map: CommunityPublication) {
+        val own = if (eligible) map.yourRating ?: run {
+            try { client.personalRating(map.code, token()) }
+            catch (e: CancellationException) { throw e }
+            catch (_: Exception) { null }
+        } else null
+        ratingError = null
+        savedRating = own ?: 0
+        rating = savedRating
+        publication = map
+    }
+    LaunchedEffect(initialCode) { if (initialCode != null) runAction { showPublication(client.fetch(initialCode)) } }
     LaunchedEffect(savedMap?.id, eligible) {
         if (savedMap != null && eligible) runAction {
             pendingDraft = client.pendingPublication(token(), savedMap.id)
@@ -91,7 +105,7 @@ fun CommunityMapDialog(savedMap: SavedCustomMap?, client: CommunityMapsGateway, 
             if (publication == null) {
                 if (savedMap == null) {
                     OutlinedTextField(code, { code = it.take(32) }, label = { Text("Map code") }, singleLine = true)
-                    Button(onClick = { runAction { publication = client.fetch(code) } }, enabled = !busy) { Text("Preview") }
+                    Button(onClick = { runAction { showPublication(client.fetch(code)) } }, enabled = !busy) { Text("Preview") }
                 } else {
                     Text(pendingDraft?.let { CommunityMapFormat.decode(it.document).name } ?: savedMap.name)
                     if (pendingDraft != null) Text("A previous publication has an uncertain outcome. Retry its saved snapshot before starting a new publication.")
@@ -125,9 +139,30 @@ fun CommunityMapDialog(savedMap: SavedCustomMap?, client: CommunityMapsGateway, 
                 }) { Text("Copy Code") }
                 if (savedMap != null && map.document.description.isNotEmpty()) Text(map.document.description)
                 if (savedMap == null) {
-                    CommunityRatings(rating, eligible && !busy) { stars -> runAction {
-                        publication = client.rate(map.code, stars, token()); rating = stars; notice = "Rating saved."
-                    } }
+                    CommunityRatings(rating, eligible && !busy) { stars ->
+                        if (!busy) {
+                            rating = stars
+                            ratingError = null
+                            notice = null
+                            runAction {
+                                try {
+                                    val updated = client.rate(map.code, stars, token())
+                                    publication = updated
+                                    savedRating = updated.yourRating ?: stars
+                                    rating = savedRating
+                                    notice = "Rating saved."
+                                } catch (e: CancellationException) {
+                                    rating = savedRating
+                                    throw e
+                                } catch (e: Exception) {
+                                    rating = savedRating
+                                    ratingError = e.message ?: "Could not save your rating. Please try again."
+                                }
+                            }
+                        }
+                    }
+                    ratingError?.let { Text(it, color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.testTag("community-rating-error")) }
                     CommunityBlockPool(map.document.design.blockPool, poolHeight)
                     if (map.document.description.isNotEmpty()) Text(map.document.description)
                     if (!eligible) Text("Sign in with a username to rate or report maps.")
