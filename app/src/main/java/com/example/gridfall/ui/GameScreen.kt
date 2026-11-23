@@ -217,7 +217,7 @@ fun GameScreen(
     }
     val soundManager = remember { GridfallSoundManager(context) }
     val authManager = remember { GridfallAuthManager() }
-    val communityClient = remember(communityGateway) { communityGateway ?: com.example.gridfall.network.CommunityMapsClient(journal = com.example.gridfall.network.PublicationJournal(context)) }
+    val communityClient = remember(communityGateway) { communityGateway ?: com.example.gridfall.network.CommunityMapsClient(journal = com.example.gridfall.network.PublicationJournal(context), ratings = com.example.gridfall.network.CommunityRatingStore(context)) }
     var showCommunityCode by remember { mutableStateOf(false) }
     var showCommunityMaps by rememberSaveable { mutableStateOf(startInCommunityMaps) }
     var communityShareMap by remember { mutableStateOf<SavedCustomMap?>(null) }

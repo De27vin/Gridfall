@@ -46,18 +46,54 @@ fun CommunityMapsScreen(client: CommunityMapsGateway, eligible: Boolean, token: 
     var detail by rememberSaveable { mutableStateOf<String?>(null) }
     var unpublish by remember { mutableStateOf<CommunityPublication?>(null) }
     var loadGeneration by remember { mutableIntStateOf(0) }
+    var unpublishBusy by remember { mutableStateOf(false) }
+    var unpublishError by remember { mutableStateOf<String?>(null) }
+    var locallyUnpublished by remember { mutableStateOf(emptySet<String>()) }
     suspend fun load(append: Boolean) {
         if (append && loading) return
         val generation = ++loadGeneration
         loading = true; error = null
         try {
-            val page = client.browse(submitted, sort, if (append) cursor else null, if (mine) token() else null)
+            val requestedQuery = submitted
+            val requestedSort = sort
+            val requestedMine = mine
+            val ownerToken = if (requestedMine) token() else null
+            val page = loadVisibleCommunityPage(
+                cursor = if (append) cursor else null,
+                publishedOnly = requestedMine,
+                excludedCodes = locallyUnpublished,
+                onSkippedPage = { if (generation == loadGeneration) cursor = it }
+            ) { next ->
+                if (generation != loadGeneration) throw CancellationException("Obsolete community request")
+                client.browse(requestedQuery, requestedSort, next, ownerToken).also {
+                    if (generation != loadGeneration) throw CancellationException("Obsolete community request")
+                }
+            }
             if (generation != loadGeneration) return
             items = ((if (append) items else emptyList()) + page.items).distinctBy { it.code }
             cursor = page.nextCursor
         } catch (e: CancellationException) { throw e
         } catch (e: Exception) { if (generation == loadGeneration) error = e.message ?: "Could not load maps." }
         finally { if (generation == loadGeneration) loading = false }
+    }
+    fun startUnpublish(map: CommunityPublication) {
+        if (unpublishBusy) return
+        unpublishBusy = true
+        unpublishError = null
+        scope.launch {
+            try {
+                client.unpublish(map.code, token())
+                locallyUnpublished = locallyUnpublished + map.code
+                items = items.filterNot { it.code == map.code }
+                // An older page may have been fetched before the DELETE committed.
+                loadGeneration++
+                unpublish = null
+                refresh++
+            } catch (e: CancellationException) { throw e
+            } catch (e: Exception) {
+                unpublishError = e.message ?: "Unpublish failed. Please retry."
+            } finally { unpublishBusy = false }
+        }
     }
     LaunchedEffect(submitted, sort, mine, refresh) { items = emptyList(); cursor = null; load(false) }
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
@@ -86,7 +122,12 @@ fun CommunityMapsScreen(client: CommunityMapsGateway, eligible: Boolean, token: 
                         }
                     }
                 }
-                if (!loading && items.isEmpty() && error == null) item { Text(if (mine) "You haven't published any maps yet. Share one from Saved Maps." else "No maps found. Try another search.", color = colors.textMuted) }
+                if (!loading && items.isEmpty() && cursor == null && error == null) item {
+                    Text(if (mine) {
+                        if (submitted.isNotBlank()) "No published maps match this search."
+                        else "You have no published maps. Share one from Saved Maps."
+                    } else "No maps found. Try another search.", color = colors.textMuted)
+                }
                 items(items, key = { it.code }) { map ->
                     Column(Modifier.fillMaxWidth().border(1.dp, colors.panelBorder, RoundedCornerShape(12.dp))
                         .background(colors.chipBackground, RoundedCornerShape(12.dp)).padding(12.dp)) {
@@ -102,8 +143,9 @@ fun CommunityMapsScreen(client: CommunityMapsGateway, eligible: Boolean, token: 
                         FlowRow {
                             TextButton(enabled = map.published && !map.hidden, onClick = { detail = map.code }) { Text("Preview / Play") }
                             if (mine) {
-                                Text("${map.visibility} · ${if (map.hidden) "Hidden" else if (map.published) "Published" else "Unpublished"}", modifier = Modifier.padding(8.dp))
-                                if (map.published) TextButton(enabled = !loading, onClick = { unpublish = map }) { Text("Unpublish", color = colors.danger) }
+                                Text("${map.visibility} · ${if (map.hidden) "Hidden" else "Published"}", modifier = Modifier.padding(8.dp))
+                                if (map.published) TextButton(modifier = Modifier.testTag("community-unpublish-${map.code}"), enabled = !loading && !unpublishBusy,
+                                    onClick = { unpublishError = null; unpublish = map }) { Text("Unpublish", color = colors.danger) }
                             }
                         }
                     }
@@ -111,7 +153,7 @@ fun CommunityMapsScreen(client: CommunityMapsGateway, eligible: Boolean, token: 
                 if (loading) item { CircularProgressIndicator(Modifier.testTag("community-loading")) }
                 error?.let { message -> item {
                     Text(message, color = colors.danger)
-                    Button(onClick = { scope.launch { load(items.isNotEmpty()) } }, enabled = !loading) { Text("Retry") }
+                    Button(onClick = { scope.launch { load(cursor != null || items.isNotEmpty()) } }, enabled = !loading) { Text("Retry") }
                     Text("Previously imported maps are available offline in Saved Maps.", color = colors.textMuted)
                 } }
                 if (cursor != null && !loading && error == null) item { Button(onClick = { scope.launch { load(true) } }) { Text("Load More") } }
@@ -120,11 +162,16 @@ fun CommunityMapsScreen(client: CommunityMapsGateway, eligible: Boolean, token: 
     }
     detail?.let { code -> CommunityMapDialog(null, client, eligible, token,
         onImport = { publication, play -> detail = null; onImport(publication, play) }, onDismiss = { detail = null }, initialCode = code) }
-    unpublish?.let { map -> AlertDialog(onDismissRequest = { unpublish = null }, title = { Text("Unpublish map?") },
-        text = { Text("${map.document.name} will no longer be available online. Existing offline imports stay playable.") },
-        confirmButton = { TextButton(onClick = { unpublish = null; scope.launch {
-            try { client.unpublish(map.code, token()); refresh++ }
-            catch (e: CancellationException) { throw e }
-            catch (e: Exception) { error = e.message ?: "Unpublish failed." }
-        } }) { Text("Unpublish") } }, dismissButton = { TextButton(onClick = { unpublish = null }) { Text("Cancel") } }) }
+    unpublish?.let { map -> AlertDialog(
+        onDismissRequest = { if (!unpublishBusy) unpublish = null },
+        title = { Text("Unpublish map?") },
+        text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("${map.document.name} will no longer be available online. Existing offline imports stay playable.")
+            if (unpublishBusy) CircularProgressIndicator(Modifier.size(24.dp))
+            unpublishError?.let { Text(it, color = colors.danger, modifier = Modifier.testTag("community-unpublish-error")) }
+        } },
+        confirmButton = { TextButton(modifier = Modifier.testTag("community-confirm-unpublish"), enabled = !unpublishBusy,
+            onClick = { startUnpublish(map) }) { Text("Unpublish") } },
+        dismissButton = { TextButton(enabled = !unpublishBusy, onClick = { unpublish = null }) { Text("Cancel") } }
+    ) }
 }

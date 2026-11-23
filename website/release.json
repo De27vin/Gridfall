@@ -1,13 +1,18 @@
 {
-  "version": "1.8.0",
-  "releasedAt": "2026-11-19",
+  "version": "1.8.1",
+  "releasedAt": "2026-11-23",
   "highlights": [
-    "Publish custom maps with public or unlisted sharing codes.",
-    "Browse, search and sort Community Maps, then import them for offline play.",
-    "Rate and report community maps, and manage your published creations.",
-    "Import & Play closes Settings and takes you directly into the selected map."
+    "Wider, compact Community Map details with an independently scrolling piece list.",
+    "Five-star ratings with cumulative mint highlighting and failed-save recovery.",
+    "Public marketplace sharing first and selected by default; Unlisted code-only sharing remains available.",
+    "Unpublished maps leave My Published Maps after confirmation, with safer errors and pagination. Saved maps remain intact."
   ],
   "history": [
+    {
+      "version": "1.8.1",
+      "releasedAt": "2026-11-23",
+      "summary": "Compact map details, five-star ratings, clearer sharing options and reliable Unpublish handling."
+    },
     {
       "version": "1.8.0",
       "releasedAt": "2026-11-19",

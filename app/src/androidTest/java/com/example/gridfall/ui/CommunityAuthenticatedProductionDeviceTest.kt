@@ -105,7 +105,7 @@ class CommunityAuthenticatedProductionDeviceTest {
                     compose.onNodeWithText("Map code").performTextInput(code)
                     compose.onNodeWithText("Preview").performScrollTo().performClick()
                     compose.waitUntil(30_000) { compose.onAllNodesWithText("Import & Play").fetchSemanticsNodes().isNotEmpty() }
-                    compose.onNodeWithText("Import & Play").performScrollTo().performClick()
+                    compose.onNodeWithText("Import & Play").assertIsDisplayed().performClick()
                     compose.waitUntil(30_000) { compose.onAllNodesWithTag("gameplay").fetchSemanticsNodes().isNotEmpty() }
                     compose.onNodeWithTag("gameplay").assertIsDisplayed()
                     compose.onNodeWithText("Return to Game").assertDoesNotExist()

@@ -4,12 +4,11 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -45,11 +44,13 @@ fun CommunityMapDialog(savedMap: SavedCustomMap?, client: CommunityMapsGateway, 
     val keyboard = LocalSoftwareKeyboardController.current
     var code by remember { mutableStateOf("") }
     var description by remember { mutableStateOf(savedMap?.description.orEmpty()) }
-    var visibility by remember { mutableStateOf("unlisted") }
+    var visibility by rememberSaveable(savedMap?.id, initialCode) { mutableStateOf("public") }
     var publication by remember { mutableStateOf<CommunityPublication?>(null) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var rating by remember { mutableStateOf(0) }
+    var savedRating by remember { mutableStateOf(0) }
+    var ratingError by remember { mutableStateOf<String?>(null) }
     var showReport by remember { mutableStateOf(false) }
     var reportNotes by remember { mutableStateOf("") }
     var notice by remember { mutableStateOf<String?>(null) }
@@ -64,7 +65,18 @@ fun CommunityMapDialog(savedMap: SavedCustomMap?, client: CommunityMapsGateway, 
         catch (e: Exception) { error = e.message ?: "Map action failed." }
         finally { busy = false }
     } }
-    LaunchedEffect(initialCode) { if (initialCode != null) runAction { publication = client.fetch(initialCode) } }
+    suspend fun showPublication(map: CommunityPublication) {
+        val own = if (eligible) map.yourRating ?: run {
+            try { client.personalRating(map.code, token()) }
+            catch (e: CancellationException) { throw e }
+            catch (_: Exception) { null }
+        } else null
+        ratingError = null
+        savedRating = own ?: 0
+        rating = savedRating
+        publication = map
+    }
+    LaunchedEffect(initialCode) { if (initialCode != null) runAction { showPublication(client.fetch(initialCode)) } }
     LaunchedEffect(savedMap?.id, eligible) {
         if (savedMap != null && eligible) runAction {
             pendingDraft = client.pendingPublication(token(), savedMap.id)
@@ -75,21 +87,38 @@ fun CommunityMapDialog(savedMap: SavedCustomMap?, client: CommunityMapsGateway, 
         }
     }
     fun close() { if (savedMap != null) publication?.let { client.finishPublication(it.code) }; onDismiss() }
-    AlertDialog(onDismissRequest = { if (!busy) close() }, title = { Text(if (initialCode != null) "Community Map" else if (savedMap == null) "Enter Map Code" else "Share Map") },
-        text = { Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    CommunityDialogLayout(
+        title = if (initialCode != null) "Community Map" else if (savedMap == null) "Enter Map Code" else "Share Map",
+        busy = busy, onClose = ::close,
+        actions = if (publication != null && savedMap == null) ({
+            val map = publication!!
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(modifier = Modifier.weight(1f).heightIn(min = 48.dp), enabled = !busy, onClick = {
+                    runAction { onImport(client.importMap(map.code, importId, if (eligible) token() else null), false) }
+                }) { Text("Save Map Offline", textAlign = androidx.compose.ui.text.style.TextAlign.Center) }
+                Button(modifier = Modifier.weight(1f).heightIn(min = 48.dp), enabled = !busy, onClick = {
+                    runAction { onImport(client.importMap(map.code, importId, if (eligible) token() else null), true) }
+                }) { Text("Import & Play", textAlign = androidx.compose.ui.text.style.TextAlign.Center) }
+            }
+        }) else null
+    ) { previewHeight, poolHeight ->
             if (publication == null) {
                 if (savedMap == null) {
                     OutlinedTextField(code, { code = it.take(32) }, label = { Text("Map code") }, singleLine = true)
-                    Button(onClick = { runAction { publication = client.fetch(code) } }, enabled = !busy) { Text("Preview") }
+                    Button(onClick = { runAction { showPublication(client.fetch(code)) } }, enabled = !busy) { Text("Preview") }
                 } else {
                     Text(pendingDraft?.let { CommunityMapFormat.decode(it.document).name } ?: savedMap.name)
                     if (pendingDraft != null) Text("A previous publication has an uncertain outcome. Retry its saved snapshot before starting a new publication.")
                     Text("Publish an immutable copy. Editing your saved map later creates a new publication.")
                     OutlinedTextField(description, { description = it.take(500) }, enabled = !busy && pendingDraft == null, label = { Text("Description (optional)") })
-                    Row(Modifier.fillMaxWidth().selectable(visibility == "unlisted", enabled = !busy && pendingDraft == null, role = Role.RadioButton,
-                        onClick = { visibility = "unlisted" })) { RadioButton(visibility == "unlisted", null); Text("Unlisted · code only") }
                     Row(Modifier.fillMaxWidth().selectable(visibility == "public", enabled = !busy && pendingDraft == null, role = Role.RadioButton,
-                        onClick = { visibility = "public" })) { RadioButton(visibility == "public", null); Text("Public · marketplace") }
+                        onClick = { visibility = "public" }), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                        RadioButton(visibility == "public", null); Text("Public · marketplace")
+                    }
+                    Row(Modifier.fillMaxWidth().selectable(visibility == "unlisted", enabled = !busy && pendingDraft == null, role = Role.RadioButton,
+                        onClick = { visibility = "unlisted" }), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                        RadioButton(visibility == "unlisted", null); Text("Unlisted · code only")
+                    }
                     if (!eligible) Text("Sign in and choose a username in Settings before publishing.")
                     Button(enabled = eligible && !busy, onClick = { runAction {
                         val identity = token()
@@ -103,32 +132,39 @@ fun CommunityMapDialog(savedMap: SavedCustomMap?, client: CommunityMapsGateway, 
                 }
             }
             publication?.let { map ->
-                Text(map.document.name, style = MaterialTheme.typography.titleLarge)
-                SavedMapPreview(map.document.design, Modifier.fillMaxWidth().height(140.dp))
-                Text("By ${map.creator} · ${map.document.design.columns}×${map.document.design.rows}")
-                Text("${map.document.design.blockPool.size} blocks · ${map.visibility} · unranked")
-                Text("${String.format(java.util.Locale.ROOT, "%.1f", map.ratingAverage)} ★ (${map.ratingCount}) · ${map.downloads} imports")
-                if (map.document.description.isNotEmpty()) Text(map.document.description)
-                Text(map.code)
+                CommunityMapOverview(map, previewHeight)
                 TextButton(onClick = {
                     (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager)
                         .setPrimaryClip(ClipData.newPlainText("Gridfall map code", map.code))
                 }) { Text("Copy Code") }
+                if (savedMap != null && map.document.description.isNotEmpty()) Text(map.document.description)
                 if (savedMap == null) {
-                    map.document.design.blockPool.forEach { block -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        MapBlockPreview(block, Modifier.size(40.dp))
-                        Text("${block.name}: ${block.spawnChanceTenthsPercent / 10.0}%", modifier = Modifier.weight(1f))
-                    } }
-                    Button(enabled = !busy, onClick = { runAction { onImport(client.importMap(map.code, importId, if (eligible) token() else null), false) } }) { Text("Save Map Offline") }
-                    Button(enabled = !busy, onClick = { runAction { onImport(client.importMap(map.code, importId, if (eligible) token() else null), true) } }) { Text("Import & Play") }
-                    Text("Rate this map", style = MaterialTheme.typography.titleSmall)
-                    FlowRow {
-                        (1..5).forEach { stars ->
-                            TextButton(enabled = eligible && !busy, onClick = { runAction {
-                                publication = client.rate(map.code, stars, token()); rating = stars; notice = "Rating saved."
-                            } }) { Text("$stars ${if (rating == stars) "★" else "☆"}") }
+                    CommunityRatings(rating, eligible && !busy) { stars ->
+                        if (!busy) {
+                            rating = stars
+                            ratingError = null
+                            notice = null
+                            runAction {
+                                try {
+                                    val updated = client.rate(map.code, stars, token())
+                                    publication = updated
+                                    savedRating = updated.yourRating ?: stars
+                                    rating = savedRating
+                                    notice = "Rating saved."
+                                } catch (e: CancellationException) {
+                                    rating = savedRating
+                                    throw e
+                                } catch (e: Exception) {
+                                    rating = savedRating
+                                    ratingError = e.message ?: "Could not save your rating. Please try again."
+                                }
+                            }
                         }
                     }
+                    ratingError?.let { Text(it, color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.testTag("community-rating-error")) }
+                    CommunityBlockPool(map.document.design.blockPool, poolHeight)
+                    if (map.document.description.isNotEmpty()) Text(map.document.description)
                     if (!eligible) Text("Sign in with a username to rate or report maps.")
                     TextButton(enabled = eligible && !busy, onClick = { showReport = !showReport }) { Text("Report Map") }
                     if (showReport) {
@@ -144,5 +180,5 @@ fun CommunityMapDialog(savedMap: SavedCustomMap?, client: CommunityMapsGateway, 
             if (busy) CircularProgressIndicator()
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             notice?.let { Text(it) }
-        } }, confirmButton = { TextButton(onClick = { close() }, enabled = !busy) { Text("Close") } })
+    }
 }
