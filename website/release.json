@@ -1,6 +1,6 @@
 {
   "version": "1.8.1",
-  "releasedAt": "2026-11-22",
+  "releasedAt": "2026-11-23",
   "highlights": [
     "Wider, compact Community Map details with an independently scrolling piece list.",
     "Five-star ratings with cumulative mint highlighting and failed-save recovery.",
@@ -10,7 +10,7 @@
   "history": [
     {
       "version": "1.8.1",
-      "releasedAt": "2026-11-22",
+      "releasedAt": "2026-11-23",
       "summary": "Compact map details, five-star ratings, clearer sharing options and reliable Unpublish handling."
     },
     {
